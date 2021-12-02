@@ -46,7 +46,7 @@ if (!window.videoCallHelper) {
         let gumStream = await origGetGetUserMedia(constraints);
         debug("got stream", gumStream);
         // grabImage(gumStream);
-        sendToContentJs("gumStream");
+        sendToContentJs({state:"gumStream"});
         return gumStream
     }
 

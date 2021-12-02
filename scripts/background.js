@@ -5,6 +5,11 @@ function log(...messages) {
     console.log(`👷 ️`, ...messages);
 }
 
+let gumActive = false;
+
+/*
+ * Inter-script messaging
+ */
 
 chrome.runtime.onInstalled.addListener(async () => {
 
@@ -24,45 +29,35 @@ chrome.runtime.onMessage.addListener(
     (request, sender, sendResponse) => {
         // ToDo: Edge doesn't have a sender.tab object
 
-        let tabId = sender.tab ? sender.tab.id : "undefined id";
-        log(`message from tab ${tabId} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
-
-        /*
-        // Relay key events
-        if (request.keyEventInfo) {
-            log(`incoming event: `, request.keyEventInfo.keyCode);
-
-            const targetTab = openTabs.find(tab => tab.handle === capturedHandle);
-            if (targetTab)
-                chrome.tabs.sendMessage(targetTab.tabId, request); //response callback removed
-            else {
-                log(`No captured tab to relay keys to`);
-            }
-        // set the last getDisplayMedia call
-        } else if (request.gotDisplayMediaHandle) {
-            capturedHandle = request.gotDisplayMediaHandle;
-            log(`getDisplayMedia with Tab active:  ${sender.tab.url}`);
-        } else if (request.lostDisplayMediaHandle) {
-            capturedHandle = false;
-            log(`getDisplayMedia with Tab removed:  ${sender.tab.url}`);
-        } else if (request.unload) {
-            openTabs = openTabs.filter(tab => tab.tabId !== tabId);
-            // ToDo: check if this is capturedHandle?
-        } else if (request.captureHandle && !openTabs.find(tab => tab.handle === request.captureHandle)) {
-            openTabs.push({tabId: sender.tab.id, handle: request.captureHandle});
-            log(`New tab opened: ${sender.tab.url}`)
-        } else {
-            log("ERROR: unprocessed message")
+        if(request.to && ( request.to === 'background' || request.to === 'all')){
+            log(`message from ${request.from}: ${request.message}`);
         }
-         */
+        else {
+            if(sender.tab)
+                log(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
+            else
+                log(`unrecognized format : `, sender, request);
+
+            return;
+        }
+
+        // let tabId = sender.tab ? sender.tab.id : "undefined id";
+
+        if(request.from === "popup" && request.message === "init"){
+            sendResponse({message: gumActive ? "active": "inactive"})
+            return
+        }
+
+        else if(request.state === "gumStream"){
+            gumActive = true;
+        }
 
         if (sendResponse) {
-            sendResponse({wssh: "ACK"});
+            sendResponse({vch: "ACK"});
         } else {
-            log("response not requested");
+            // log("response not requested");
         }
     });
-
 
 /*
  * Add our injection script new tabs

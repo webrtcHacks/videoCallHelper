@@ -9,36 +9,41 @@ debug(`content.js loaded on ${window.location.href}`);
  * Communicate with the background worker context
  */
 
-function sendToBackground(message) {
-
-    /*
-    function backgroundMessageHandler(message) {
-        if(message !== undefined && message.wssh && message.wssh !== "ACK")
-            console.debug(message)
-    }
-    */
-
+function sendMessage(to, message, responseHandler) {
     try{
-        chrome.runtime.sendMessage(message); //, backgroundMessageHandler);
-        debug("sent this to background worker:", message);
+            chrome.runtime.sendMessage({from: "tab", to: to, message: message}, responseHandler)
+        /*
+        // ToDo: do we need to handle sending to all tabs?
+        //  Should the below be filtered?
+        if (to === 'tabs' || to === 'all'){
+            chrome.tabs.query({active: true, currentWindow: true}, tabs => {
+                tabs.forEach(tab=>
+                    chrome.tabs.sendMessage(tab.id, message, responseHandler))
+            });
+        }
+*/
+    }
+    catch (err){
+        console.debug(err);
+    }
 
-    }
-    catch(err){
-        console.debug(err)
-    }
 }
 
 // Listen for updates from background.js
 chrome.runtime.onMessage.addListener(
     (request, sender) => {
-        debug(`from ${sender.id}`, request, sender);
-
-
-        if(request && request.keyEventInfo){
-            //simulateKeyStroke(request.keyEventInfo)
+        if(request.to && ( request.to === 'tab' || request.to === 'all')){
+            debug(`message from ${request.from}:, ${request.message}`);
         }
-        //else if(request !== undefined && request.wssh && request.wssh !== "ACK")
-        debug(`from ${sender.id}`, request);
+        else {
+            if(sender.tab)
+                debug(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
+            else
+                debug(`unrecognized format : `, sender, request);
+            return
+        }
+
+        sendToInject(request.message);
     }
 );
 
@@ -58,7 +63,8 @@ document.addEventListener('vch', e => {
         return;
 
     let data = e.detail;
-    sendToBackground(data);
+    // ToDo: message handler
+    sendMessage('all', data);
 });
 
 
@@ -76,11 +82,9 @@ debug(`captureHandle: ${handleId}`);
 */
 // ToDo: remove the URL before release - it shouldn't matter
 //sendToBackground({url: window.location.href, captureHandle: handleId});
-sendToBackground({url: window.location.href});
+sendMessage('background', window.location.href);
 
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', () => {
-    sendToBackground({unload: "unload"})
-});
-
+    sendMessage('background', 'unload')});
