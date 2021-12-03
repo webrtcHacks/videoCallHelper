@@ -4,7 +4,6 @@ function debug(...messages){
 
 debug(`content.js loaded on ${window.location.href}`);
 
-
 /*
  * Communicate with the background worker context
  */
@@ -26,14 +25,17 @@ function sendMessage(to, message, responseHandler) {
     catch (err){
         console.debug(err);
     }
-
 }
 
-// Listen for updates from background.js
+// Relay messages to inject.js
 chrome.runtime.onMessage.addListener(
     (request, sender) => {
         if(request.to && ( request.to === 'tab' || request.to === 'all')){
-            debug(`message from ${request.from}:, ${request.message}`);
+            debug(`sending "${request.message}" from ${request.from} to ${request.to}`);
+        }
+        else if(request.to && request.to === 'content'){
+            debug("message for content.js", request)
+            return
         }
         else {
             if(sender.tab)
@@ -59,12 +61,14 @@ const sendToInject = message => {
 };
 
 document.addEventListener('vch', e => {
-    if (!e.detail)
-        return;
+    if (!e.detail){
+        return
+    }
 
-    let data = e.detail;
-    // ToDo: message handler
-    sendMessage('all', data);
+    const message = e.detail.message;
+    const to = e.detail.to;
+
+    sendMessage(to, message);
 });
 
 

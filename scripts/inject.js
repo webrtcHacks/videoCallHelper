@@ -2,14 +2,19 @@ function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
 }
 
-function sendToContentJs(messageObj) {
-    const toContentEvent = new CustomEvent('vch', {detail: messageObj});
+function sendMessage(to='all', message) {
+    const toContentEvent = new CustomEvent('vch',
+        {detail: {from: 'tab', 'to': to, message: message}});
     document.dispatchEvent(toContentEvent);
 }
 
+document.addEventListener('vch', e => {
+    if(e.detail === 'train'){
+        debug("initiate training here");
+    }
+});
+
 function sendImages(stream){
-
-
 
 }
 
@@ -27,10 +32,10 @@ if (!window.videoCallHelper) {
 
             track.onended = () => {
                 debug(`captured handle ${capturedHandle} ended`);
-                sendToContentJs({lostDisplayMediaHandle: capturedHandle});
+                sendMessage('background', {lostDisplayMediaHandle: capturedHandle});
             };
 
-            sendToContentJs({gotDisplayMediaHandle: capturedHandle});
+            sendMessage('background', {gotDisplayMediaHandle: capturedHandle});
         } else {
             // send a notice a tab wasn't shared
         }
@@ -46,7 +51,7 @@ if (!window.videoCallHelper) {
         let gumStream = await origGetGetUserMedia(constraints);
         debug("got stream", gumStream);
         // grabImage(gumStream);
-        sendToContentJs({state:"gumStream"});
+        sendMessage('all', "gum_stream_start");
         return gumStream
     }
 
