@@ -2,7 +2,10 @@ const statusSpan = document.querySelector('span#gumStatus');
 const trainBtn = document.querySelector('button#train');
 
 function log(...messages) {
-    console.log(`🐰 ️`, ...messages);
+    if(messages.length === 1)
+        console.log(`🐰 ️`, messages[0])
+    else
+        console.log(`🐰 ️`, ...messages);
 }
 
 // wrapper
@@ -29,24 +32,25 @@ function sendMessage(to, message, responseHandler) {
     catch (err){
         console.error(err);
     }
-
 }
 
 chrome.runtime.onMessage.addListener(
     (request, sender, sendResponse) => {
         if(request.to && ( request.to === 'popup' || request.to === 'all')){
-            log(`message from ${request.from}:, ${request.message}`);
+            log(`message from ${request.from}: ${request.message}`);
         }
         else {
+            /*
             if(sender.tab)
                 log(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
             else
                 log(`unrecognized format : `, sender, request);
             return
+             */
         }
 
         // message handlers
-        if(request.message === "active") {
+        if(request.message === "gum_stream_start") {
             statusSpan.textContent = "active";
             trainBtn.disabled = false;
         }
@@ -54,11 +58,10 @@ chrome.runtime.onMessage.addListener(
             statusSpan.textContent = "inactive";
             trainBtn.disabled = true;
         }
-
    });
 
 // Get state
-sendMessage('background', "init", (response)=>{
+sendMessage('background', "open", (response)=>{
     log("response: ", response);
     if(response.message === "active") {
         statusSpan.textContent = "active";
