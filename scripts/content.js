@@ -8,44 +8,41 @@ debug(`content.js loaded on ${window.location.href}`);
  * Communicate with the background worker context
  */
 
-function sendMessage(to, message, responseHandler) {
+function sendMessage(to = 'all', message, data = {}, responseCallBack = null) {
     try{
-            chrome.runtime.sendMessage({from: "tab", to: to, message: message}, responseHandler)
-        /*
-        // ToDo: do we need to handle sending to all tabs?
-        //  Should the below be filtered?
-        if (to === 'tabs' || to === 'all'){
-            chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-                tabs.forEach(tab=>
-                    chrome.tabs.sendMessage(tab.id, message, responseHandler))
-            });
-        }
-*/
+        // ToDo: response callback
+        const messageToSend = {
+            from: 'tab',
+            to: to,
+            message: message,
+            data: data
+        };
+        chrome.runtime.sendMessage(messageToSend, responseCallBack)
     }
     catch (err){
-        console.debug(err);
+        debug("ERROR", err);
     }
 }
 
 // Relay messages to inject.js
 chrome.runtime.onMessage.addListener(
     (request, sender) => {
-        if(request.to && ( request.to === 'tab' || request.to === 'all')){
-            debug(`sending "${request.message}" from ${request.from} to ${request.to}`);
+        const {to, from, message } = request;
+        if(to === 'tab' || to === 'all'){
+            debug(`sending "${message}" from ${from} to ${to}`);
+            const forwardedMessage = {message: request.message, data: request.data}
+            sendToInject(forwardedMessage);
         }
-        else if(request.to && request.to === 'content'){
+        else if(to === 'content'){
+            // Nothing to do here yet
             debug("message for content.js", request)
-            return
         }
         else {
             if(sender.tab)
                 debug(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
             else
                 debug(`unrecognized format : `, sender, request);
-            return
         }
-
-        sendToInject(request.message);
     }
 );
 
@@ -61,14 +58,15 @@ const sendToInject = message => {
 };
 
 document.addEventListener('vch', e => {
+    debug("message to send", e.detail);
+
     if (!e.detail){
         return
     }
 
-    const message = e.detail.message;
-    const to = e.detail.to;
+    const {to, message, data} = e.detail;
 
-    sendMessage(to, message);
+    sendMessage(to, message, data);
 });
 
 

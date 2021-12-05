@@ -2,32 +2,28 @@ const statusSpan = document.querySelector('span#gumStatus');
 const trainBtn = document.querySelector('button#train');
 
 function log(...messages) {
-    if(messages.length === 1)
-        console.log(`🐰 ️`, messages[0])
+    if (messages.length > 1 || typeof messages[0] === 'object')
+        console.log(`🐰 ️${JSON.stringify(...messages)}`);
     else
-        console.log(`🐰 ️`, ...messages);
+        console.log(`🐰 ️${messages}`);
 }
 
 // wrapper
-function sendMessage(to, message, responseHandler) {
+function sendMessage(to, message, data, responseHandler) {
     try{
+        const messageToSend = {
+            from: "popup",
+            to: to,
+            message: message,
+            data: data
+        };
+
         if(to === 'background' || to === 'all')
-            chrome.runtime.sendMessage({from: "popup", to: to, message: message}, responseHandler)
+            chrome.runtime.sendMessage(messageToSend, responseHandler)
         if (to === 'tab' || to === 'all')
             chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-                const sendObj = {from: "popup", to: to, message: message};
-                chrome.tabs.sendMessage(tabs[0].id, sendObj, responseHandler)
+                chrome.tabs.sendMessage(tabs[0].id, messageToSend, responseHandler)
             });
-        /*
-        // ToDo: do we need to handle sending to all tabs?
-        //  Should the below be filtered?
-        if (to === 'tabs' || to === 'all'){
-            chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-                tabs.forEach(tab=>
-                    chrome.tabs.sendMessage(tab.id, message, responseHandler))
-            });
-        }
-*/
     }
     catch (err){
         console.error(err);
@@ -36,8 +32,11 @@ function sendMessage(to, message, responseHandler) {
 
 chrome.runtime.onMessage.addListener(
     (request, sender, sendResponse) => {
-        if(request.to && ( request.to === 'popup' || request.to === 'all')){
-            log(`message from ${request.from}: ${request.message}`);
+        log(request);
+        const {to, from, message, data} = request;
+
+        if(to === 'popup' || to === 'all'){
+            log(`message from ${from}: ${message}`);
         }
         else {
             /*
@@ -50,18 +49,22 @@ chrome.runtime.onMessage.addListener(
         }
 
         // message handlers
-        if(request.message === "gum_stream_start") {
+        if(message === "gum_stream_start") {
             statusSpan.textContent = "active";
             trainBtn.disabled = false;
         }
+        if(message === "training_image") {
+            log(data)
+        }
         else {
-            statusSpan.textContent = "inactive";
-            trainBtn.disabled = true;
+            log("unrecognized request: ", request)
+            // statusSpan.textContent = "inactive";
+            // trainBtn.disabled = true;
         }
    });
 
 // Get state
-sendMessage('background', "open", (response)=>{
+sendMessage('background', "open", {}, (response)=>{
     log("response: ", response);
     if(response.message === "active") {
         statusSpan.textContent = "active";
@@ -73,4 +76,9 @@ sendMessage('background', "open", (response)=>{
     }
 });
 
-trainBtn.onclick = () => sendMessage('tab', "train")
+trainBtn.onclick = async () => {
+    sendMessage('tab', "train_start", {sendImagesInterval: 5000});
+    let url = chrome.runtime.getURL("pages/training.html");
+    // let inputTab = await chrome.tabs.create({url});
+    // console.log(`training page open on tab ${inputTab.id}`)
+}

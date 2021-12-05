@@ -1,21 +1,76 @@
+'use strict';
+
+let gumStream;
+let sendImagesInterval = Infinity;
+
 function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
 }
 
-function sendMessage(to='all', message) {
-    const toContentEvent = new CustomEvent('vch',
-        {detail: {from: 'tab', 'to': to, message: message}});
+function sendMessage(to = 'all', message, data = {}) {
+    if (!message) {
+        debug("ERROR: no message in sendMessage request");
+    }
+    const messageToSend = {
+        from: 'tab',
+        to: to,
+        message: message,
+        data: data
+    };
+
+    const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
     document.dispatchEvent(toContentEvent);
 }
 
-document.addEventListener('vch', e => {
-    if(e.detail === 'train'){
-        debug("initiate training here");
+document.addEventListener('vch', async e => {
+    const {message, data} = e.detail;
+    if (message === 'train_start') {
+        sendImagesInterval = data.sendImagesInterval || 5000;
+        debug(`sending images every ${sendImagesInterval} ms`);
+        await sendImages(gumStream);
+    }
+    else if (message === 'train_stop') {
+        sendImagesInterval = Infinity;
+        debug(`Pausing sending images`);
+    }
+    else{
+        debug("DEBUG:",  e.detail)
     }
 });
 
-function sendImages(stream){
+async function sendImages(stream) {
+    const [track] = stream.getVideoTracks();
+    const canvas = new OffscreenCanvas(640, 480);
+    const ctx = canvas.getContext("bitmaprenderer");
 
+    const generator = new MediaStreamTrackGenerator({kind: 'video'});
+    const processor = new MediaStreamTrackProcessor({track});
+
+    let timer = new Date();
+
+    async function extractImage(frame) {
+        const now = Date.now();
+        if (now - timer > sendImagesInterval) {
+            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight);
+            ctx.transferFromImageBitmap(bitmap);
+            const blob = await canvas.convertToBlob({type: "image/jpeg"});
+            // ToDo: convert blob to binary
+            // Didn't work:
+            //  {blobString: JSON.stringify(blob) didn't work
+            //  await new FileReader().readAsArrayBuffer(blob)
+            // const fileReader = new FileReader();
+            // const blobArray = await fileReader.readAsArrayBuffer(blob);
+            // ToDo: this is showing as 0x0; send to an onscreen img to check it
+            debug(bitmap);
+            sendMessage('all', 'image', {bitmap: bitmap});
+            timer = now;
+        }
+        frame.close();
+    }
+
+    await processor.readable
+        .pipeThrough(new TransformStream({transform: frame => extractImage(frame)}))
+        .pipeTo(generator.writable);
 }
 
 if (!window.videoCallHelper) {
@@ -48,9 +103,8 @@ if (!window.videoCallHelper) {
 
     async function shimGetUserMedia(constraints) {
 
-        let gumStream = await origGetGetUserMedia(constraints);
+        gumStream = await origGetGetUserMedia(constraints);
         debug("got stream", gumStream);
-        // grabImage(gumStream);
         sendMessage('all', "gum_stream_start");
         return gumStream
     }
@@ -59,14 +113,12 @@ if (!window.videoCallHelper) {
 
     window.videoCallHelper = true;
 
-}
-else{
+} else {
     debug("shims already loaded")
 }
 
 /*
  * debugging
  */
-
 
 debug("injected");

@@ -1,11 +1,15 @@
-let openTabs = [];
-let capturedHandle = false;
+// let openTabs = [];
+// let capturedHandle = false;
 
 function log(...messages) {
+    console.log(`👷: `, ...messages);
+    /*
     if(messages.length > 1 || typeof messages[0]==='object')
         console.log(`👷 ️${JSON.stringify(...messages)}`);
     else
         console.log(`👷 ️${messages}`);
+
+     */
 }
 let gumActive = false;
 chrome.runtime.onStartup.addListener(async () => {
@@ -36,8 +40,11 @@ chrome.runtime.onMessage.addListener(
     async (request, sender, sendResponse) => {
         // ToDo: Edge doesn't have a sender.tab object
 
-        if(request.to && ( request.to === 'background' || request.to === 'all')){
-            log(`message from ${request.from} ${sender.tab ? sender.tab.id : ""} : ${request.message}`);
+        console.log(`DEBUG: from ${sender.tab ?  sender.tab.id : "unknown"}`, request);
+        const {to, from, message, data} = request;
+
+        if(to === 'background' || request.to === 'all'){
+            log(`message from ${from} ${sender.tab ? sender.tab.id : ""} : ${message}, data:`, data);
         }
         else {
             /*
@@ -50,14 +57,17 @@ chrome.runtime.onMessage.addListener(
              */
         }
 
-        if(request.message === 'gum_stream_start'){
+        if(message === 'gum_stream_start'){
             gumActive = true;
             await chrome.storage.local.set({ gumActive: true });
 
         }
-        else if(request.message === "gum_stream_stop"){
+        else if(message === "gum_stream_stop"){
             gumActive = false;
             await chrome.storage.local.set({ gumActive: false });
+        }
+        else if(message === 'training_image'){
+            log(data);
         }
 
         else if(request.from === "popup" && request.message === "open"){
