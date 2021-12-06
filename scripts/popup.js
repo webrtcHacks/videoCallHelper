@@ -8,6 +8,24 @@ function log(...messages) {
         console.log(`🐰 ️${messages}`);
 }
 
+
+async function getTabInfo(){
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const id = tab.id;
+    const url = tab.url;
+    // log(`popup page open for tab ${id} for ${url}`);
+    return {id, url}
+}
+//const {tabId, tabUrl} = await getTabInfo();
+let tabId, tabUrl;
+getTabInfo().then(
+    (tabInfo) => {
+        tabId = tabInfo.id;
+        tabUrl = tabInfo.url;
+        log(`popup page open for tab ${tabId} for ${tabUrl}`);
+    }
+)
+
 // wrapper
 function sendMessage(to, message, data, responseHandler) {
     try{
@@ -64,8 +82,9 @@ chrome.runtime.onMessage.addListener(
    });
 
 // Get state
-sendMessage('background', "open", {}, (response)=>{
-    log("response: ", response);
+sendMessage('background', "open", {}, response=>{
+    if(response !== {})
+        log("response: ", response);
     if(response.message === "active") {
         statusSpan.textContent = "active";
         trainBtn.disabled = false;
@@ -77,8 +96,9 @@ sendMessage('background', "open", {}, (response)=>{
 });
 
 trainBtn.onclick = async () => {
-    sendMessage('tab', "train_start", {sendImagesInterval: 5000});
+    //sendMessage('tab', "train_start", {sendImagesInterval: 5000});
     let url = chrome.runtime.getURL("pages/training.html");
-    // let inputTab = await chrome.tabs.create({url});
-    // console.log(`training page open on tab ${inputTab.id}`)
+    let inputTab = await chrome.tabs.create({url});
+    console.log(`training page open on tab ${inputTab.id}`)
 }
+

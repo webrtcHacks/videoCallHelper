@@ -22,16 +22,22 @@ function sendMessage(to = 'all', message, data = {}) {
     document.dispatchEvent(toContentEvent);
 }
 
+const DEFAULT_SEND_IMAGES_INTERVAL = 10*1000;
+
 document.addEventListener('vch', async e => {
     const {message, data} = e.detail;
     if (message === 'train_start') {
-        sendImagesInterval = data.sendImagesInterval || 5000;
+        sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
         debug(`sending images every ${sendImagesInterval} ms`);
         await sendImages(gumStream);
     }
     else if (message === 'train_stop') {
         sendImagesInterval = Infinity;
         debug(`Pausing sending images`);
+    }
+    else if (message === 'update_train_interval') {
+        sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
+        debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
     }
     else{
         debug("DEBUG:",  e.detail)
@@ -40,7 +46,9 @@ document.addEventListener('vch', async e => {
 
 async function sendImages(stream) {
     const [track] = stream.getVideoTracks();
-    const canvas = new OffscreenCanvas(640, 480);
+    const {width, height} = track.getSettings();
+
+    const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("bitmaprenderer");
 
     const generator = new MediaStreamTrackGenerator({kind: 'video'});
@@ -51,18 +59,28 @@ async function sendImages(stream) {
     async function extractImage(frame) {
         const now = Date.now();
         if (now - timer > sendImagesInterval) {
-            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight);
+            const bitmap = await createImageBitmap(frame, 0, 0, width, height);
             ctx.transferFromImageBitmap(bitmap);
             const blob = await canvas.convertToBlob({type: "image/jpeg"});
-            // ToDo: convert blob to binary
-            // Didn't work:
+            const blobUrl = window.URL.createObjectURL(blob);
+            // debug(blob);
+            window.blob = blob;
+
+            // Finding: can't send a blob or convert it
             //  {blobString: JSON.stringify(blob) didn't work
             //  await new FileReader().readAsArrayBuffer(blob)
-            // const fileReader = new FileReader();
-            // const blobArray = await fileReader.readAsArrayBuffer(blob);
-            // ToDo: this is showing as 0x0; send to an onscreen img to check it
-            debug(bitmap);
-            sendMessage('all', 'image', {bitmap: bitmap});
+            //  const blobArray = await blob.arrayBuffer();
+
+            // Finding: just send the URL?
+            sendMessage('all', 'image', {blobUrl: blobUrl});
+
+            // Show the image for debugging
+            /*
+            const imgElem = document.createElement("img");
+            imgElem.src = blobUrl;
+            document.body.appendChild(imgElem);
+             */
+
             timer = now;
         }
         frame.close();

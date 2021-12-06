@@ -30,7 +30,7 @@ chrome.runtime.onMessage.addListener(
         const {to, from, message } = request;
         if(to === 'tab' || to === 'all'){
             debug(`sending "${message}" from ${from} to ${to}`);
-            const forwardedMessage = {message: request.message, data: request.data}
+            const forwardedMessage = {message: request.message, data: request.data};
             sendToInject(forwardedMessage);
         }
         else if(to === 'content'){
