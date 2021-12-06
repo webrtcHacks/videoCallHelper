@@ -79,6 +79,6 @@ sendMessage('background', "open", {}, (response)=>{
 trainBtn.onclick = async () => {
     sendMessage('tab', "train_start", {sendImagesInterval: 5000});
     let url = chrome.runtime.getURL("pages/training.html");
-    // let inputTab = await chrome.tabs.create({url});
-    // console.log(`training page open on tab ${inputTab.id}`)
+    let inputTab = await chrome.tabs.create({url});
+    console.log(`training page open on tab ${inputTab.id}`)
 }
