@@ -7,7 +7,8 @@ const input = document.querySelector('input');
 let state = 'not started';
 
 function sendMessage(to, message, data, responseHandler) {
-    try {
+
+    try{
         const messageToSend = {
             from: "training",
             to: to,
@@ -15,25 +16,27 @@ function sendMessage(to, message, data, responseHandler) {
             data: data
         };
 
-        if (to === 'background' || to === 'all')
+        if(to === 'background' || to === 'all')
             chrome.runtime.sendMessage(messageToSend, responseHandler);
         if (to === 'tab' || to === 'all')
             chrome.tabs.query({active: true, currentWindow: true}, tabs => {
                 chrome.tabs.sendMessage(tabs[0].id, messageToSend, responseHandler)
             });
-    } catch (err) {
+    }
+    catch (err){
         console.error(err);
     }
 }
 
+
 // Test if this works
 chrome.runtime.onMessage.addListener(
     (request, sender) => {
-        const {to, from, message, data} = request;
+        const {to, from, message, data } = request;
         // console.log(request, sender);
         // console.log(to, from, message);
 
-        if (message === 'image') {
+        if(message === 'image'){
             const imgElem = document.createElement("img");
             imgElem.src = data.blobUrl;
             div.body.appendChild(imgElem);
@@ -69,7 +72,6 @@ button.onclick = () => {
         state = 'running';
         button.innerText = "Pause";
         sendMessage('tab', 'update_train_interval', {sendImagesInterval: sendImagesInterval});
-
     } else {
         console.error(`You messed up! state: ${state}`)
     }

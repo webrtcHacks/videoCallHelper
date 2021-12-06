@@ -101,4 +101,3 @@ trainBtn.onclick = async () => {
     let inputTab = await chrome.tabs.create({url});
     console.log(`training page open on tab ${inputTab.id}`)
 }
-
