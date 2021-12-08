@@ -1,12 +1,26 @@
-console.log("Training script");
+function log(...messages) {
+    // console.log(`🏋️ `, ...messages);
 
+    if(messages.length > 1 || typeof messages[0]==='object')
+        console.log(`🏋️ ️${JSON.stringify(...messages)}`);
+    else
+        console.log(`🏋️ ️`, ...messages);
+
+}
+
+log("training script");
 
 const div = document.querySelector('div#images');
 const button = document.querySelector('button');
 const input = document.querySelector('input');
 let state = 'not started';
 
+const urlParams = new URLSearchParams(window.location.search);
+const sourceTab = parseInt(urlParams.get('source'));
+
 function sendMessage(to, message, data, responseHandler) {
+
+    log(`sending "${message}" to ${to} with data: ${JSON.stringify(data)}`);
 
     try{
         const messageToSend = {
@@ -19,27 +33,34 @@ function sendMessage(to, message, data, responseHandler) {
         if(to === 'background' || to === 'all')
             chrome.runtime.sendMessage(messageToSend, responseHandler);
         if (to === 'tab' || to === 'all')
-            chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-                chrome.tabs.sendMessage(tabs[0].id, messageToSend, responseHandler)
-            });
+            chrome.tabs.sendMessage(sourceTab, messageToSend, responseHandler)
     }
     catch (err){
         console.error(err);
     }
 }
 
-
 // Test if this works
 chrome.runtime.onMessage.addListener(
     (request, sender) => {
         const {to, from, message, data } = request;
-        // console.log(request, sender);
-        // console.log(to, from, message);
+        if(to !== 'training')
+            return;
+
+        log(`incoming "${message}" message from ${from} to ${to} with data: ${JSON.stringify(data)}`);
 
         if(message === 'image'){
+            const imageDiv = document.createElement("div");
+
             const imgElem = document.createElement("img");
             imgElem.src = data.blobUrl;
-            div.body.appendChild(imgElem);
+            imageDiv.appendChild(imgElem);
+
+            const textSpan = document.createElement("span");
+            textSpan.innerText = `\n${data.source}\n ${new Date(data.time).toLocaleString()}`;
+            imageDiv.appendChild(textSpan);
+
+            div.appendChild(imageDiv);
         }
     }
 );
@@ -48,7 +69,7 @@ chrome.runtime.onMessage.addListener(
 input.oninput = () => {
     // ToDo: sendMessage
     const sendImagesInterval = input.value * 1 || Infinity;
-    sendMessage('tab', 'update_train_interval', {sendImagesInterval: sendImagesInterval})
+    sendMessage('tab', 'update_train_interval', {sendImagesInterval})
 }
 
 button.onclick = () => {
@@ -58,7 +79,7 @@ button.onclick = () => {
     if (state === 'not started') {
         state = 'running';
         button.innerText = "Pause";
-        sendMessage('tab', 'train_start', {sendImagesInterval: sendImagesInterval});
+        sendMessage('tab', 'train_start', {sendImagesInterval});
     }
     // running to paused
     else if (state === 'running') {
@@ -71,8 +92,14 @@ button.onclick = () => {
     else if (state === 'paused') {
         state = 'running';
         button.innerText = "Pause";
-        sendMessage('tab', 'update_train_interval', {sendImagesInterval: sendImagesInterval});
+        sendMessage('tab', 'update_train_interval', {sendImagesInterval});
     } else {
         console.error(`You messed up! state: ${state}`)
     }
 };
+
+// send the tab id
+chrome.tabs.query({active: true, currentWindow: true}, tabs => {
+    const currentTabId = tabs[0].id;
+    sendMessage('background', 'training_tab_id', {id: currentTabId});
+});

@@ -1,8 +1,9 @@
 // let openTabs = [];
 // let capturedHandle = false;
+let trainingTabId = false;
 
 function log(...messages) {
-    console.log(`👷: `, ...messages);
+    console.log(`👷 `, ...messages);
     /*
     if(messages.length > 1 || typeof messages[0]==='object')
         console.log(`👷 ️${JSON.stringify(...messages)}`);
@@ -40,10 +41,11 @@ chrome.runtime.onMessage.addListener(
     async (request, sender, sendResponse) => {
         // ToDo: Edge doesn't have a sender.tab object
 
-        console.log(`DEBUG: from ${sender.tab ?  sender.tab.id : "unknown"}`, request);
+        // log(`DEBUG: from ${sender.tab ?  sender.tab.id : "unknown"}`, request);
         const {to, from, message, data} = request;
 
-        if(to === 'background' || request.to === 'all'){
+        // ['background', 'all', 'training'].includes(to)
+        if(to === 'all' || to === 'background' || to === 'training'){
             log(`message from ${from} ${sender.tab ? sender.tab.id : ""} : ${message}, data:`, data);
         }
         else {
@@ -57,22 +59,36 @@ chrome.runtime.onMessage.addListener(
              */
         }
 
+        // Relay messages to training
+        // ToDo: make this a function that opens the tab
+        if(from === 'training' && message==='training_tab_id'){
+            trainingTabId = data.id;
+            // ToDo: might need to store this
+            log(`training tab id set to ${trainingTabId}`);
+        }
+
         if(message === 'gum_stream_start'){
             gumActive = true;
-            await chrome.storage.local.set({ gumActive: true });
-
+            await chrome.storage.local.set({ gumActive });
         }
         else if(message === "gum_stream_stop"){
             gumActive = false;
-            await chrome.storage.local.set({ gumActive: false });
+            await chrome.storage.local.set({ gumActive });
         }
         else if(message === 'training_image'){
             log(data);
         }
 
-        else if(request.from === "popup" && request.message === "open"){
+        else if(from === "popup" && message === "open"){
             sendResponse({message: gumActive ? "active": "inactive"})
             return
+        }
+
+        else if(message === 'unload'){
+            log("tab unloading");
+            gumActive = false;
+            await chrome.storage.local.set({ gumActive });
+            // sendMessage('all', 'gum_stream_stop');
         }
 
         if (sendResponse) {

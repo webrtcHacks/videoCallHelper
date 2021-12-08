@@ -5,9 +5,8 @@ function log(...messages) {
     if (messages.length > 1 || typeof messages[0] === 'object')
         console.log(`🐰 ️${JSON.stringify(...messages)}`);
     else
-        console.log(`🐰 ️${messages}`);
+        console.log(`🐰 ️`, ...messages);
 }
-
 
 async function getTabInfo(){
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -16,6 +15,7 @@ async function getTabInfo(){
     // log(`popup page open for tab ${id} for ${url}`);
     return {id, url}
 }
+
 //const {tabId, tabUrl} = await getTabInfo();
 let tabId, tabUrl;
 getTabInfo().then(
@@ -71,6 +71,14 @@ chrome.runtime.onMessage.addListener(
             statusSpan.textContent = "active";
             trainBtn.disabled = false;
         }
+        if(message === "gum_stream_stop") {
+            statusSpan.textContent = "stopped";
+            trainBtn.disabled = true;
+        }
+        if(message === "unload") {
+            statusSpan.textContent = "closed";
+            trainBtn.disabled = true;
+        }
         if(message === "training_image") {
             log(data)
         }
@@ -97,7 +105,12 @@ sendMessage('background', "open", {}, response=>{
 
 trainBtn.onclick = async () => {
     //sendMessage('tab', "train_start", {sendImagesInterval: 5000});
+    // ToDo: make sure there is only one training tab at a time
     let url = chrome.runtime.getURL("pages/training.html");
+    url += `?source=${tabId}`;
     let inputTab = await chrome.tabs.create({url});
-    console.log(`training page open on tab ${inputTab.id}`)
+    log(inputTab);
+    // these never happen
+    // sendMessage('all', 'training_tab_id', {id: inputTab.id});
+    // log(`training page open on tab ${inputTab.id}`)
 }

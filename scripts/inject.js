@@ -8,6 +8,8 @@ function debug(...messages) {
 }
 
 function sendMessage(to = 'all', message, data = {}) {
+    // debug(`dispatching "${message}" from inject to ${to} with data:`, data)
+
     if (!message) {
         debug("ERROR: no message in sendMessage request");
     }
@@ -25,7 +27,13 @@ function sendMessage(to = 'all', message, data = {}) {
 const DEFAULT_SEND_IMAGES_INTERVAL = 10*1000;
 
 document.addEventListener('vch', async e => {
-    const {message, data} = e.detail;
+    const {from, to, message, data} = e.detail;
+
+    // Edge catching its own events
+    if(from === 'tab' || to !== 'tab'){
+        return
+    }
+
     if (message === 'train_start') {
         sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
         debug(`sending images every ${sendImagesInterval} ms`);
@@ -40,7 +48,7 @@ document.addEventListener('vch', async e => {
         debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
     }
     else{
-        debug("DEBUG:",  e.detail)
+        debug("DEBUG: Unhandled event",  e.detail)
     }
 });
 
@@ -71,8 +79,14 @@ async function sendImages(stream) {
             //  await new FileReader().readAsArrayBuffer(blob)
             //  const blobArray = await blob.arrayBuffer();
 
-            // Finding: just send the URL?
-            sendMessage('all', 'image', {blobUrl: blobUrl});
+            // Finding: just send the URL
+
+            const data = {
+                source: window.location.href,
+                time: now,
+                blobUrl: blobUrl
+            }
+            sendMessage('training', 'image', data);
 
             // Show the image for debugging
             /*
@@ -92,6 +106,9 @@ async function sendImages(stream) {
 }
 
 if (!window.videoCallHelper) {
+
+    // ToDo: handle screen share later
+    /*
     const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
 
     async function shimGetDisplayMedia(constraints) {
@@ -116,6 +133,8 @@ if (!window.videoCallHelper) {
     }
 
     navigator.mediaDevices.getDisplayMedia = shimGetDisplayMedia;
+
+     */
 
     const origGetGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 

@@ -17,7 +17,8 @@ function sendMessage(to = 'all', message, data = {}, responseCallBack = null) {
             message: message,
             data: data
         };
-        chrome.runtime.sendMessage(messageToSend, responseCallBack)
+        chrome.runtime.sendMessage(messageToSend, responseCallBack);
+        debug(`sent "${message}" from "tab" to ${to} with data ${JSON.stringify(data)}`);
     }
     catch (err){
         debug("ERROR", err);
@@ -29,8 +30,13 @@ chrome.runtime.onMessage.addListener(
     (request, sender) => {
         const {to, from, message } = request;
         if(to === 'tab' || to === 'all'){
-            debug(`sending "${message}" from ${from} to ${to}`);
-            const forwardedMessage = {message: request.message, data: request.data};
+            // debug(`receiving "${message}" from ${from} to ${to}. Forwarding to inject`);
+            const forwardedMessage = {
+                from: from,
+                to: to,
+                message: request.message,
+                data: request.data
+            };
             sendToInject(forwardedMessage);
         }
         else if(to === 'content'){
@@ -58,14 +64,13 @@ const sendToInject = message => {
 };
 
 document.addEventListener('vch', e => {
-    debug("message to send", e.detail);
+    // debug("message from inject to send", e.detail);
 
     if (!e.detail){
         return
     }
 
     const {to, message, data} = e.detail;
-
     sendMessage(to, message, data);
 });
 
@@ -89,4 +94,4 @@ sendMessage('background', window.location.href);
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', () => {
-    sendMessage('background', 'unload')});
+    sendMessage('all', 'unload')});
