@@ -1,24 +1,114 @@
+'use strict';
+
+let gumStream;
+let sendImagesInterval = Infinity;
+
 function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
 }
 
-function sendMessage(to='all', message) {
-    const toContentEvent = new CustomEvent('vch',
-        {detail: {from: 'tab', 'to': to, message: message}});
+function sendMessage(to = 'all', message, data = {}) {
+    // debug(`dispatching "${message}" from inject to ${to} with data:`, data)
+
+    if (!message) {
+        debug("ERROR: no message in sendMessage request");
+    }
+    const messageToSend = {
+        from: 'tab',
+        to: to,
+        message: message,
+        data: data
+    };
+
+    const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
     document.dispatchEvent(toContentEvent);
 }
 
-document.addEventListener('vch', e => {
-    if(e.detail === 'train'){
-        debug("initiate training here");
+const DEFAULT_SEND_IMAGES_INTERVAL = 10*1000;
+
+document.addEventListener('vch', async e => {
+    const {from, to, message, data} = e.detail;
+
+    // Edge catching its own events
+    if(from === 'tab' || to !== 'tab'){
+        return
+    }
+
+    if (message === 'train_start') {
+        sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
+        debug(`sending images every ${sendImagesInterval} ms`);
+        await sendImages(gumStream);
+    }
+    else if (message === 'train_stop') {
+        sendImagesInterval = Infinity;
+        debug(`Pausing sending images`);
+    }
+    else if (message === 'update_train_interval') {
+        sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
+        debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
+    }
+    else{
+        debug("DEBUG: Unhandled event",  e.detail)
     }
 });
 
-function sendImages(stream){
+async function sendImages(stream) {
+    const [track] = stream.getVideoTracks();
+    const {width, height} = track.getSettings();
 
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext("bitmaprenderer");
+
+    const generator = new MediaStreamTrackGenerator({kind: 'video'});
+    const processor = new MediaStreamTrackProcessor({track});
+
+    let timer = new Date();
+
+    async function extractImage(frame) {
+        const now = Date.now();
+        if (now - timer > sendImagesInterval) {
+            const bitmap = await createImageBitmap(frame, 0, 0, width, height);
+            ctx.transferFromImageBitmap(bitmap);
+            const blob = await canvas.convertToBlob({type: "image/jpeg"});
+            const blobUrl = window.URL.createObjectURL(blob);
+            // debug(blob);
+            window.blob = blob;
+
+            // Finding: can't send a blob or convert it
+            //  {blobString: JSON.stringify(blob) didn't work
+            //  await new FileReader().readAsArrayBuffer(blob)
+            //  const blobArray = await blob.arrayBuffer();
+
+            // Finding: just send the URL
+
+            const data = {
+                source: window.location.href,
+                time: now,
+                blobUrl: blobUrl
+            }
+            sendMessage('training', 'image', data);
+
+            // Show the image for debugging
+            /*
+            const imgElem = document.createElement("img");
+            imgElem.src = blobUrl;
+            document.body.appendChild(imgElem);
+             */
+
+            timer = now;
+        }
+        frame.close();
+    }
+
+    await processor.readable
+        .pipeThrough(new TransformStream({transform: frame => extractImage(frame)}))
+        .pipeTo(generator.writable);
 }
 
 if (!window.videoCallHelper) {
+
+    // ToDo: handle screen share later
+    /*
     const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
 
     async function shimGetDisplayMedia(constraints) {
@@ -44,13 +134,14 @@ if (!window.videoCallHelper) {
 
     navigator.mediaDevices.getDisplayMedia = shimGetDisplayMedia;
 
+     */
+
     const origGetGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
     async function shimGetUserMedia(constraints) {
 
-        let gumStream = await origGetGetUserMedia(constraints);
+        gumStream = await origGetGetUserMedia(constraints);
         debug("got stream", gumStream);
-        // grabImage(gumStream);
         sendMessage('all', "gum_stream_start");
         return gumStream
     }
@@ -59,14 +150,12 @@ if (!window.videoCallHelper) {
 
     window.videoCallHelper = true;
 
-}
-else{
+} else {
     debug("shims already loaded")
 }
 
 /*
  * debugging
  */
-
 
 debug("injected");

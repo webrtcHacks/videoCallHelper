@@ -2,32 +2,46 @@ const statusSpan = document.querySelector('span#gumStatus');
 const trainBtn = document.querySelector('button#train');
 
 function log(...messages) {
-    if(messages.length === 1)
-        console.log(`🐰 ️`, messages[0])
+    if (messages.length > 1 || typeof messages[0] === 'object')
+        console.log(`🐰 ️${JSON.stringify(...messages)}`);
     else
         console.log(`🐰 ️`, ...messages);
 }
 
+async function getTabInfo(){
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const id = tab.id;
+    const url = tab.url;
+    // log(`popup page open for tab ${id} for ${url}`);
+    return {id, url}
+}
+
+//const {tabId, tabUrl} = await getTabInfo();
+let tabId, tabUrl;
+getTabInfo().then(
+    (tabInfo) => {
+        tabId = tabInfo.id;
+        tabUrl = tabInfo.url;
+        log(`popup page open for tab ${tabId} for ${tabUrl}`);
+    }
+)
+
 // wrapper
-function sendMessage(to, message, responseHandler) {
+function sendMessage(to, message, data, responseHandler) {
     try{
+        const messageToSend = {
+            from: "popup",
+            to: to,
+            message: message,
+            data: data
+        };
+
         if(to === 'background' || to === 'all')
-            chrome.runtime.sendMessage({from: "popup", to: to, message: message}, responseHandler)
+            chrome.runtime.sendMessage(messageToSend, responseHandler)
         if (to === 'tab' || to === 'all')
             chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-                const sendObj = {from: "popup", to: to, message: message};
-                chrome.tabs.sendMessage(tabs[0].id, sendObj, responseHandler)
+                chrome.tabs.sendMessage(tabs[0].id, messageToSend, responseHandler)
             });
-        /*
-        // ToDo: do we need to handle sending to all tabs?
-        //  Should the below be filtered?
-        if (to === 'tabs' || to === 'all'){
-            chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-                tabs.forEach(tab=>
-                    chrome.tabs.sendMessage(tab.id, message, responseHandler))
-            });
-        }
-*/
     }
     catch (err){
         console.error(err);
@@ -36,8 +50,11 @@ function sendMessage(to, message, responseHandler) {
 
 chrome.runtime.onMessage.addListener(
     (request, sender, sendResponse) => {
-        if(request.to && ( request.to === 'popup' || request.to === 'all')){
-            log(`message from ${request.from}: ${request.message}`);
+        log(request);
+        const {to, from, message, data} = request;
+
+        if(to === 'popup' || to === 'all'){
+            log(`message from ${from}: ${message}`);
         }
         else {
             /*
@@ -50,19 +67,32 @@ chrome.runtime.onMessage.addListener(
         }
 
         // message handlers
-        if(request.message === "gum_stream_start") {
+        if(message === "gum_stream_start") {
             statusSpan.textContent = "active";
             trainBtn.disabled = false;
         }
-        else {
-            statusSpan.textContent = "inactive";
+        if(message === "gum_stream_stop") {
+            statusSpan.textContent = "stopped";
             trainBtn.disabled = true;
+        }
+        if(message === "unload") {
+            statusSpan.textContent = "closed";
+            trainBtn.disabled = true;
+        }
+        if(message === "training_image") {
+            log(data)
+        }
+        else {
+            log("unrecognized request: ", request)
+            // statusSpan.textContent = "inactive";
+            // trainBtn.disabled = true;
         }
    });
 
 // Get state
-sendMessage('background', "open", (response)=>{
-    log("response: ", response);
+sendMessage('background', "open", {}, response=>{
+    if(response !== {})
+        log("response: ", response);
     if(response.message === "active") {
         statusSpan.textContent = "active";
         trainBtn.disabled = false;
@@ -73,4 +103,14 @@ sendMessage('background', "open", (response)=>{
     }
 });
 
-trainBtn.onclick = () => sendMessage('tab', "train")
+trainBtn.onclick = async () => {
+    //sendMessage('tab', "train_start", {sendImagesInterval: 5000});
+    // ToDo: make sure there is only one training tab at a time
+    let url = chrome.runtime.getURL("pages/training.html");
+    url += `?source=${tabId}`;
+    let inputTab = await chrome.tabs.create({url});
+    log(inputTab);
+    // these never happen
+    // sendMessage('all', 'training_tab_id', {id: inputTab.id});
+    // log(`training page open on tab ${inputTab.id}`)
+}
