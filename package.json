@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@mediapipe/drawing_utils": "^0.3.1620248257",
+    "@mediapipe/face_mesh": "^0.4.1633559619",
+    "lovefield": "^2.1.12"
+  }
+}

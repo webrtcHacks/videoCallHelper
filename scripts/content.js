@@ -18,7 +18,7 @@ function sendMessage(to = 'all', message, data = {}, responseCallBack = null) {
             data: data
         };
         chrome.runtime.sendMessage(messageToSend, responseCallBack);
-        debug(`sent "${message}" from "tab" to ${to} with data ${JSON.stringify(data)}`);
+        // debug(`sent "${message}" from "tab" to ${to} with data ${JSON.stringify(data)}`);
     }
     catch (err){
         debug("ERROR", err);
@@ -64,7 +64,7 @@ const sendToInject = message => {
 };
 
 document.addEventListener('vch', e => {
-    // debug("message from inject to send", e.detail);
+    debug("message from inject to send", e.detail);
 
     if (!e.detail){
         return
