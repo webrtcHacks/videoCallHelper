@@ -2,14 +2,14 @@
 
 let gumStream;
 let sendImagesInterval = Infinity;
+let faceMeshLoaded = false;
 
 function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
 }
 
-
 function sendMessage(to = 'all', message, data = {}) {
-    // debug(`dispatching "${message}" from inject to ${to} with data:`, data)
+    debug(`dispatching "${message}" from inject to ${to} with data:`, data)
 
     if (!message) {
         debug("ERROR: no message in sendMessage request");
@@ -37,8 +37,14 @@ document.addEventListener('vch', async e => {
 
     if (message === 'train_start') {
         sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
-        debug(`sending images every ${sendImagesInterval} ms`);
-        await sendImages(gumStream);
+        if(faceMeshLoaded){
+            debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
+        }
+        else{
+            debug(`sending images every ${sendImagesInterval} ms`);
+            await sendImages(gumStream);
+        }
+
     } else if (message === 'train_stop') {
         sendImagesInterval = Infinity;
         debug(`Pausing sending images`);
@@ -69,6 +75,7 @@ async function sendImages(stream) {
         minTrackingConfidence: 0.5
     });
 
+    faceMeshLoaded = true;
 
     const [track] = stream.getVideoTracks();
     const {width, height} = track.getSettings();
@@ -99,11 +106,11 @@ async function sendImages(stream) {
                 //  const blobArray = await blob.arrayBuffer();
 
                 // Finding: just send the URL
-                debug(results);
+                // debug(results);
 
                 const data = {
                     source: window.location.href,
-                    time: now,          // Date.now()
+                    date: now,          // Date.now()
                     blobUrl: blobUrl,   // get the image from faceMesh
                     faceMesh: results.multiFaceLandmarks
                 }
