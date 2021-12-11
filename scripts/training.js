@@ -1,11 +1,11 @@
 function log(...messages) {
-    // console.log(`🏋️ `, ...messages);
-
-    if(messages.length > 1 || typeof messages[0]==='object')
+    console.log(`🏋️ `, ...messages);
+/*
+    if (messages.length > 1 || typeof messages[0] === 'object')
         console.log(`🏋️ ️${JSON.stringify(...messages)}`);
     else
         console.log(`🏋️ ️`, ...messages);
-
+ */
 }
 
 log("training script");
@@ -18,11 +18,12 @@ let state = 'not started';
 const urlParams = new URLSearchParams(window.location.search);
 const sourceTab = parseInt(urlParams.get('source'));
 
+
 function sendMessage(to, message, data, responseHandler) {
 
     log(`sending "${message}" to ${to} with data: ${JSON.stringify(data)}`);
 
-    try{
+    try {
         const messageToSend = {
             from: "training",
             to: to,
@@ -30,26 +31,26 @@ function sendMessage(to, message, data, responseHandler) {
             data: data
         };
 
-        if(to === 'background' || to === 'all')
+        if (to === 'background' || to === 'all')
             chrome.runtime.sendMessage(messageToSend, responseHandler);
         if (to === 'tab' || to === 'all')
             chrome.tabs.sendMessage(sourceTab, messageToSend, responseHandler)
-    }
-    catch (err){
+    } catch (err) {
         console.error(err);
     }
 }
 
 // Test if this works
 chrome.runtime.onMessage.addListener(
-    (request, sender) => {
-        const {to, from, message, data } = request;
-        if(to !== 'training')
+    async (request, sender) => {
+        const {to, from, message, data} = request;
+        if (to !== 'training')
             return;
 
-        log(`incoming "${message}" message from ${from} to ${to} with data: ${JSON.stringify(data)}`);
+        log(`incoming "${message}" message from ${from} to ${to} with data: `, data);
 
-        if(message === 'image'){
+        if (message === 'image') {
+
             const imageDiv = document.createElement("div");
 
             const imgElem = document.createElement("img");
@@ -57,10 +58,13 @@ chrome.runtime.onMessage.addListener(
             imageDiv.appendChild(imgElem);
 
             const textSpan = document.createElement("span");
-            textSpan.innerText = `\n${data.source}\n ${new Date(data.time).toLocaleString()}`;
+            textSpan.innerText = `\n${data.source}\n` +
+                `${new Date(data.time).toLocaleString()}\n` +
+                `${data.faceMesh[0].length} facial landmarks`;
             imageDiv.appendChild(textSpan);
 
             div.appendChild(imageDiv);
+
         }
     }
 );

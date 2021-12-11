@@ -101,14 +101,16 @@ chrome.runtime.onMessage.addListener(
 /*
  * Add our injection script new tabs
  */
-
-function inject() {
-    let script = document.createElement('script');
-    script.src = chrome.runtime.getURL('/scripts/inject.js');
-    script.onload = function () {
-        document.head.removeChild(this)
-    };
-    (document.head || document.documentElement).appendChild(script); //prepend
+// Learning: needed vs. file method to give scripts access to window
+function inject(...files) {
+    files.forEach(file=> {
+        let script = document.createElement('script');
+        script.src = chrome.runtime.getURL(file);
+        script.onload = function () {
+            document.head.removeChild(this)
+        };
+        (document.head || document.documentElement).appendChild(script); //prepend
+    });
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -119,7 +121,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
         chrome.scripting.executeScript({
             target: {tabId: tabId},
-            function: inject
+            // files: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js']
+            function: inject,
+            args: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js']
         })
             .then(() => {
                 log(`inject.js into tab ${tabId}`);
