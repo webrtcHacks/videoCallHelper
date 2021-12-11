@@ -1,3 +1,5 @@
+const SHOW_CONNECTORS = false;
+
 function log(...messages) {
     console.log(`🏋️ `, ...messages);
 /*
@@ -55,7 +57,38 @@ chrome.runtime.onMessage.addListener(
 
             const imgElem = document.createElement("img");
             imgElem.src = data.blobUrl;
-            imageDiv.appendChild(imgElem);
+            await imgElem.decode();
+            // imageDiv.appendChild(imgElem);
+
+            const canvasElement = document.createElement("canvas");
+            const ctx = canvasElement.getContext('2d');
+            canvasElement.width = imgElem.width;
+            canvasElement.height = imgElem.height;
+            ctx.drawImage(imgElem, 0,0);
+
+            if(SHOW_CONNECTORS){
+                const THIN_LINE = 1;
+
+                const GREY_CONNECTOR = {color: '#C0C0C070', lineWidth: THIN_LINE};
+                const WHITE_CONNECTOR = {color: '#E0E0E0', lineWidth: THIN_LINE};
+                const RED_CONNECTOR = {color: '#FF3030', lineWidth: THIN_LINE};
+
+                const landmarks = data.faceMesh[0];
+                window.landmarks = landmarks;
+                console.log(landmarks);
+
+                drawConnectors(ctx, landmarks, FACEMESH_TESSELATION, GREY_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_RIGHT_EYE, WHITE_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_RIGHT_EYEBROW, WHITE_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_RIGHT_IRIS, RED_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_LEFT_EYE, WHITE_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_LEFT_EYEBROW, WHITE_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_LEFT_IRIS, RED_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_FACE_OVAL, WHITE_CONNECTOR);
+                drawConnectors(ctx, landmarks, FACEMESH_LIPS, WHITE_CONNECTOR);
+            }
+
+            imageDiv.appendChild(canvasElement);
 
             const textSpan = document.createElement("span");
             textSpan.innerText = `\n${data.source}\n` +
