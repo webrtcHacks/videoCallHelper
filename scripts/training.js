@@ -2,7 +2,7 @@ import '/node_modules/@mediapipe/drawing_utils/drawing_utils.js';
 import '/node_modules/@mediapipe/face_mesh/face_mesh.js';
 import '/node_modules/lovefield/dist/lovefield.js';
 
-const imagesDiv = document.querySelector('div#images');
+const trainingDiv = document.querySelector('div#training');
 const getImagesBtn = document.querySelector('button#get_images');
 const trainBtn = document.querySelector('button#train');
 const showDbBtn = document.querySelector('button#db_show');
@@ -49,6 +49,7 @@ async function startDb() {
 
     // test getting data from it
     db = await schemaBuilder.connect();
+    window.db = db;
 
     facesTable = db.getSchema().table('faces')
     /*
@@ -79,33 +80,86 @@ startDb().catch(err => console.error(err));
 
 async function showDb() {
 
-    imagesDiv.innerHTML = null;
+    trainingDiv.innerHTML = null;
+    // trainingDiv.hidden = true;
 
     // ToDo: sorting not working consistently
-    const rows = await db.select().from(facesTable).orderBy(facesTable.date, lf.Order.ASC).exec();
-    rows.forEach(row => {
+    //facesTable.source, facesTable.date, facesTable.image, facesTable.multiFaceLandmarks
+    const rows = await db.select()
+        .from(facesTable)
+        .orderBy(facesTable.id, lf.Order.ASC)
+        .exec();
+
+    // log(Date.now())
+    // let promises = [];
+    //await rows.forEach( row => {
+    for (const row of rows) {
         const data = {
+            id: row.id,
             source: row.source,
             date: row.date,
-            class: "",
+            imgClass: row.class,
             image: row.image,
             faceMesh: row.multiFaceLandmarks
         }
-        showImage(data, showMeshCheck.checked);
-    })
 
+        await showImage(data, showMeshCheck.checked)
+        // promises.push( showImage(data, showMeshCheck.checked) );
+    }
+
+    // await Promise.all(promises);
+    // log(Date.now())
+    // trainingDiv.hidden = false;
+
+    const radios = document.querySelectorAll('input.training_radio');
+    radios.forEach(radio => {
+        radio.onclick = (e) => {
+            const value = e.target.value;
+            const id = e.target.dataset.imageId;
+            /*
+            const notValue = value === 'correct' ? 'incorrect' : 'correct';
+            // e.target.checked = true;
+
+            log(`selected: ${value}-${id}`);
+            const selector = `#radio-${notValue}-${id}`;
+            const notTarget = document.querySelector(selector);
+            notTarget.checked = false;
+             */
+
+            db.update(facesTable)
+                .set(facesTable.class, value)
+                .where(facesTable.id.eq(id))
+                .exec()
+        }
+    });
 }
 
 async function showImage(data, showConnector = false) {
+    const parentDiv = document.createElement("div");
     const imageDiv = document.createElement("div");
+    const infoDiv = document.createElement("div");
+
+    const {id, source, date, imgClass, image, faceMesh} = data;
+    parentDiv.classList.add('training');
+
     const textSpan = document.createElement("span");
-    textSpan.innerText = `\n${data.source}\n` +
-        `${new Date(data.date).toLocaleString()}\n` +
-        `${data.faceMesh[0].length} facial landmarks\n`;
-    imageDiv.appendChild(textSpan);
+    textSpan.innerText = `${source}\n` +
+        `${new Date(date).toLocaleString()}\n` +
+        `${faceMesh[0].length} facial landmarks`;
+    infoDiv.appendChild(textSpan);
+
+    // log(`${data.id}. correct: ${data.class}`);
+
+    infoDiv.innerHTML += `<br><span>class: ${imgClass === "" ? "not set" : imgClass}</span>` +
+        `<br><input type="radio" id="radio-correct-${id}" name="radio-${id}" value="correct" class="training_radio" ` +
+            `data-image-id="${id}" ${imgClass==='correct' ? "checked" : ""}>` +
+        `<label for="radio-${date}">Correct</label>` +
+        `<br><input type="radio" id="radio-incorrect-${id}" name="radio-${id}" value="incorrect" class="training_radio" ` +
+            `data-image-id="${id}" ${imgClass==='incorrect' ? "checked" : ""}>` +
+        `<label for="radio-incorrect-${date}">Incorrect</label>`;
 
     // Display the image
-    const imageBlob = data.image;
+    const imageBlob = image;
     const canvasElement = document.createElement("canvas");
     const ctx = canvasElement.getContext('2d');
 
@@ -118,7 +172,6 @@ async function showImage(data, showConnector = false) {
     ctx.drawImage(img, 0, 0);
 
     if (showConnector) {
-        // await imgElem.decode();
 
         const THIN_LINE = 1;
         const GREY_CONNECTOR = {color: '#C0C0C070', lineWidth: THIN_LINE};
@@ -127,7 +180,7 @@ async function showImage(data, showConnector = false) {
 
         const landmarks = data.faceMesh[0];
         window.landmarks = landmarks;
-        console.log(landmarks);
+        // log(landmarks);
 
         drawConnectors(ctx, landmarks, FACEMESH_TESSELATION, GREY_CONNECTOR);
         drawConnectors(ctx, landmarks, FACEMESH_RIGHT_EYE, WHITE_CONNECTOR);
@@ -141,7 +194,11 @@ async function showImage(data, showConnector = false) {
     }
 
     imageDiv.appendChild(canvasElement);
-    imagesDiv.prepend(imageDiv);
+
+    parentDiv.appendChild(imageDiv);
+    parentDiv.appendChild(infoDiv);
+    trainingDiv.prepend(parentDiv);
+
 }
 
 function sendMessage(to, message, data, responseHandler) {
@@ -198,13 +255,12 @@ chrome.runtime.onMessage.addListener(
  */
 // send new data to tab everytime the input changes
 input.oninput = () => {
-    // ToDo: sendMessage
-    const sendImagesInterval = input.value * 1 || Infinity;
+    const sendImagesInterval = input.value * 1000 || Infinity;
     sendMessage('tab', 'update_train_interval', {sendImagesInterval})
 }
 
 getImagesBtn.onclick = () => {
-    const sendImagesInterval = input.value * 1 || Infinity;
+    const sendImagesInterval = input.value * 1000 || Infinity;
 
     // not started to running
     if (state === 'not started') {
@@ -217,7 +273,6 @@ getImagesBtn.onclick = () => {
         state = 'paused';
         getImagesBtn.innerText = "Start";
         sendMessage('tab', 'train_stop');
-
     }
     // paused to running
     else if (state === 'paused') {

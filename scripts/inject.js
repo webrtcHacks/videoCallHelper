@@ -25,7 +25,7 @@ function sendMessage(to = 'all', message, data = {}) {
     document.dispatchEvent(toContentEvent);
 }
 
-const DEFAULT_SEND_IMAGES_INTERVAL = 10 * 1000;
+const DEFAULT_SEND_IMAGES_INTERVAL = 30 * 1000;
 
 document.addEventListener('vch', async e => {
     const {from, to, message, data} = e.detail;
@@ -38,10 +38,10 @@ document.addEventListener('vch', async e => {
     if (message === 'train_start') {
         sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
         if(faceMeshLoaded){
-            debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
+            debug(`Resumed sending images. Sending every ${sendImagesInterval} sec`);
         }
         else{
-            debug(`sending images every ${sendImagesInterval} ms`);
+            debug(`sending images every ${sendImagesInterval} sec`);
             await sendImages(gumStream);
         }
 

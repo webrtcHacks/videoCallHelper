@@ -41,7 +41,8 @@
   "web_accessible_resources": [
     {
       "resources": ["scripts/inject.js",
-        "node_modules/@mediapipe/face_mesh/*"],
+        "node_modules/@mediapipe/face_mesh/*",
+        "styles/*.css"],
       "matches": [
         "http://*/*",
         "https://*/*"
