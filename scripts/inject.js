@@ -51,6 +51,8 @@ document.addEventListener('vch', async e => {
     } else if (message === 'update_train_interval') {
         sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
         debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
+        if(!faceMeshLoaded && gumStream?.active)
+            await sendImages(gumStream)
     } else {
         debug("DEBUG: Unhandled event", e.detail)
     }

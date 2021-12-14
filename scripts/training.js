@@ -14,8 +14,8 @@ const input = document.querySelector('input');
 let state = 'not started';
 let db, facesTable;    // database holder
 
-const urlParams = new URLSearchParams(window.location.search);
-const sourceTab = parseInt(urlParams.get('source'));
+// const urlParams = new URLSearchParams(window.location.search);
+// const sourceTab = parseInt(urlParams.get('source'));
 
 function log(...messages) {
     console.log(`🏋️ `, ...messages);
@@ -145,7 +145,7 @@ async function showImage(data, showConnector = false) {
     const textSpan = document.createElement("span");
     textSpan.innerText = `${source}\n` +
         `${new Date(date).toLocaleString()}\n` +
-        `${faceMesh[0].length} facial landmarks`;
+        `${faceMesh[0]?.length || 0 } facial landmarks`;
     infoDiv.appendChild(textSpan);
 
     // log(`${data.id}. correct: ${data.class}`);
@@ -213,10 +213,14 @@ function sendMessage(to, message, data, responseHandler) {
             data: data
         };
 
+        chrome.runtime.sendMessage(messageToSend, responseHandler);
+
+        /*
         if (to === 'background' || to === 'all')
             chrome.runtime.sendMessage(messageToSend, responseHandler);
         if (to === 'tab' || to === 'all')
             chrome.tabs.sendMessage(sourceTab, messageToSend, responseHandler)
+         */
     } catch (err) {
         console.error(err);
     }

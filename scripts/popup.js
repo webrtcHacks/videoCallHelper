@@ -95,11 +95,11 @@ sendMessage('background', "open", {}, response=>{
         log("response: ", response);
     if(response.message === "active") {
         statusSpan.textContent = "active";
-        trainBtn.disabled = false;
+        // trainBtn.disabled = false;
     }
     else {
         statusSpan.textContent = "inactive";
-        trainBtn.disabled = true;
+        // trainBtn.disabled = true;
     }
 });
 
