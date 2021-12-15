@@ -4,6 +4,12 @@ function debug(...messages){
 
 debug(`content.js loaded on ${window.location.href}`);
 
+let script = document.createElement('script');
+script.src = chrome.runtime.getURL('/scripts/inject.js');
+// script.onload = () => this.remove;
+(document.head || document.documentElement).appendChild(script);
+debug("script injected");
+
 /*
  * Communicate with the background worker context
  */
@@ -24,6 +30,8 @@ function sendMessage(to = 'all', message, data = {}, responseCallBack = null) {
         debug("ERROR", err);
     }
 }
+
+sendMessage('background', 'tab_loaded');
 
 // Relay messages to inject.js
 chrome.runtime.onMessage.addListener(
@@ -74,23 +82,8 @@ document.addEventListener('vch', e => {
     sendMessage(to, message, data);
 });
 
-
-
-/*
- * Capture Handle ID setup
- */
-// Make a short pseudo-random id: https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-/*
-let handleId = (Math.random() + 1).toString(36).substring(2);
-navigator.mediaDevices.setCaptureHandleConfig(
-    { handle: handleId, permittedOrigins: ["*"] }
-);
-debug(`captureHandle: ${handleId}`);
-*/
 // ToDo: remove the URL before release - it shouldn't matter
-//sendToBackground({url: window.location.href, captureHandle: handleId});
 sendMessage('background', window.location.href);
-
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', () => {

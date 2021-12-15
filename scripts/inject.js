@@ -3,6 +3,7 @@
 let gumStream;
 let sendImagesInterval = Infinity;
 let faceMeshLoaded = false;
+window.vchStreams = [];
 
 function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
@@ -173,10 +174,16 @@ if (!window.videoCallHelper) {
 
     async function shimGetUserMedia(constraints) {
 
-        gumStream = await origGetGetUserMedia(constraints);
-        debug("got stream", gumStream);
+        // ToDo: don't copy the track if we end it changing it
+        if(gumStream?.active)
+            gumStream.getVideoTracks()[0].stop();
+        const origStream = await origGetGetUserMedia(constraints);
+        const trackCopy = origStream.getVideoTracks()[0].clone();
+        gumStream = new MediaStream([trackCopy]);
+        debug("got stream. Video track info: ", gumStream.getVideoTracks()[0].getSettings());
         sendMessage('all', "gum_stream_start");
-        return gumStream
+        window.vchStreams.push(origStream); // for testing
+        return origStream
     }
 
     navigator.mediaDevices.getUserMedia = shimGetUserMedia;

@@ -153,6 +153,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         log(`extension tab opened: ${tab.url}`)
     } else if (changeInfo.status === 'loading' && /^http/.test(tab.url)) { // complete
 
+    /*
         // Finding: this was too slow; didn't always load prior to target page loading gUM (like jitsi)
         await chrome.scripting.executeScript({
             args: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js'],
@@ -164,6 +165,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             .catch(err => log(err));
 
         log(`inject.js into tab ${tabId}`);
+
+     */
 
     }
     //else log(`tab ${tabId} updated to ${changeInfo.status}`, tab);

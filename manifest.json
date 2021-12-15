@@ -27,7 +27,7 @@
       "exclude_matches": [],
       "all_frames": false,
       "match_about_blank": true,
-      "run_at": "document_end",
+      "run_at": "document_start",
       "js": [
         "scripts/content.js"
       ]
