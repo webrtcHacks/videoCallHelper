@@ -115,7 +115,6 @@ chrome.runtime.onMessage.addListener(
             log("tab unloading");
             // gumActive = false;
             // await chrome.storage.local.set({gumActive});
-
             const tabs = await chrome.storage.local.get({activeTabs});
             activeTabs = new Set(tabs.activeTabs);
             activeTabs.delete(tabId);
@@ -149,10 +148,10 @@ function inject(...files) {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     log(`tab ${tabId} updated`, changeInfo, tab);
+
     if (tab.url.match(/^chrome-extension:\/\//) && changeInfo.status === 'complete') {
         log(`extension tab opened: ${tab.url}`)
     } else if (changeInfo.status === 'loading' && /^http/.test(tab.url)) { // complete
-
 
         // Finding: this was too slow; didn't always load prior to target page loading gUM (like jitsi)
         await chrome.scripting.executeScript({
