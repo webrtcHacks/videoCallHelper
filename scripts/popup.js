@@ -27,7 +27,7 @@ getTabInfo().then(
 )
 
 // wrapper
-function sendMessage(to, message, data, responseHandler) {
+function sendMessage(to, message, data, responseHandler = null) {
     try{
         const messageToSend = {
             from: "popup",
@@ -40,7 +40,7 @@ function sendMessage(to, message, data, responseHandler) {
             chrome.runtime.sendMessage(messageToSend, responseHandler)
         if (to === 'tab' || to === 'all')
             chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-                chrome.tabs.sendMessage(tabs[0].id, messageToSend, responseHandler)
+                chrome.tabs.sendMessage(tabs[0].id, messageToSend, responseHandler ? responseHandler: null)
             });
     }
     catch (err){
@@ -89,18 +89,12 @@ chrome.runtime.onMessage.addListener(
         }
    });
 
+
 // Get state
-sendMessage('background', "open", {}, response=>{
-    if(response !== {})
-        log("response: ", response);
-    if(response.message === "active") {
-        statusSpan.textContent = "active";
-        // trainBtn.disabled = false;
-    }
-    else {
-        statusSpan.textContent = "inactive";
-        // trainBtn.disabled = true;
-    }
+sendMessage('background', "open", {}, response=> {
+    log("response: ", response);
+    if (response?.message)
+        statusSpan.textContent = response;
 });
 
 trainBtn.onclick = async () => {

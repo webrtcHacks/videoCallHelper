@@ -2,6 +2,8 @@ import '/node_modules/@mediapipe/drawing_utils/drawing_utils.js';
 import '/node_modules/@mediapipe/face_mesh/face_mesh.js';
 import '/node_modules/lovefield/dist/lovefield.js';
 
+import {trainingMessages as train} from "../modules/messages.mjs";
+
 const trainingDiv = document.querySelector('div#training');
 const getImagesBtn = document.querySelector('button#get_images');
 const trainBtn = document.querySelector('button#train');
@@ -74,6 +76,7 @@ async function clearDb() {
     if (window.confirm(`Are you sure you want to clear the database?`))
         db.delete().from(facesTable).exec();  // Delete everything in infoCard
     await updateDbRows();
+    trainingDiv.innerHTML = null;
 }
 
 startDb().catch(err => console.error(err));
@@ -260,7 +263,7 @@ chrome.runtime.onMessage.addListener(
 // send new data to tab everytime the input changes
 input.oninput = () => {
     const sendImagesInterval = input.value * 1000 || Infinity;
-    sendMessage('tab', 'update_train_interval', {sendImagesInterval})
+    sendMessage('tab', train.updateInterval, {sendImagesInterval})
 }
 
 getImagesBtn.onclick = () => {
@@ -270,19 +273,19 @@ getImagesBtn.onclick = () => {
     if (state === 'not started') {
         state = 'running';
         getImagesBtn.innerText = "Pause";
-        sendMessage('tab', 'train_start', {sendImagesInterval});
+        sendMessage('tab', train.start, {sendImagesInterval});
     }
     // running to paused
     else if (state === 'running') {
         state = 'paused';
         getImagesBtn.innerText = "Start";
-        sendMessage('tab', 'train_stop');
+        sendMessage('tab', train.stop, {sendImagesInterval});
     }
     // paused to running
     else if (state === 'paused') {
         state = 'running';
         getImagesBtn.innerText = "Pause";
-        sendMessage('tab', 'update_train_interval', {sendImagesInterval});
+        sendMessage('tab', train.updateInterval, {sendImagesInterval});
     } else {
         console.error(`You messed up! state: ${state}`)
     }
@@ -295,7 +298,7 @@ showMeshCheck.onclick = () => showDb();
 // send the tab id
 chrome.tabs.query({active: true, currentWindow: true}, tabs => {
     const currentTabId = tabs[0].id;
-    sendMessage('background', 'training_tab_id', {id: currentTabId});
+    sendMessage('background', train.id, {id: currentTabId});
 });
 
 

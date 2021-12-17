@@ -1,5 +1,7 @@
 'use strict';
 
+// ToDo: build process to import message module
+
 let gumStream;
 let sendImagesInterval = Infinity;
 let faceMeshLoaded = false;
@@ -61,14 +63,30 @@ document.addEventListener('vch', async e => {
 
 async function sendImages(stream) {
 
-    // ToDo: load this dynamically
     /*
      *  MediaPipe Face Mesh setup
      */
+
+    // Lazy load the lib
+    // Didn't work
+    /*
+    const result = await fetch('chrome-extension://ajhjepgnjflojmjaaoejeojhnpgfcbge/node_modules/@mediapipe/face_mesh/face_mesh.js');
+    const script = await result.text();
+    eval(script);
+    console.log(`faceMesh: ${typeof FaceMesh}`);
+     */
+
+    // This is giving an error - moved to content.js
+    /*
+    const script = document.createElement('script');
+    script.src = 'chrome-extension://ajhjepgnjflojmjaaoejeojhnpgfcbge/node_modules/@mediapipe/face_mesh/face_mesh.js';
+    document.body.appendChild(script);
+     */
+
     const faceMesh = new FaceMesh({
         locateFile: (file) => {
-            return `chrome-extension://daddijhcmajcmnhfeampakkjllggmplg/node_modules/@mediapipe/face_mesh/${file}`;
-            // return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+            // return `chrome-extension://daddijhcmajcmnhfeampakkjllggmplg/node_modules/@mediapipe/face_mesh/${file}`;
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
         }
     });
     faceMesh.setOptions({

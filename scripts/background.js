@@ -1,7 +1,36 @@
-let trainingTabId = false;
-let trainingState = "not started";
-let sendImagesInterval = Infinity;
-let activeTabs = new Set();
+import {trainingMessages as train}  from "../modules/messages.mjs";
+
+let trainingState = {
+    state: "not started",
+    sendImagesInterval: Infinity,
+    storageName: "trainingState"
+}
+
+// Keep state on tabs; uses a Set to only store unique items
+async function addTab(tabId) {
+    try {
+        const {streamTabs} = await chrome.storage.local.get('streamTabs');
+        const activeTabs = new Set(streamTabs);
+        activeTabs.add(tabId);
+        await chrome.storage.local.set({streamTabs: [...activeTabs]});
+        log(`Added tab: ${tabId}; streamTabs: ${[...activeTabs]}`);
+    } catch (err) {
+        console.error(`Issue adding ${tabId}`, err)
+    }
+}
+
+// Keep state on tabs; uses a Set to only store unique items
+async function removeTab(tabId) {
+    try {
+        const {streamTabs} = await chrome.storage.local.get('streamTabs');
+        const activeTabs = new Set(streamTabs);
+        activeTabs.delete(tabId);
+        await chrome.storage.local.set({activeTabs: [...activeTabs]});
+        log(`activeTabs: ${[...activeTabs]}`);
+    } catch (err) {
+        console.error(`Issue removing ${tabId}`, err)
+    }
+}
 
 function log(...messages) {
     console.log(`👷 `, ...messages);
@@ -16,9 +45,7 @@ function log(...messages) {
 
 // let gumActive = false;
 chrome.runtime.onStartup.addListener(async () => {
-    // gumActive = await chrome.storage.local.get("gumActive");
-    const tabs = await chrome.storage.local.get("activeTabs");
-    activeTabs = new Set(tabs.activeTabs);
+    trainingState = await chrome.storage.local.get(trainingState.storageName);
 })
 
 /*
@@ -27,13 +54,7 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.runtime.onInstalled.addListener(async () => {
 
-
-    //const activeTabs = new Set();
-    //activeTabs.add("foo");
-    //console.log(activeTabs);
-    // await chrome.storage.local.remove('activeTabs');
-    await chrome.storage.local.set({activeTabs: []});
-    // await chrome.storage.local.set({gumActive: false});
+    await chrome.storage.local.set({streamTabs: []});
 
     // Do this to load a help page
     /*
@@ -48,22 +69,23 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener(
     async (request, sender, sendResponse) => {
-        tabId = sender.tab?.id;
-        // log(`DEBUG: from ${sender.tab ?  sender.tab.id : "unknown"}`, request, sender);
+        const tabId = sender?.tab?.id || "not specified";
+        log(`DEBUG: from ${sender.tab ? sender.tab.id : "unknown"}`, request, sender);
         const {to, from, message, data} = request;
 
         // forward "tab" messages to all tabs
         if (to === 'tab' && from === 'training') {
             // keep state on training
-            if (['train_start', 'train_stop', 'update_train_interval'].includes(message)) {
-                trainingState = message;
+            if ([train.start, train.stop, train.updateInterval].includes(message)) {
+                trainingState.state = message === train.updateInterval ? train.start : message;
                 if (data?.sendImagesInterval)
-                    sendImagesInterval = data.sendImagesInterval;
+                    trainingState.sendImagesInterval = data.sendImagesInterval;
+                await chrome.storage.local.set({trainingState});
             }
 
-            const tabs = await chrome.storage.local.get({activeTabs});
-            log(`sending ${message} from ${from} to tabs: ${[...tabs.activeTabs]}`);
-            tabs.activeTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
+            const {streamTabs} = await chrome.storage.local.get("streamTabs");
+            log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
+            streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
         }
 
         // ['background', 'all', 'training'].includes(to)
@@ -81,48 +103,43 @@ chrome.runtime.onMessage.addListener(
         }
 
         // Relay messages to training
-        // ToDo: make this a function that opens the tab
-        if (from === 'training' && message === 'training_tab_id') {
-            trainingTabId = data.id;
-            // ToDo: might need to store this
-            log(`training tab id set to ${trainingTabId}`);
+        if (from === 'training' && message === train.id) {
+            log(`training tab open on ${data.id}`);
         }
 
         if (message === 'gum_stream_start') {
-            //gumActive = true;
-            // await chrome.storage.local.set({gumActive});
-            if (trainingState === 'train_start' || trainingState === 'update_train_interval')
-                sendMessage('tab', trainingState, sendImagesInterval)
+            await addTab(tabId)
 
-            const tabs = await chrome.storage.local.get('activeTabs');
-            activeTabs = new Set(tabs.activeTabs);
-            activeTabs.add(tabId);
-            log(activeTabs);
-            await chrome.storage.local.set({activeTabs: [...activeTabs]});
+            const {trainingState} = await chrome.storage.local.get("trainingState");
+
+            if (trainingState.state === train.start) {
+                const messageToSend = {
+                    from: 'background',
+                    to: 'tab',
+                    message: trainingState.state,
+                    data: { sendImagesInterval: trainingState.sendImagesInterval }
+                }
+                chrome.tabs.sendMessage(tabId, {...messageToSend});
+            }
+            else{
+                log("trainingState", trainingState);
+
+            }
+
 
         } else if (message === "gum_stream_stop") {
-            // gumActive = false;
-            // await chrome.storage.local.set({gumActive});
-        } else if (message === 'training_image') {
+            await removeTab(tabId)
+        } else if (message === train.image) {
             log('training_image: ', data);
         } else if (from === "popup" && message === "open") {
-            // gumActive = await chrome.storage.local.get({gumActive});
             // ToDo: check to see if tabs are still open
-            const {activeTabs} =  await chrome.storage.local.get('activeTabs');
-            sendResponse({message: activeTabs.length > 0 ? "active" : "inactive"})
+            const {streamTabs} = await chrome.storage.local.get('streamTabs');
+            sendResponse({message: streamTabs.length > 0 ? "active" : "inactive"})
             return
         } else if (message === 'unload') {
             log("tab unloading");
-            // gumActive = false;
-            // await chrome.storage.local.set({gumActive});
-            const tabs = await chrome.storage.local.get({activeTabs});
-            activeTabs = new Set(tabs.activeTabs);
-            activeTabs.delete(tabId);
-            await chrome.storage.local.set({activeTabs: [...activeTabs]});
-
-            // sendMessage('all', 'gum_stream_stop');
+            await removeTab(tabId);
         }
-
         if (sendResponse) {
             sendResponse({vch: "ACK"});
         } else {
@@ -147,16 +164,19 @@ function inject(...files) {
 }
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    log(`tab ${tabId} updated`, changeInfo, tab);
+    // log(`tab ${tabId} updated`, changeInfo, tab);
 
     if (tab.url.match(/^chrome-extension:\/\//) && changeInfo.status === 'complete') {
         log(`extension tab opened: ${tab.url}`)
     } else if (changeInfo.status === 'loading' && /^http/.test(tab.url)) { // complete
 
-    /*
+        // ToDo: find a better way
+        // This didn't work on Hangouts
         // Finding: this was too slow; didn't always load prior to target page loading gUM (like jitsi)
+        /*
         await chrome.scripting.executeScript({
-            args: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js'],
+            args: ['/node_modules/@mediapipe/face_mesh/face_mesh.js'],
+            // args: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js'],
             // learning: file method doesn't add to page context
             // files: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js']
             function: inject,
@@ -164,9 +184,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         })
             .catch(err => log(err));
 
-        log(`inject.js into tab ${tabId}`);
+        log(`faceMesh into tab ${tabId}`);
+        // log(`inject.js into tab ${tabId}`);
+         */
 
-     */
 
     }
     //else log(`tab ${tabId} updated to ${changeInfo.status}`, tab);

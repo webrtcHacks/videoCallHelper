@@ -4,21 +4,28 @@ function debug(...messages){
 
 debug(`content.js loaded on ${window.location.href}`);
 
-let script = document.createElement('script');
-script.src = chrome.runtime.getURL('/scripts/inject.js');
-// script.onload = () => this.remove;
-(document.head || document.documentElement).appendChild(script);
-debug("script injected");
+function addScript(path){
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL(path);
+    script.onload = () => this.remove;
+    (document.head || document.documentElement).appendChild(script);
+}
+addScript('/node_modules/@mediapipe/face_mesh/face_mesh.js');
+addScript('/scripts/inject.js');
+debug("scripts injected");
 
 /*
  * Communicate with the background worker context
  */
 
-function sendMessage(to = 'all', message, data = {}, responseCallBack = null) {
+function sendMessage(to = 'all', from = 'tab', message, data = {}, responseCallBack = null) {
+    if(from === 'tab' && to === 'tab')
+        return;
+
     try{
         // ToDo: response callback
         const messageToSend = {
-            from: 'tab',
+            from: from,
             to: to,
             message: message,
             data: data
@@ -31,7 +38,7 @@ function sendMessage(to = 'all', message, data = {}, responseCallBack = null) {
     }
 }
 
-sendMessage('background', 'tab_loaded');
+sendMessage('background', 'content', 'tab_loaded');
 
 // Relay messages to inject.js
 chrome.runtime.onMessage.addListener(
@@ -79,7 +86,7 @@ document.addEventListener('vch', e => {
     }
 
     const {to, message, data} = e.detail;
-    sendMessage(to, message, data);
+    sendMessage(to, 'tab', message, data);
 });
 
 // ToDo: remove the URL before release - it shouldn't matter
