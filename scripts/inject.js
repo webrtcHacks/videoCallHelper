@@ -3,9 +3,10 @@
 // ToDo: build process to import message module
 
 let gumStream;
-let sendImagesInterval = Infinity;
-let faceMeshLoaded = false;
-window.vchStreams = [];
+// let sendImagesInterval = Infinity;
+// let faceMeshLoaded = false;
+//window.vchStreams = [];
+const appEnabled = true;
 
 function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
@@ -38,123 +39,30 @@ document.addEventListener('vch', async e => {
         return
     }
 
-    if (message === 'train_start') {
-        sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
-        if(faceMeshLoaded){
-            debug(`Resumed sending images. Sending every ${sendImagesInterval} sec`);
-        }
-        else{
-            debug(`sending images every ${sendImagesInterval} sec`);
-            await sendImages(gumStream);
-        }
-
-    } else if (message === 'train_stop') {
-        sendImagesInterval = Infinity;
-        debug(`Pausing sending images`);
-    } else if (message === 'update_train_interval') {
-        sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
-        debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
-        if(!faceMeshLoaded && gumStream?.active)
-            await sendImages(gumStream)
-    } else {
-        debug("DEBUG: Unhandled event", e.detail)
+    if(to === 'tab' && message === 'stream_transfer_complete'){
+        const video = document.querySelector(`video#${data.id}`);
+        document.body.removeChild(video);
     }
+
 });
 
-async function sendImages(stream) {
+function transferStream(stream){
+    // debug("Video track info: ", stream.getVideoTracks()[0].getSettings());
+    // window.vchStreams.push(stream); // for testing
 
-    /*
-     *  MediaPipe Face Mesh setup
-     */
+    // only handle video for now
+    if(stream.getVideoTracks().length === 0)
+        return;
 
-    // Lazy load the lib
-    // Didn't work
-    /*
-    const result = await fetch('chrome-extension://ajhjepgnjflojmjaaoejeojhnpgfcbge/node_modules/@mediapipe/face_mesh/face_mesh.js');
-    const script = await result.text();
-    eval(script);
-    console.log(`faceMesh: ${typeof FaceMesh}`);
-     */
+    // ToDo: shadow dom?
+    const video = document.createElement('video');
+    // video.id = stream.id;
+    video.id = `vch-${Math.random().toString().substring(10)}`;
+    video.srcObject = stream;
+    video.hidden = true;
+    document.body.appendChild(video);
+    video.oncanplay = () => sendMessage('all', "gum_stream_start", {id: video.id});
 
-    // This is giving an error - moved to content.js
-    /*
-    const script = document.createElement('script');
-    script.src = 'chrome-extension://ajhjepgnjflojmjaaoejeojhnpgfcbge/node_modules/@mediapipe/face_mesh/face_mesh.js';
-    document.body.appendChild(script);
-     */
-
-    const faceMesh = new FaceMesh({
-        locateFile: (file) => {
-            // return `chrome-extension://daddijhcmajcmnhfeampakkjllggmplg/node_modules/@mediapipe/face_mesh/${file}`;
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-        }
-    });
-    faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-    });
-
-    faceMeshLoaded = true;
-
-    const [track] = stream.getVideoTracks();
-    const {width, height} = track.getSettings();
-
-    const canvas = new OffscreenCanvas(width, height);
-    const ctx = canvas.getContext("bitmaprenderer");
-
-    const generator = new MediaStreamTrackGenerator({kind: 'video'});
-    const processor = new MediaStreamTrackProcessor({track});
-
-    let timer = new Date();
-
-    async function extractImage(frame) {
-        const now = Date.now();
-        if (now - timer > sendImagesInterval) {
-            const bitmap = await createImageBitmap(frame, 0, 0, width, height);
-            ctx.transferFromImageBitmap(bitmap);
-            const blob = await canvas.convertToBlob({type: "image/jpeg"});
-            const blobUrl = window.URL.createObjectURL(blob);
-            // debug(blob);
-            window.blob = blob;
-
-            // ToDo: move this?
-            faceMesh.onResults(async results => {
-                // Finding: can't send a blob or convert it
-                //  {blobString: JSON.stringify(blob) didn't work
-                //  await new FileReader().readAsArrayBuffer(blob)
-                //  const blobArray = await blob.arrayBuffer();
-
-                // Finding: just send the URL
-                // debug(results);
-
-                const data = {
-                    source: window.location.href,
-                    date: now,          // Date.now()
-                    blobUrl: blobUrl,   // get the image from faceMesh
-                    faceMesh: results.multiFaceLandmarks
-                }
-                sendMessage('training', 'image', data);
-            });
-
-            await faceMesh.send({image: canvas});
-
-            // Show the image for debugging
-            /*
-            const imgElem = document.createElement("img");
-            imgElem.src = blobUrl;
-            document.body.appendChild(imgElem);
-             */
-
-            timer = now;
-        }
-        frame.close();
-    }
-
-    await processor.readable
-        .pipeThrough(new TransformStream({transform: frame => extractImage(frame)}))
-        .pipeTo(generator.writable);
 }
 
 if (!window.videoCallHelper) {
@@ -188,22 +96,54 @@ if (!window.videoCallHelper) {
 
      */
 
-    const origGetGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
     async function shimGetUserMedia(constraints) {
 
         // ToDo: don't copy the track if we end it changing it
+        /*
         if(gumStream?.active)
             gumStream.getVideoTracks()[0].stop();
-        const origStream = await origGetGetUserMedia(constraints);
+        const origStream = await origGetUserMedia(constraints);
         const trackCopy = origStream.getVideoTracks()[0].clone();
         gumStream = new MediaStream([trackCopy]);
         debug("got stream. Video track info: ", gumStream.getVideoTracks()[0].getSettings());
         sendMessage('all', "gum_stream_start");
         window.vchStreams.push(origStream); // for testing
         return origStream
+                 */
+        const stream = await origGetUserMedia(constraints);
+        transferStream(stream);
+        debug("got stream", stream);
+        return stream
     }
 
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+        if (!appEnabled) {
+            return origGetUserMedia(constraints)
+        }
+        debug("navigator.mediaDevices.getUserMedia called");
+        return await shimGetUserMedia(constraints);
+    };
+
+    let _webkitGetUserMedia = async function (constraints, onSuccess, onError) {
+        if (!appEnabled) {
+            return _webkitGetUserMedia(constraints, onSuccess, onError)
+        }
+
+        debug("navigator.webkitUserMedia called");
+        try {
+            debug("navigator.webkitUserMedia called");
+            const stream = await shimGetUserMedia(constraints);
+            return onSuccess(stream)
+        } catch (err) {
+            debug("_webkitGetUserMedia error!:", err);
+            return onError(err);
+        }
+    };
+
+    navigator.webkitUserMedia = _webkitGetUserMedia;
+    navigator.getUserMedia = _webkitGetUserMedia;
     navigator.mediaDevices.getUserMedia = shimGetUserMedia;
 
     window.videoCallHelper = true;

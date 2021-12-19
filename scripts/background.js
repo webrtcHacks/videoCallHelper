@@ -55,6 +55,7 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.runtime.onInstalled.addListener(async () => {
 
     await chrome.storage.local.set({streamTabs: []});
+    await chrome.storage.local.set({trainingState});
 
     // Do this to load a help page
     /*
@@ -109,6 +110,15 @@ chrome.runtime.onMessage.addListener(
 
         if (message === 'gum_stream_start') {
             await addTab(tabId)
+
+            await chrome.scripting.executeScript({
+                // args: ['/node_modules/@mediapipe/face_mesh/face_mesh.js', '/modules/processStream.js'],
+                // learning: file method doesn't add to page context
+                files: ['/node_modules/@mediapipe/face_mesh/face_mesh.js', 'modules/processStream.js'],
+                // function: inject,
+                target: {tabId: tabId}
+            })
+                .catch(err => log(err));
 
             const {trainingState} = await chrome.storage.local.get("trainingState");
 
