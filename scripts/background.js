@@ -112,12 +112,13 @@ chrome.runtime.onMessage.addListener(
             await addTab(tabId)
 
             await chrome.scripting.executeScript({
-                // args: ['/node_modules/@mediapipe/face_mesh/face_mesh.js', '/modules/processStream.js'],
                 // learning: file method doesn't add to page context
-                files: ['/node_modules/@mediapipe/face_mesh/face_mesh.js', 'modules/processStream.js'],
-                // function: inject,
+                //files: ['modules/processStream.js'],
+                args: ['modules/processStream.js'],
+                function: inject,
                 target: {tabId: tabId}
             })
+                .then(()=>log("started processStream.js"))
                 .catch(err => log(err));
 
             const {trainingState} = await chrome.storage.local.get("trainingState");

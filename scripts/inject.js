@@ -29,8 +29,6 @@ function sendMessage(to = 'all', message, data = {}) {
     document.dispatchEvent(toContentEvent);
 }
 
-const DEFAULT_SEND_IMAGES_INTERVAL = 30 * 1000;
-
 document.addEventListener('vch', async e => {
     const {from, to, message, data} = e.detail;
 
@@ -41,7 +39,11 @@ document.addEventListener('vch', async e => {
 
     if(to === 'tab' && message === 'stream_transfer_complete'){
         const video = document.querySelector(`video#${data.id}`);
-        document.body.removeChild(video);
+        // document.body.removeChild(video);
+
+        setTimeout(()=>{
+            sendMessage('processStream', 'start_face_mesh', {id: data.id})
+        }, 5000)
     }
 
 });
