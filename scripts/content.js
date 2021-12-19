@@ -6,7 +6,7 @@ const streams = [];
 window.vchStreams = streams;
 const DEFAULT_SEND_IMAGES_INTERVAL = 30*1000;
 let faceMeshLoaded = false;
-
+let videoTabId;
 
 function debug(...messages) {
     console.debug(`vch 🕵️‍ `, ...messages);
@@ -22,6 +22,49 @@ function addScript(path) {
 }
 addScript('/scripts/inject.js');
 debug("inject injected");
+
+
+async function sendStream(tab, stream){
+    // create a connection
+    const port = chrome.runtime.connect({name: "frames"});
+    port.postMessage({message: "start sending frames here"});
+    port.onMessage.addListener(msg => {
+        if (msg.message === "stop"){
+            debug("stop")
+        }
+    });
+
+    // send frames
+    const [track] = stream.getVideoTracks();
+    const generator = new MediaStreamTrackGenerator({kind: 'video'});
+    const processor = new MediaStreamTrackProcessor({track});
+
+    const {width, height} = track.getSettings();
+
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext("bitmaprenderer")
+
+    async function sendFrame(frame){
+
+        // Method doesn't exist :(
+        //const blob = await frame.convertToBlob({type: "image/jpeg"});
+
+        // bulkier method
+        const bitmap = await createImageBitmap(frame, 0, 0, width, height);
+        ctx.transferFromImageBitmap(bitmap);
+        const blob = await canvas.convertToBlob({type: "image/jpeg"});
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        port.postMessage({blobUrl})
+        frame.close()
+    }
+
+    await processor.readable
+        .pipeThrough(new TransformStream({transform: frame => sendFrame(frame)}))
+        .pipeTo(generator.writable);
+
+}
+
 
 /*
  * Communicate with the background worker context
@@ -55,7 +98,12 @@ chrome.runtime.onMessage.addListener(
 
             const sendTrainingImage = image => sendMessage('tab', 'training', 'training_image', image);
 
-            if (message === 'train_start') {
+            if(message === 'video_tab'){
+                videoTabId = data.sourceTabId;
+                debug(`video tab id is: ${videoTabId}`)
+                await sendStream(videoTabId, streams[0]);
+            }
+            else if (message === 'train_start') {
                 sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
                 if (faceMeshLoaded) {
                     debug(`Resumed sending images. Sending every ${sendImagesInterval} sec`);
@@ -69,11 +117,12 @@ chrome.runtime.onMessage.addListener(
             } else if (message === 'update_train_interval') {
                 sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
                 debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
-                streams.forEach( stream=> {
+                streams.forEach(stream => {
                     if (!faceMeshLoaded && stream.active)
                         processStream(stream, sendTrainingImage)
                 });
-            } else {
+            }
+            else {
                 debug("DEBUG: Unhandled event", request)
             }
 
@@ -138,8 +187,6 @@ document.addEventListener('vch', async e => {
         }
         sendToInject(message);
 
-        // await loadFaceMesh();
-        // debug("faceMesh loaded");
     }
 
     sendMessage(to, 'tab', message, data);

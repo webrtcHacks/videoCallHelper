@@ -103,24 +103,41 @@ chrome.runtime.onMessage.addListener(
              */
         }
 
+        if( from === 'video' && to !== 'background'){
+            request.data = {sourceTabId: tabId};
+
+            const {streamTabs} = await chrome.storage.local.get("streamTabs");
+            log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
+            streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
+        }
+
         // Relay messages to training
         if (from === 'training' && message === train.id) {
             log(`training tab open on ${data.id}`);
         }
 
         if (message === 'gum_stream_start') {
-            await addTab(tabId)
+            await addTab(tabId);
 
-            await chrome.scripting.executeScript({
-                // learning: file method doesn't add to page context
-                //files: ['modules/processStream.js'],
-                args: ['modules/processStream.js'],
-                function: inject,
-                target: {tabId: tabId}
-            })
-                .then(()=>log("started processStream.js"))
-                .catch(err => log(err));
+            // open the video tab
+            const url = chrome.runtime.getURL("pages/video.html");
+            const videoTab = await chrome.tabs.create({url});
+            console.log(`video tb ${videoTab.id}`)
 
+            /*
+            const messageToSend = {
+                from: 'background',
+                to: 'tab',
+                message: 'video_tab_id',
+                data: { videoTabId: videoTab.id }
+            }
+            chrome.tabs.sendMessage(tabId, {...messageToSend});
+
+             */
+
+
+            // ToDo: handle training later
+            /*
             const {trainingState} = await chrome.storage.local.get("trainingState");
 
             if (trainingState.state === train.start) {
@@ -136,6 +153,7 @@ chrome.runtime.onMessage.addListener(
                 log("trainingState", trainingState);
 
             }
+             */
 
 
         } else if (message === "gum_stream_stop") {

@@ -39,11 +39,7 @@ document.addEventListener('vch', async e => {
 
     if(to === 'tab' && message === 'stream_transfer_complete'){
         const video = document.querySelector(`video#${data.id}`);
-        // document.body.removeChild(video);
-
-        setTimeout(()=>{
-            sendMessage('processStream', 'start_face_mesh', {id: data.id})
-        }, 5000)
+        document.body.removeChild(video);
     }
 
 });
