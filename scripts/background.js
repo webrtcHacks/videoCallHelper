@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener(
             // open the video tab
             const url = chrome.runtime.getURL("pages/video.html");
             const videoTab = await chrome.tabs.create({url});
-            console.log(`video tb ${videoTab.id}`)
+            console.log(`video tab ${videoTab.id}`)
 
             /*
             const messageToSend = {
