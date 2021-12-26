@@ -238,6 +238,51 @@ async function syncTrackInfo() {
     const videoDevices = devices.filter((device) => device.kind === 'videoinput');
     debug("getting current video devices:", videoDevices);
 
+    // just use the last stream for now
+    const stream = streams.at(-1);
+    // ToDo: stream event handlers
+    stream.onremovetrack = async (track) => {
+        debug("track removed", track);
+        await sendMessage('video', 'tab', 'remove_track', track.id);
+        trackInfos = trackInfos.filter(info => info.id !== track.id);
+        debug("updated trackInfos", trackInfos);
+    };
+
+    const [videoTrack] = stream.getVideoTracks();
+    videoTrack.onended = (e) => {
+        debug("track stopped: ", e.srcElement);
+        const {id} = e.srcElement;
+        trackInfos = trackInfos.filter(info => info.id !== id);
+        debug("updated trackInfos", trackInfos);
+    };
+    videoTrack.onmute = async e => {
+        await sendMessage('video', 'tab', 'mute', e.srcElement.id)
+        debug("track muted: ", e.srcElement)
+    };
+    videoTrack.onunmute = async e => {
+        await sendMessage('video', 'tab', 'unmute', e.srcElement.id)
+        debug("track unmuted: ", e.srcElement)
+    };
+
+
+    // ToDo: find out if a gUM stream can ever have more than 1 video track
+    const settings = videoTrack.getSettings();
+    debug("settings: ", settings);
+
+    const {label} = videoDevices.find(device => settings.deviceId === device.deviceId);
+    debug("device label: ", label);
+    if (label !== "")
+        settings.label = label;
+
+    // ToDo: make sure to only push unique tracks
+    settings.id = videoTrack.id;
+    trackInfos = trackInfos.filter(info => info.id !== videoTrack.id);
+    debug("updated trackInfos", trackInfos);
+
+    trackInfos.push(settings);
+    await sendMessage('video', 'tab', 'track_info', {trackInfo: settings});
+    // Keep for debugging
+    /*
     streams.forEach( stream => {
 
         // ToDo: stream event handlers
@@ -274,13 +319,14 @@ async function syncTrackInfo() {
             settings.label = label;
 
         // trackIds.add(settings.id);
+        // ToDo: make sure to only push unique tracks
         trackInfos.push(settings);
         sendMessage('video', 'tab', 'track_info', {trackInfos})
             .catch(err=>debug("sendMessage error: ", err));
 
-
-
     });
+
+     */
 }
 
 /*

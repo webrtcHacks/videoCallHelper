@@ -37,13 +37,18 @@ const messageToSend = {
 // ToDo: tell each tab to send track infos
 chrome.runtime.sendMessage( messageToSend, {});
 
+videoElem.onclick = async () => {
+    let pip = await videoElem.requestPictureInPicture();
+    console.log(`Picture-in-Picture size: ${pip.width}x${pip.height}`);
+}
 
 chrome.runtime.onMessage.addListener(
     async (request, sender, sendResponse) => {
+        // ToDo: not sure why sendResponse isn't null
         if (sendResponse) {
             sendResponse(true);
         }
-        
+
         const {to, from, message, data} = request;
 
         if (to !== 'video') // && sender.tab.id !== sourceTab)
@@ -64,10 +69,12 @@ chrome.runtime.onMessage.addListener(
             currentVideoTrack = stream.getVideoTracks();
 
         if (message === 'track_info') {
-            log("video tab devices: ", videoDevices);
-            log("incoming data: ", data.trackInfos);
-            log(`number of tracks: ${data.trackInfos.length}`);
-            const settings = data.trackInfos.at(-1);
+            // log("video tab devices: ", videoDevices);
+            // log("incoming data: ", data.trackInfo);
+            // log(`number of tracks: ${data.trackInfo.length}`);
+            // const settings = data.trackInfos.at(-1);
+            const settings = data.trackInfo;
+
             if (settings.label) {
                 const {deviceId} = videoDevices.find(device => settings.label === device.label);
                 settings.deviceId = deviceId;
