@@ -229,7 +229,6 @@ function sendMessage(to, message, data, responseHandler) {
     }
 }
 
-// Test if this works
 chrome.runtime.onMessage.addListener(
     async (request, sender) => {
         const {to, from, message, data} = request;

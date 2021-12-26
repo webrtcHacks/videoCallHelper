@@ -3,8 +3,6 @@
 // ToDo: build process to import message module
 
 let gumStream;
-// let sendImagesInterval = Infinity;
-// let faceMeshLoaded = false;
 //window.vchStreams = [];
 const appEnabled = true;
 

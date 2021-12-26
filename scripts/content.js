@@ -1,10 +1,10 @@
-// ToDo: load dynamically only when needed
-// import {processStream} from "../modules/processStream.mjs";
-// addScript('/node_modules/@mediapipe/face_mesh/face_mesh.js');
-
 const streams = [];
+let trackInfos = [];
+// const trackIds = new Set();
+
 window.vchStreams = streams;
 const DEFAULT_SEND_IMAGES_INTERVAL = 30 * 1000;
+let sendImagesInterval = Infinity;
 let faceMeshLoaded = false;
 let videoTabId;
 
@@ -26,6 +26,7 @@ addScript('/scripts/inject.js');
 debug("inject injected");
 
 
+/* Methods for sending streams */
 async function dataChannel(stream) {
     console.log("peerConnection starting");
 
@@ -73,7 +74,7 @@ async function dataChannel(stream) {
         console.log("datachannel open");
 
 
-        const MAXIMUM_MESSAGE_SIZE =  16*1024// 65535;
+        const MAXIMUM_MESSAGE_SIZE = 16 * 1024// 65535;
         const END_OF_FILE_MESSAGE = 'EOF';
 
         const highWaterMark = 16777216;
@@ -92,7 +93,7 @@ async function dataChannel(stream) {
             // debug(frame.toBlob());
 
             frameCount++;
-            if(frameCount!==30){
+            if (frameCount !== 30) {
                 frame.close();
                 return
             }
@@ -137,14 +138,14 @@ async function dataChannel(stream) {
         const reader = processor.readable.getReader();
         while (true) {
             const result = await reader.read();
-            if (result.done){
+            if (result.done) {
                 debug("reader done");
                 break;
             }
             let frame = result.value;
             // debug(frame);
             await sendFrame(frame)
-                .catch(err=>debug("ERROR: send frame error: ", err));
+                .catch(err => debug("ERROR: send frame error: ", err));
         }
 
         // learning: reader above is better than TransformStream
@@ -232,12 +233,62 @@ async function sendStreamAsBlobUrls(tab, stream) {
 
 }
 
+async function syncTrackInfo() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter((device) => device.kind === 'videoinput');
+    debug("getting current video devices:", videoDevices);
+
+    streams.forEach( stream => {
+
+        // ToDo: stream event handlers
+        stream.onremovetrack = async (track) => {
+            debug("track removed", track);
+            await sendMessage('video', 'tab', 'remove_track', track.id)
+            // ToDo: take it out of the list
+        };
+
+        const [videoTrack] = stream.getVideoTracks();
+        videoTrack.onended = (e) => {
+            debug("track stopped: ", e.srcElement);
+            const {id} = e.srcElement;
+            trackInfos = trackInfos.filter(info => info.id !== id);
+            debug()
+        };
+        videoTrack.onmute = async e => {
+            await sendMessage('video', 'tab', 'mute', e.srcElement.id)
+            debug("track muted: ", e.srcElement)
+        };
+        videoTrack.onunmute = async e => {
+            await sendMessage('video', 'tab', 'unmute', e.srcElement.id)
+            debug("track unmuted: ", e.srcElement)
+        };
+
+
+        // ToDo: find out if a gUM stream can ever have more than 1 video track
+        const settings = videoTrack.getSettings();
+        debug("settings: ", settings);
+
+        const {label} = videoDevices.find(device => settings.deviceId === device.deviceId);
+        debug("device label: ", label);
+        if (label !== "")
+            settings.label = label;
+
+        // trackIds.add(settings.id);
+        trackInfos.push(settings);
+        sendMessage('video', 'tab', 'track_info', {trackInfos})
+            .catch(err=>debug("sendMessage error: ", err));
+
+
+
+    });
+}
 
 /*
  * Communicate with the background worker context
  */
 
-function sendMessage(to = 'all', from = 'tab', message, data = {}, responseCallBack = null) {
+async function sendMessage(to = 'all', from = 'tab', message, data = {}, responseCallBack = null) {
+
     if (from === 'tab' && to === 'tab')
         return;
 
@@ -249,7 +300,10 @@ function sendMessage(to = 'all', from = 'tab', message, data = {}, responseCallB
             message: message,
             data: data
         };
-        chrome.runtime.sendMessage(messageToSend, responseCallBack);
+
+        // ToDo: this is expecting a response
+        await chrome.runtime.sendMessage(messageToSend, {});
+
         // debug(`sent "${message}" from "tab" to ${to} with data ${JSON.stringify(data)}`);
     } catch (err) {
         debug("ERROR", err);
@@ -260,17 +314,22 @@ function sendMessage(to = 'all', from = 'tab', message, data = {}, responseCallB
 chrome.runtime.onMessage.addListener(
     async (request, sender) => {
         const {to, from, message, data} = request;
-        if (to === 'tab' || to === 'all') {
-            // debug(`receiving "${message}" from ${from} to ${to}. Forwarding to inject`);
+        debug(`receiving "${message}" from ${from} to ${to}`, request);
 
-            const sendTrainingImage = image => sendMessage('tab', 'training', 'training_image', image);
+        if (to === 'tab' || to === 'all') {
+
+            const sendTrainingImage = image => sendMessage('training', 'tab', 'training_image', image);
 
             if (message === 'video_tab') {
                 videoTabId = data.sourceTabId;
                 debug(`video tab id is: ${videoTabId}`)
                 // await sendStreamAsFrameString(videoTabId, streams[0]);
-                await dataChannel(streams[0]);
-            } else if (message === 'train_start') {
+                // await dataChannel(streams[0]);
+                // ToDo: ???
+                await syncTrackInfo();
+            }
+                // ToDo: come back to training
+            /*else if (message === 'train_start') {
                 sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
                 if (faceMeshLoaded) {
                     debug(`Resumed sending images. Sending every ${sendImagesInterval} sec`);
@@ -288,7 +347,8 @@ chrome.runtime.onMessage.addListener(
                     if (!faceMeshLoaded && stream.active)
                         processStream(stream, sendTrainingImage)
                 });
-            } else {
+            } */
+            else {
                 debug("DEBUG: Unhandled event", request)
             }
 
@@ -328,39 +388,52 @@ const sendToInject = message => {
 
 // Messages from inject
 document.addEventListener('vch', async e => {
-    debug("message from inject to send", e.detail);
+    const {to, from, message, data} = e.detail;
+    // ToDo: stop inject for echoing back
+    if (from === 'content')
+        return;
+
+    debug("message from inject", e.detail);
 
     if (!e.detail) {
         return
     }
 
-    const {to, message, data} = e.detail;
 
     if (message === 'gum_stream_start') {
         const id = data.id;
         const video = document.querySelector(`video#${id}`);
         const stream = video.srcObject;
-        // ToDo: remove stream from streams if no tracks
-        stream.onremovetrack = () => debug("track removed")
         streams.push(stream);
         debug(`stream video settings: `, stream.getVideoTracks()[0].getSettings());
-        // send a message to tell inject to remove thd element
-        const message = {
+        sendMessage(to, 'tab', message, data);
+
+        // check if videoTab is already open
+        // ToDo: query this
+        //  const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
+        // Learning: not allowed in content
+        // const videoTab = await chrome.tabs.query({url: url});
+        //  debug("videoTab", videoTab);
+
+        if (videoTabId)
+            await syncTrackInfo();
+
+        // send a message back to inject to remove the temp video element
+        const responseMessage = {
             to: 'tab',
             from: 'content',
             message: 'stream_transfer_complete',
             data: {id}
         }
-        sendToInject(message);
+        sendToInject(responseMessage);
+
 
     }
-
-    sendMessage(to, 'tab', message, data);
 });
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', () => {
-    sendMessage('all', 'unload')
+    sendMessage('all', 'tab', 'unload')
 });
 
-sendMessage('background', 'content', 'tab_loaded', {url: window.location.href});
+// sendMessage('background', 'content', 'tab_loaded', {url: window.location.href});

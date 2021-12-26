@@ -32,6 +32,14 @@ async function removeTab(tabId) {
     }
 }
 
+async function getVideoTabId(){
+    // ToDo: there is also a chrome extension method to get all extension pages
+    const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
+    const [videoTab] = await chrome.tabs.query({url: url});
+    // log("videoTab", videoTab);
+    return videoTab?.id;
+}
+
 function log(...messages) {
     console.log(`👷 `, ...messages);
     /*
@@ -46,6 +54,7 @@ function log(...messages) {
 // let gumActive = false;
 chrome.runtime.onStartup.addListener(async () => {
     trainingState = await chrome.storage.local.get(trainingState.storageName);
+    await getVideoTabId();
 })
 
 /*
@@ -56,6 +65,8 @@ chrome.runtime.onInstalled.addListener(async () => {
 
     await chrome.storage.local.set({streamTabs: []});
     await chrome.storage.local.set({trainingState});
+
+    // ToDo: make user accept gUM permissions
 
     // Do this to load a help page
     /*
@@ -70,8 +81,15 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener(
     async (request, sender, sendResponse) => {
+
+        // ToDo: debugging
+        if(sendResponse){
+            log("sending a response");
+            sendResponse(true);
+        } else log("no response requested");
+
         const tabId = sender?.tab?.id || "not specified";
-        log(`DEBUG: from ${sender.tab ? sender.tab.id : "unknown"}`, request, sender);
+        // log(`DEBUG: from ${sender.tab ? sender.tab.id : "unknown"}`, request, sender);
         const {to, from, message, data} = request;
 
         // forward "tab" messages to all tabs
@@ -86,7 +104,14 @@ chrome.runtime.onMessage.addListener(
 
             const {streamTabs} = await chrome.storage.local.get("streamTabs");
             log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
-            streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
+            streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}, null));
+        }
+
+        if(to==='video'){
+            const videoTabId = await getVideoTabId();
+            log(`sending ${message} from ${from} to video`, request);
+            await chrome.tabs.sendMessage(videoTabId, request, {}, null);
+
         }
 
         // ['background', 'all', 'training'].includes(to)
@@ -103,6 +128,7 @@ chrome.runtime.onMessage.addListener(
              */
         }
 
+
         if( from === 'video' && to !== 'background'){
             request.data = {sourceTabId: tabId};
 
@@ -117,12 +143,26 @@ chrome.runtime.onMessage.addListener(
         }
 
         if (message === 'gum_stream_start') {
+
+            // log("DEBUG: gum_stream_start - stopping here");
+            // return;
+
             await addTab(tabId);
 
-            // open the video tab
-            const url = chrome.runtime.getURL("pages/video.html");
-            const videoTab = await chrome.tabs.create({url});
-            console.log(`video tab ${videoTab.id}`)
+            // ToDo: better to query all tabs for the video tab url than use local storage so I don't need to worry
+            //  about keeping localStorage synced
+            // let {videoTabId} = await chrome.storage.local.get("videoTabId");
+            // log("videoTabId from storage: ", videoTabId);
+
+            const videoTabId = await getVideoTabId();
+
+            if(!videoTabId){
+                // open the video tab
+                const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
+                const videoTab = await chrome.tabs.create({url});
+                log(`video tab ${videoTab.id}`)
+                // sendResponse({message: 'videoTabId', data: videoTabId});
+            }
 
             /*
             const messageToSend = {
@@ -168,11 +208,6 @@ chrome.runtime.onMessage.addListener(
         } else if (message === 'unload') {
             log("tab unloading");
             await removeTab(tabId);
-        }
-        if (sendResponse) {
-            sendResponse({vch: "ACK"});
-        } else {
-            // log("response not requested");
         }
     });
 
