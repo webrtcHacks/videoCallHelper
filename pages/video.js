@@ -1,3 +1,5 @@
+import {mesh} from "../modules/facemesh.mjs"
+
 const imgElem = document.querySelector('img');
 const videoElem = document.querySelector('video');
 const canvasElem = document.querySelector('canvas');
@@ -6,22 +8,22 @@ const spanElem = document.querySelector('span');
 let stream;
 stream = window.stream;
 
-// let sourceTabUrl = "";
-// const urlParams = new URLSearchParams(window.location.search);
-// const sourceTab = parseInt(urlParams.get('source'));
-
-
 function log(...messages) {
     console.debug(`🎞‍ `, ...messages);
 }
 
 /*
+// get URL params
+// let sourceTabUrl = "";
+// const urlParams = new URLSearchParams(window.location.search);
+// const sourceTab = parseInt(urlParams.get('source'));
+
 if(!urlParams.get('source')){
     spanElem.innerText = "no source tab identified";
-    // ToDo: stop here
 }
- */
+
 // log(sourceTab);
+*/
 
 let videoDevices = []
 navigator.mediaDevices.enumerateDevices()
@@ -40,6 +42,28 @@ chrome.runtime.sendMessage( messageToSend, {});
 videoElem.onclick = async () => {
     let pip = await videoElem.requestPictureInPicture();
     console.log(`Picture-in-Picture size: ${pip.width}x${pip.height}`);
+}
+
+async function getCamera(constraints){
+
+    if (stream && stream.active) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    stream = await navigator.mediaDevices.getUserMedia({video: constraints});
+    log("got new stream", stream);
+
+    // Insertable streams
+    const [track] = stream.getVideoTracks();
+    const processor = new MediaStreamTrackProcessor({track});
+
+    const generator = new MediaStreamTrackGenerator({kind: 'video'});
+    videoElem.srcObject  = new MediaStream([generator]);
+
+    await processor.readable.pipeThrough(new TransformStream({
+        transform: (frame, controller) => mesh(frame, controller)
+    })).pipeTo(generator.writable);
+
+
 }
 
 chrome.runtime.onMessage.addListener(
@@ -64,9 +88,8 @@ chrome.runtime.onMessage.addListener(
         log(`incoming "${message}" message from ${from} to ${to} with data: `, data);
 
         let currentVideoTrack;
-
-        if (stream && stream.active)
-            currentVideoTrack = stream.getVideoTracks();
+        if(stream && stream.active)
+            [currentVideoTrack] = stream.getVideoTracks();
 
         if (message === 'track_info') {
             // log("video tab devices: ", videoDevices);
@@ -81,20 +104,8 @@ chrome.runtime.onMessage.addListener(
             }
 
             log("constraints: ", settings);
-            /*
-            const constraints = {
-                height: settings.height,
-                width: settings.width,
-                deviceId: {exact: settings.deviceId},
-                frameRate: settings.frameRate
-            }
-             */
+            await getCamera(settings);
 
-            if (stream && stream.active) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-            stream = await navigator.mediaDevices.getUserMedia({video: settings});
-            videoElem.srcObject = stream;
         } else if (message === 'mute') {
             log("muting track");
             currentVideoTrack.enabled = false;
@@ -108,7 +119,6 @@ chrome.runtime.onMessage.addListener(
                 stream.removetrack(currentVideoTrack);
             } else {
                 log(`remove track: ${trackId} - ${currentVideoTrack.id} doesn't match`);
-
             }
 
 
