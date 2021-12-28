@@ -66,6 +66,23 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.local.set({streamTabs: []});
     await chrome.storage.local.set({trainingState});
 
+    // Testing
+
+    /*
+    // Make a new window.
+    // No way to make it stay on top
+    const windowOpts = {
+        focused: true,
+        top: 0,
+        left: 0,
+        type: "popup",
+        url: chrome.runtime.getURL("pages/video.html"),
+
+    }
+    const window = await chrome.windows.create(windowOpts);
+    log(window);
+     */
+
     // ToDo: make user accept gUM permissions
 
     // Do this to load a help page
