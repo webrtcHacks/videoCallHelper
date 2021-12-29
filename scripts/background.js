@@ -83,6 +83,11 @@ chrome.runtime.onInstalled.addListener(async () => {
     log(window);
      */
 
+    // Testing if webgazer works in an extension
+    const url = chrome.runtime.getURL("pages/webgazer.html");
+    const videoTab = await chrome.tabs.create({url});
+    log(`webgazer tab ${videoTab.id}`)
+
     // ToDo: make user accept gUM permissions
 
     // Do this to load a help page
