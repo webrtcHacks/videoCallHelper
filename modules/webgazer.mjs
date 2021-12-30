@@ -8,6 +8,9 @@ const stats = document.getElementById("stats");
 const statusText = document.getElementById("status");
 const startButton = document.getElementById("start");
 const stopButton = document.getElementById("stop");
+const popoutButton = document.querySelector("button#popout");
+
+// let wgVideoElem, wgCanvasElem;
 
 // ToDo: check for viewport size change
 let maxViewport = {};
@@ -17,6 +20,7 @@ function eyetracker() {
 
     webgazer.showPredictionPoints(true)
     webgazer.params.showVideoPreview = true;
+    // wgVideoElem = webgazer.setVid
 
     webgazer
         .setGazeListener((data, elapsedTime) => {
@@ -42,26 +46,15 @@ function eyetracker() {
 
         })
         .begin();
-
-    started = true;
 }
 
-startButton.addEventListener("click", () => {
-    document.documentElement.requestFullscreen().catch(e => console.error(e));
-
-    // ToDo: stop button isn't showing; style.display & style.visibility didn't work
-    startButton.hidden = true;
-    stopButton.hidden = false;
-
-    if (!started) {
-        console.log("starting");
-        statusText.innerText = "It may take a minute to self-train before loading";
-        eyetracker();
-    } else {
-        console.log("resuming");
-        webgazer.resume();
-    }
-});
+popoutButton.onclick = async () => {
+    const wgCanvasElem = webgazer.getVideoElementCanvas();
+    let pip = await wgCanvasElem.requestPictureInPicture();
+    console.log(`Picture-in-Picture size: ${pip.width}x${pip.height}`);
+};
+/*
+startButton.addEventListener("click", () => monitor());
 
 
 stopButton.addEventListener("click", () => {
@@ -71,3 +64,7 @@ stopButton.addEventListener("click", () => {
     stopButton.hidden = true;
     webgazer.pause();
 });
+
+ */
+
+eyetracker();

@@ -1,4 +1,4 @@
-import {trainingMessages as train}  from "../modules/messages.mjs";
+import {trainingMessages as train} from "../modules/messages.mjs";
 
 let trainingState = {
     state: "not started",
@@ -84,9 +84,11 @@ chrome.runtime.onInstalled.addListener(async () => {
      */
 
     // Testing if webgazer works in an extension
+    /*
     const url = chrome.runtime.getURL("pages/webgazer.html");
     const videoTab = await chrome.tabs.create({url});
     log(`webgazer tab ${videoTab.id}`)
+     */
 
     // ToDo: make user accept gUM permissions
 
