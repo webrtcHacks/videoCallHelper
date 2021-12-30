@@ -3,11 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <title>Popup</title>
+    <style>
+        video{
+            transform: scaleX(-1);
+        }
+    </style>
 </head>
 <body>
-<h3>pop-up control panel</h3>
-<p>getUserMedia: <span id="gumStatus">inactive</span></p>
-<button id="train">Open Training</button>
-<script src="/scripts/popup.js"></script>
+<video autoplay muted playsinline hidden></video>
+<button>Popout</button>
+<script src="../scripts/test.js"></script>
+<!--
+    <h3>pop-up control panel</h3>
+    <p>getUserMedia: <span id="gumStatus">inactive</span></p>
+    <button id="train">Open Training</button>
+    <script src="../scripts/popup.js"></script>
+-->
 </body>
 </html>
