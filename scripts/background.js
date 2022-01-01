@@ -1,15 +1,18 @@
 import {trainingMessages as train} from "../modules/messages.mjs";
 
+let streamTabs;
 let trainingState = {
     state: "not started",
     sendImagesInterval: Infinity,
     storageName: "trainingState"
 }
+let videoTabId;
 
 // Keep state on tabs; uses a Set to only store unique items
 async function addTab(tabId) {
     try {
-        const {streamTabs} = await chrome.storage.local.get('streamTabs');
+        // const {streamTabs} = await chrome.storage.local.get('streamTabs');
+        chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
         const activeTabs = new Set(streamTabs);
         activeTabs.add(tabId);
         await chrome.storage.local.set({streamTabs: [...activeTabs]});
@@ -22,7 +25,8 @@ async function addTab(tabId) {
 // Keep state on tabs; uses a Set to only store unique items
 async function removeTab(tabId) {
     try {
-        const {streamTabs} = await chrome.storage.local.get('streamTabs');
+        //const {streamTabs} = await chrome.storage.local.get('streamTabs');
+        chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
         const activeTabs = new Set(streamTabs);
         activeTabs.delete(tabId);
         await chrome.storage.local.set({activeTabs: [...activeTabs]});
@@ -35,9 +39,12 @@ async function removeTab(tabId) {
 async function getVideoTabId(){
     // ToDo: there is also a chrome extension method to get all extension pages
     const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-    const [videoTab] = await chrome.tabs.query({url: url});
+    //const [videoTab] = await chrome.tabs.query({url: url});
+    chrome.tabs.query({url: url}, data=>{
+        videoTabId = [data].id || false;
+        return videoTabId
+    });
     // log("videoTab", videoTab);
-    return videoTab?.id;
 }
 
 function log(...messages) {
@@ -53,7 +60,8 @@ function log(...messages) {
 
 // let gumActive = false;
 chrome.runtime.onStartup.addListener(async () => {
-    trainingState = await chrome.storage.local.get(trainingState.storageName);
+    // trainingState = await chrome.storage.local.get(trainingState.storageName);
+    trainingState = chrome.local.storage.get(['trainingState'], data=>trainingState=data.trainingState);
     await getVideoTabId();
 })
 
@@ -126,15 +134,19 @@ chrome.runtime.onMessage.addListener(
                 await chrome.storage.local.set({trainingState});
             }
 
-            const {streamTabs} = await chrome.storage.local.get("streamTabs");
+            // const {streamTabs} = await chrome.storage.local.get("streamTabs");
+            chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
             log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
             streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}, null));
         }
 
         if(to==='video'){
             const videoTabId = await getVideoTabId();
-            log(`sending ${message} from ${from} to video`, request);
-            await chrome.tabs.sendMessage(videoTabId, request, {}, null);
+            if(videoTabId){
+                log(`sending ${message} from ${from} to video`, request);
+                await chrome.tabs.sendMessage(videoTabId, request, {}, null);
+            }
+            else log(`videoTab is not open for  ${message} from ${from}`, request)
 
         }
 
@@ -156,7 +168,8 @@ chrome.runtime.onMessage.addListener(
         if( from === 'video' && to !== 'background'){
             request.data = {sourceTabId: tabId};
 
-            const {streamTabs} = await chrome.storage.local.get("streamTabs");
+            // const {streamTabs} = await chrome.storage.local.get("streamTabs");
+            chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
             log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
             streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
         }
@@ -183,8 +196,10 @@ chrome.runtime.onMessage.addListener(
             if(!videoTabId){
                 // open the video tab
                 const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-                const videoTab = await chrome.tabs.create({url});
-                log(`video tab ${videoTab.id}`)
+                await chrome.tabs.create({url});
+                // v3
+                // const videoTab = await chrome.tabs.create({url});
+                // log(`video tab ${videoTab.id}`)
                 // sendResponse({message: 'videoTabId', data: videoTabId});
             }
 
@@ -226,14 +241,29 @@ chrome.runtime.onMessage.addListener(
             log('training_image: ', data);
         } else if (from === "popup" && message === "open") {
             // ToDo: check to see if tabs are still open
-            const {streamTabs} = await chrome.storage.local.get('streamTabs');
+            // const {streamTabs} = await chrome.storage.local.get('streamTabs');
+            chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
             sendResponse({message: streamTabs.length > 0 ? "active" : "inactive"})
-            return
         } else if (message === 'unload') {
             log("tab unloading");
             await removeTab(tabId);
         }
     });
+
+
+/*
+ *  Extension icon control
+ */
+
+// ToDo: change to pageAction?
+chrome.browserAction.onClicked.addListener(async ()=>{
+    const url = chrome.runtime.getURL("pages/video.html");
+    const videoTab = await chrome.tabs.create({url});
+    // ToDo: this worked in manifest v3
+    // log(videoTab);  // undefined
+    // log(`video tab ${videoTab.id}`)
+
+});
 
 /*
  * Add our injection script new tabs

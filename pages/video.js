@@ -1,4 +1,4 @@
-import {mesh} from "../modules/facemesh.mjs"
+// ToDo: refactor webgazer.mjs code and import
 
 const imgElem = document.querySelector('img');
 const videoElem = document.querySelector('video');
@@ -52,6 +52,9 @@ async function getCamera(constraints){
     stream = await navigator.mediaDevices.getUserMedia({video: constraints});
     log("got new stream", stream);
 
+    // ToDo: add webgazer code here
+    videoElem.srcObject = stream;
+    /*
     // Insertable streams
     const [track] = stream.getVideoTracks();
     const processor = new MediaStreamTrackProcessor({track});
@@ -63,6 +66,7 @@ async function getCamera(constraints){
         transform: (frame, controller) => mesh(frame, controller)
     })).pipeTo(generator.writable);
 
+     */
 
 }
 
