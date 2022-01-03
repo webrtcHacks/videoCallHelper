@@ -14,6 +14,95 @@ function debug(...messages) {
 
 debug(`content.js loaded on ${window.location.href}`);
 
+// Testing visualization options
+/*
+ * DOMContentLoaded - doesn't work with Meet
+ */
+
+/*
+function addDisplay(){
+    const display = document.createElement("div");
+    display.id = "vch";
+    display.offsetHeight = 50;
+    display.style.cssText = "position: fixed; top: 0px; left: 0px; height: 0px; width: 100%; z-index: 1000; transition: height 500ms ease 0s;";
+    display.style.color = 'red';
+    display.style.backgroundColor = "aqua";
+    display.style.textAlign = "center";
+    display.innerText = "This is some text"
+    document.body.prepend(display);
+}
+ */
+
+const dashHeight = 100;
+
+/*
+const dashStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: 100,
+    zIndex: 10000,
+    transition: {
+        height: 500,
+        ease: 0
+    },
+    backgroundColor: 'aqua',
+    color: 'red'
+}
+const dashOpenStyle = {
+    height: 100
+}
+
+const dashClosedStyle = {
+    height: 0
+}
+ */
+
+const dashStyle = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;transition:{height:500, ease: 0}";
+
+function toggleDash() {
+    // keep stateless for v3 transition
+
+    // see if the iframe has already been loaded
+    let iframe = document.querySelector('iframe#vch_dash');
+    // add the iframe
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.style.cssText = dashStyle;
+        iframe.src = chrome.runtime.getURL("/pages/dash.html");
+        iframe.id = "vch_dash";
+        iframe.classList.add('dashOpen');
+        document.body.appendChild(iframe);
+        document.body.style.marginTop = `${dashHeight}px`;
+        debug("created dash");
+    } else {
+        // Close if open
+        if (iframe.classList.contains('dashOpen')) {
+            document.body.style.marginTop = "0px";
+            iframe.style.height = 0;
+            iframe.height = 0;
+            iframe.classList.remove('dashOpen');
+            debug("closed dash");
+
+        }
+        // open if closed
+        else {
+            document.body.style.marginTop = `${dashHeight}px`;
+            iframe.style.height = `${dashHeight}px`;
+            iframe.height = dashHeight;
+            iframe.classList.add('dashOpen');
+            debug("opened dash");
+
+        }
+    }
+}
+
+document.addEventListener('readystatechange', (event) => {
+    if (document.readyState === 'complete') {
+        debug("readyState complete");
+    }
+});
+
 // inject inject script
 function addScript(path) {
     const script = document.createElement('script');
@@ -363,51 +452,8 @@ chrome.runtime.onMessage.addListener(
         debug(`receiving "${message}" from ${from} to ${to}`, request);
 
         if (to === 'tab' || to === 'all') {
-
-            const sendTrainingImage = image => sendMessage('training', 'tab', 'training_image', image);
-
-            if (message === 'video_tab') {
-                videoTabId = data.sourceTabId;
-                debug(`video tab id is: ${videoTabId}`)
-                // await sendStreamAsFrameString(videoTabId, streams[0]);
-                // await dataChannel(streams[0]);
-                // ToDo: ???
-                await syncTrackInfo();
-            }
-                // ToDo: come back to training
-            /*else if (message === 'train_start') {
-                sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
-                if (faceMeshLoaded) {
-                    debug(`Resumed sending images. Sending every ${sendImagesInterval} sec`);
-                } else {
-                    debug(`sending images every ${sendImagesInterval} sec`);
-                    streams.forEach(stream => processStream(stream, sendTrainingImage));
-                }
-            } else if (message === 'train_stop') {
-                sendImagesInterval = Infinity;
-                debug(`Pausing sending images`);
-            } else if (message === 'update_train_interval') {
-                sendImagesInterval = data.sendImagesInterval || DEFAULT_SEND_IMAGES_INTERVAL;
-                debug(`Resumed sending images. Sending every ${sendImagesInterval} ms`);
-                streams.forEach(stream => {
-                    if (!faceMeshLoaded && stream.active)
-                        processStream(stream, sendTrainingImage)
-                });
-            } */
-            else {
-                debug("DEBUG: Unhandled event", request)
-            }
-
-            /*
-            // No more need to forward anything to inject?
-            const forwardedMessage = {
-                from: from,
-                to: to,
-                message: request.message,
-                data: data
-            };
-            sendToInject(forwardedMessage);
-             */
+            if (message === 'toggleDash')
+                toggleDash();
 
         } else if (to === 'content') {
             // Nothing to do here yet

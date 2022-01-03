@@ -196,7 +196,7 @@ chrome.runtime.onMessage.addListener(
             if(!videoTabId){
                 // open the video tab
                 const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-                await chrome.tabs.create({url});
+                // await chrome.tabs.create({url});
                 // v3
                 // const videoTab = await chrome.tabs.create({url});
                 // log(`video tab ${videoTab.id}`)
@@ -256,9 +256,17 @@ chrome.runtime.onMessage.addListener(
  */
 
 // ToDo: change to pageAction?
-chrome.browserAction.onClicked.addListener(async ()=>{
-    const url = chrome.runtime.getURL("pages/video.html");
-    const videoTab = await chrome.tabs.create({url});
+chrome.browserAction.onClicked.addListener(async (tab)=>{
+    const messageToSend = {
+        to: 'tab',
+        from: 'background',
+        message: 'toggleDash'
+    }
+    chrome.tabs.sendMessage(tab.id, {...messageToSend})
+
+
+    // const url = chrome.runtime.getURL("pages/video.html");
+    // const videoTab = await chrome.tabs.create({url});
     // ToDo: this worked in manifest v3
     // log(videoTab);  // undefined
     // log(`video tab ${videoTab.id}`)
