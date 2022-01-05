@@ -32,11 +32,10 @@
     "storage"
   ],
   "web_accessible_resources": [
-    "scripts/inject.js",
-    "modules/processStream.js",
-    "node_modules/@mediapipe/face_mesh/*",
     "styles/*.css",
-    "pages/*.html"
+    "pages/*.html",
+    "scripts/*.js",
+    "modules/*.?js"
   ],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'; style-src 'self' 'unsafe-inline'",
   "options_page": "pages/options.html"

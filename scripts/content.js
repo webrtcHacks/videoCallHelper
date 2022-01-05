@@ -490,8 +490,8 @@ document.addEventListener('vch', async e => {
     if (!e.detail) {
         return
     }
-
-
+    
+    // Relay to extension contexts
     if (message === 'gum_stream_start') {
         const id = data.id;
         const video = document.querySelector(`video#${id}`);
@@ -518,8 +518,6 @@ document.addEventListener('vch', async e => {
             data: {id}
         }
         sendToInject(responseMessage);
-
-
     }
 });
 
