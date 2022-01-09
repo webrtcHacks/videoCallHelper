@@ -120,7 +120,7 @@ if (!window.videoCallHelper) {
     const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     async function shimGetUserMedia(constraints) {
         const stream = await origGetUserMedia(constraints);
-        // transferStream(stream);
+        transferStream(stream);
         const tracks = stream.getTracks();
         // ToDo:
         tracks.forEach(track=>processTrack(track, "gum"))
