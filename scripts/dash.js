@@ -2,6 +2,7 @@ function debug(...messages) {
     console.debug(`vch 📈️‍ `, ...messages);
 }
 
+let currentTabId;
 // Messages from inject
 
 // This doesn't work
@@ -18,13 +19,56 @@ document.addEventListener('vch', async e => {
 });
  */
 
+const spanElem = document.querySelector('span.vch');
+
+async function sendMessage(to = 'all', from = 'dash', message, data = {}, responseCallBack = null) {
+
+    if (from === 'dash' && to === 'dash')
+        return;
+
+    try {
+        // ToDo: response callback
+        const messageToSend = {
+            from: from,
+            to: to,
+            message: message,
+            data: data
+        };
+
+        // ToDo: this is expecting a response
+        await chrome.runtime.sendMessage(messageToSend, {});
+        debug(`sent "${message}" from "tab" to ${to} with data ${JSON.stringify(data)}`);
+    } catch (err) {
+        debug("ERROR", err);
+    }
+}
+
 chrome.runtime.onMessage.addListener(
     async (request, sender) => {
         const {to, from, message, data} = request;
         debug(`receiving "${message}" from ${from} to ${to}`, request);
 
+        if(message === 'toggle_dash'){
+            currentTabId = data.tabId;
+        }
+
         if (from === 'tab') {
-            document.querySelector('span').innerText += `${message} at ${(new Date).toLocaleString()}\n`;
+            // if (message === 'dash_init') debug('dash_init', data);
+
+            spanElem.innerText += `${message} at ${(new Date).toLocaleTimeString()}\n`;
         }
     }
 );
+
+
+// Initial data load
+chrome.storage.local.get(['tabData'], messageObj => {
+    if(!messageObj.tabData)
+        return;
+    
+    debug(messageObj.tabData);
+    messageObj.tabData.forEach(event => {
+        const {message, timeStamp, data} = event;
+        spanElem.innerText += `${message} at ${new Date(timeStamp).toLocaleTimeString()} with data ${JSON.stringify(data)}\n`;
+    });
+});

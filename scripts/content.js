@@ -58,9 +58,9 @@ const dashClosedStyle = {
 }
  */
 
-const dashStyle = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;transition:{height:500, ease: 0}";
+const dashStyle = `position:fixed;top:0;left:0;width:100%;height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}`;
 
-function toggleDash() {
+async function toggleDash() {
     // keep stateless for v3 transition
 
     // see if the iframe has already been loaded
@@ -71,10 +71,17 @@ function toggleDash() {
         iframe.style.cssText = dashStyle;
         iframe.src = chrome.runtime.getURL("/pages/dash.html");
         iframe.id = "vch_dash";
-        iframe.classList.add('dashOpen');
+        // iframe.sandbox;
         document.body.appendChild(iframe);
+        iframe.style.visibility = "visible";
         document.body.style.marginTop = `${dashHeight}px`;
+
         debug("created dash");
+
+        await sendMessage('dash', 'tab', 'dash_init');
+
+        // iframe.blur();   // didn't work; neither did visibility
+
     } else {
         // Close if open
         if (iframe.classList.contains('dashOpen')) {
@@ -422,7 +429,7 @@ async function syncTrackInfo() {
  * Communicate with the background worker context
  */
 
-async function sendMessage(to = 'all', from = 'tab', message, data = {}, responseCallBack = null) {
+async function sendMessage(to = 'all', from = 'tab', message = "", data = {}, responseCallBack = null) {
 
     if (from === 'tab' && to === 'tab')
         return;
@@ -433,6 +440,7 @@ async function sendMessage(to = 'all', from = 'tab', message, data = {}, respons
             from: from,
             to: to,
             message: message,
+            timestamp: Date.now(),
             data: data
         };
 
@@ -451,9 +459,9 @@ chrome.runtime.onMessage.addListener(
         const {to, from, message, data} = request;
         debug(`receiving "${message}" from ${from} to ${to}`, request);
 
-        if (to === 'tab' || to === 'all') {
-            if (message === 'toggleDash')
-                toggleDash();
+        // if (to === 'tab' || to === 'all') {
+        if (message === 'toggle_dash') {
+            await toggleDash();
 
         } else if (to === 'content') {
             // Nothing to do here yet
@@ -490,7 +498,11 @@ document.addEventListener('vch', async e => {
     if (!e.detail) {
         return
     }
-    
+
+    if (to === 'all' || to === 'background') {
+        await sendMessage(to, from, message, data);
+    }
+
     // Relay to extension contexts
     if (message === 'gum_stream_start') {
         const id = data.id;
@@ -498,7 +510,7 @@ document.addEventListener('vch', async e => {
         const stream = video.srcObject;
         streams.push(stream);
         debug(`stream video settings: `, stream.getVideoTracks()[0].getSettings());
-        sendMessage(to, 'tab', message, data);
+        await sendMessage(to, 'tab', message, data);
 
         // check if videoTab is already open
         // ToDo: query this
@@ -522,8 +534,8 @@ document.addEventListener('vch', async e => {
 });
 
 // Tell background to remove unneeded tabs
-window.addEventListener('beforeunload', () => {
-    sendMessage('all', 'tab', 'unload')
+window.addEventListener('beforeunload', async () => {
+    await sendMessage('all', 'tab', 'unload')
 });
 
 // sendMessage('background', 'content', 'tab_loaded', {url: window.location.href});

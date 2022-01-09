@@ -20,10 +20,11 @@ function sendMessage(to = 'all', message, data = {}) {
         from: 'tab',
         to: to,
         message: message,
-        data: data
+        data: JSON.parse(JSON.stringify(data))      // can't pass objects:
     };
 
     const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
+    // debug("CustomEvent: ", toContentEvent);
     document.dispatchEvent(toContentEvent);
 }
 
@@ -42,6 +43,7 @@ document.addEventListener('vch', async e => {
 
 });
 
+// Put the stream in a temp DOM element for transfer to content.js context
 function transferStream(stream){
     // debug("Video track info: ", stream.getVideoTracks()[0].getSettings());
     // window.vchStreams.push(stream); // for testing
@@ -61,55 +63,67 @@ function transferStream(stream){
 
 }
 
+function processTrack(track, sourceLabel = ""){
+
+    const {id, kind, label, readyState} = track;
+    const trackData = {id, kind, label, readyState};
+    sendMessage('all', `${sourceLabel}_track_added`, {trackData});
+
+
+    function trackEventHandler(event){
+        debug("track event", event);
+        const {id, kind, label, readyState} = event.target;
+        const trackData = {id, kind, label, readyState, type: 'track'};
+        debug(`${sourceLabel}_${event.type}`);
+        sendMessage('all', `${sourceLabel}_track_ended`, trackData);
+    }
+
+    track.addEventListener('ended', trackEventHandler);
+    track.addEventListener('mute', trackEventHandler);
+    track.addEventListener('unmute', trackEventHandler);
+
+    /*
+    // Handle events
+    track.addEventListener("ended", e => {
+        debug(`${sourceLabel}_track_ended`);
+        sendMessage('all', `${sourceLabel}_track_ended`, e?.track);
+    });
+    track.addEventListener("mute", e => {
+        debug(`${sourceLabel}_track_mute`);
+        sendMessage('all', `${sourceLabel}_track_mute`, e?.track);
+    });
+    track.addEventListener("unmute", e => {
+        debug(`${sourceLabel}_track_unmute`);
+        sendMessage('all', `${sourceLabel}_track_unmute`, e?.track);
+    });
+     */
+
+
+}
+
 if (!window.videoCallHelper) {
 
-    // ToDo: handle screen share later
-    /*
+    // getDisplayMedia Shim
+    // ToDo: Google Meet doesn't use this
+
     const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
-
-    async function shimGetDisplayMedia(constraints) {
-
+    navigator.mediaDevices.getDisplayMedia = async (constraints) => {
         const gdmStream = await origGetDisplayMedia(constraints);
-        let [track] = gdmStream.getVideoTracks();
-        let capturedHandle = track && track.getCaptureHandle() && track.getCaptureHandle().handle;
-
-        if (capturedHandle) {
-            debug(`captured handle is: ${capturedHandle}`);
-
-            track.onended = () => {
-                debug(`captured handle ${capturedHandle} ended`);
-                sendMessage('background', {lostDisplayMediaHandle: capturedHandle});
-            };
-
-            sendMessage('background', {gotDisplayMediaHandle: capturedHandle});
-        } else {
-            // send a notice a tab wasn't shared
-        }
+        const [track] = gdmStream.getVideoTracks();
+        debug(`getDisplayMedia tracks: `, gdmStream.getTracks());
+        processTrack(track, "gdm");
         return gdmStream
     }
 
-    navigator.mediaDevices.getDisplayMedia = shimGetDisplayMedia;
-
-     */
+    // getUserMedia Shim
 
     const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-
     async function shimGetUserMedia(constraints) {
-
-        // ToDo: don't copy the track if we end it changing it
-        /*
-        if(gumStream?.active)
-            gumStream.getVideoTracks()[0].stop();
-        const origStream = await origGetUserMedia(constraints);
-        const trackCopy = origStream.getVideoTracks()[0].clone();
-        gumStream = new MediaStream([trackCopy]);
-        debug("got stream. Video track info: ", gumStream.getVideoTracks()[0].getSettings());
-        sendMessage('all', "gum_stream_start");
-        window.vchStreams.push(origStream); // for testing
-        return origStream
-                 */
         const stream = await origGetUserMedia(constraints);
-        transferStream(stream);
+        // transferStream(stream);
+        const tracks = stream.getTracks();
+        // ToDo:
+        tracks.forEach(track=>processTrack(track, "gum"))
         debug("got stream", stream);
         return stream
     }
@@ -120,6 +134,7 @@ if (!window.videoCallHelper) {
         }
         debug("navigator.mediaDevices.getUserMedia called");
         return await shimGetUserMedia(constraints);
+
     };
 
     let _webkitGetUserMedia = async function (constraints, onSuccess, onError) {
@@ -141,6 +156,42 @@ if (!window.videoCallHelper) {
     navigator.webkitUserMedia = _webkitGetUserMedia;
     navigator.getUserMedia = _webkitGetUserMedia;
     navigator.mediaDevices.getUserMedia = shimGetUserMedia;
+
+    // peerConnection shims
+
+    const origAddTrack = RTCPeerConnection.prototype.addTrack;
+    RTCPeerConnection.prototype.addTrack = function (track, stream) {
+        debug('addTrack shimmed', track, stream);
+        processTrack(track, "local");
+        return origAddTrack.apply(this, arguments)
+    };
+
+    const origPeerConnAddStream = RTCPeerConnection.prototype.addStream;
+    RTCPeerConnection.prototype.addStream = function (stream) {
+        debug('addStream shimmed', stream);
+        const tracks = stream.getTracks();
+        tracks.forEach(track=>processTrack(track,"local"));
+        // ToDo: track events
+        return origPeerConnAddStream.apply(this, arguments)
+    };
+
+    const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
+    RTCPeerConnection.prototype.setRemoteDescription = function () {
+        this.addEventListener('track', (e) => {
+            const track = e.track;
+            processTrack(track, "remote")
+            // ToDo: track events
+            debug('setRemoteDescription track event', track)
+        });
+        return origPeerConnSRD.apply(this, arguments)
+    };
+
+    const origPeerConnClose = RTCPeerConnection.prototype.close;
+    RTCPeerConnection.prototype.close = function() {
+        debug("closing PeerConnection ", this);
+        sendMessage('all', "peerconnection_closed", this);
+        return origPeerConnClose.apply(this, arguments)
+    };
 
     window.videoCallHelper = true;
 

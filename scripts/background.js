@@ -1,5 +1,6 @@
 import {trainingMessages as train} from "../modules/messages.mjs";
 
+const storage = []; // temp storage holder
 let streamTabs;
 let trainingState = {
     state: "not started",
@@ -31,6 +32,17 @@ async function removeTab(tabId) {
         activeTabs.delete(tabId);
         await chrome.storage.local.set({activeTabs: [...activeTabs]});
         log(`activeTabs: ${[...activeTabs]}`);
+
+        // now clear storage
+        chrome.storage.local.get(['tabData'], async data=>{
+            if(!data.tabData)
+                return;
+
+            const arr = data.tabData.filter(data=>data.sourceId !== tabId);
+            await chrome.storage.local.set({tabData: arr});
+            log("tabData: ", arr);
+        });
+
     } catch (err) {
         console.error(`Issue removing ${tabId}`, err)
     }
@@ -70,6 +82,8 @@ chrome.runtime.onStartup.addListener(async () => {
  */
 
 chrome.runtime.onInstalled.addListener(async () => {
+
+    await chrome.storage.local.clear();     // ToDo: Reconsider this for some data
 
     await chrome.storage.local.set({streamTabs: []});
     await chrome.storage.local.set({trainingState});
@@ -150,10 +164,32 @@ chrome.runtime.onMessage.addListener(
 
         }
 
+        if(from === 'tab' && to ==='all' && message){
+            const storageObj = {
+                source: sender.tab.url,
+                sourceId: sender.tab.id,
+                message: message,
+                timeStamp: Date.now(),
+                data: data,
+            }
+
+            log(`receiving "${message}" from ${from} to ${to}`, request);
+            // storage.push(storageObj);
+            chrome.storage.local.get(['tabData'], async data=>{
+                const arr = [];
+                if(data.tabData)
+                    arr.push(...data.tabData);
+                arr.push(storageObj);
+                await chrome.storage.local.set({tabData: arr});
+                log("tabData: ", arr);
+            });
+        }
+
         // ['background', 'all', 'training'].includes(to)
         if (to === 'all' || to === 'background' || to === 'training') {
             log(`message from ${from} ${sender.tab ? sender.tab.id : ""} : ${message}, data:`, data);
-        } else {
+        }
+        else {
             /*
             if(sender.tab)
                 log(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
@@ -260,7 +296,8 @@ chrome.browserAction.onClicked.addListener(async (tab)=>{
     const messageToSend = {
         to: 'tab',
         from: 'background',
-        message: 'toggleDash'
+        message: 'toggle_dash',
+        data: {tabId: tab.id}
     }
     chrome.tabs.sendMessage(tab.id, {...messageToSend})
 
