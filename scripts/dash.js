@@ -43,6 +43,10 @@ async function sendMessage(to = 'all', from = 'dash', message, data = {}, respon
     }
 }
 
+function outputEvents(messageObj){
+
+}
+
 chrome.runtime.onMessage.addListener(
     async (request, sender) => {
         const {to, from, message, data} = request;
@@ -54,8 +58,8 @@ chrome.runtime.onMessage.addListener(
 
         if (from === 'tab') {
             // if (message === 'dash_init') debug('dash_init', data);
-
-            spanElem.innerText += `${message} at ${(new Date).toLocaleTimeString()}\n`;
+            const ts = data.timestamp || Date.now();
+            spanElem.innerText += `${new Date(ts).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
         }
     }
 );
@@ -65,10 +69,10 @@ chrome.runtime.onMessage.addListener(
 chrome.storage.local.get(['tabData'], messageObj => {
     if(!messageObj.tabData)
         return;
-    
+
     debug(messageObj.tabData);
     messageObj.tabData.forEach(event => {
         const {message, timeStamp, data} = event;
-        spanElem.innerText += `${message} at ${new Date(timeStamp).toLocaleTimeString()} with data ${JSON.stringify(data)}\n`;
+        spanElem.innerText += `${new Date(timeStamp).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
     });
 });

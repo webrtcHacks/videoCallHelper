@@ -20,13 +20,22 @@
             height: 100%;
             vertical-align: top;
         }
+        .eventBox{
+            overflow-y: scroll;
+            width: 100%;
+            height: 100%;
+            /* background-color: lightslategrey; */
+        }
 
     </style>
 </head>
 <body>
 <div class="vch">
-    Message log: <br>
-    <span class="vch"></span>
+    <div class="eventBox">
+        Message log: <br>
+        <span class="vch"></span>
+    </div>
+
 </div>
 <script defer src="../scripts/dash.js"></script>
 </body>

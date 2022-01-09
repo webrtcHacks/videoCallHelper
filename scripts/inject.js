@@ -68,36 +68,18 @@ function processTrack(track, sourceLabel = ""){
     const {id, kind, label, readyState} = track;
     const trackData = {id, kind, label, readyState};
     sendMessage('all', `${sourceLabel}_track_added`, {trackData});
-
-
+    
     function trackEventHandler(event){
-        debug("track event", event);
-        const {id, kind, label, readyState} = event.target;
-        const trackData = {id, kind, label, readyState, type: 'track'};
-        debug(`${sourceLabel}_${event.type}`);
-        sendMessage('all', `${sourceLabel}_track_ended`, trackData);
+        const type = event.type;
+        const {id, kind, label, readyState, enabled, contentHint, muted} = event.target;
+        const trackData = {id, kind, label, readyState, enabled, contentHint, muted};
+        debug(`${sourceLabel}_${type}`, trackData);
+        sendMessage('all', `${sourceLabel}_track_${type}`, trackData);
     }
 
     track.addEventListener('ended', trackEventHandler);
     track.addEventListener('mute', trackEventHandler);
     track.addEventListener('unmute', trackEventHandler);
-
-    /*
-    // Handle events
-    track.addEventListener("ended", e => {
-        debug(`${sourceLabel}_track_ended`);
-        sendMessage('all', `${sourceLabel}_track_ended`, e?.track);
-    });
-    track.addEventListener("mute", e => {
-        debug(`${sourceLabel}_track_mute`);
-        sendMessage('all', `${sourceLabel}_track_mute`, e?.track);
-    });
-    track.addEventListener("unmute", e => {
-        debug(`${sourceLabel}_track_unmute`);
-        sendMessage('all', `${sourceLabel}_track_unmute`, e?.track);
-    });
-     */
-
 
 }
 
@@ -161,14 +143,14 @@ if (!window.videoCallHelper) {
 
     const origAddTrack = RTCPeerConnection.prototype.addTrack;
     RTCPeerConnection.prototype.addTrack = function (track, stream) {
-        debug('addTrack shimmed', track, stream);
+        debug(`addTrack shimmed on peerConnection`, this, track, stream);
         processTrack(track, "local");
         return origAddTrack.apply(this, arguments)
     };
 
     const origPeerConnAddStream = RTCPeerConnection.prototype.addStream;
     RTCPeerConnection.prototype.addStream = function (stream) {
-        debug('addStream shimmed', stream);
+        debug(`addStream shimmed on peerConnection`, this, stream);
         const tracks = stream.getTracks();
         tracks.forEach(track=>processTrack(track,"local"));
         // ToDo: track events
@@ -181,7 +163,7 @@ if (!window.videoCallHelper) {
             const track = e.track;
             processTrack(track, "remote")
             // ToDo: track events
-            debug('setRemoteDescription track event', track)
+            debug(`setRemoteDescription track event on peerConnection`, this, track)
         });
         return origPeerConnSRD.apply(this, arguments)
     };

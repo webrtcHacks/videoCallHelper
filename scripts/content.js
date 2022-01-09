@@ -71,10 +71,11 @@ async function toggleDash() {
         iframe.style.cssText = dashStyle;
         iframe.src = chrome.runtime.getURL("/pages/dash.html");
         iframe.id = "vch_dash";
-        // iframe.sandbox;
+        // iframe.sandbox;      // ToDo: turn this on with the right settings for prod
+        iframe.classList.add('dashOpen');
         document.body.appendChild(iframe);
         iframe.style.visibility = "visible";
-        document.body.style.marginTop = `${dashHeight}px`;
+        // document.body.style.marginTop = `${dashHeight}px`;
 
         debug("created dash");
 
@@ -85,7 +86,7 @@ async function toggleDash() {
     } else {
         // Close if open
         if (iframe.classList.contains('dashOpen')) {
-            document.body.style.marginTop = "0px";
+            // document.body.style.marginTop = "0px";
             iframe.style.height = 0;
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
@@ -94,7 +95,7 @@ async function toggleDash() {
         }
         // open if closed
         else {
-            document.body.style.marginTop = `${dashHeight}px`;
+            // document.body.style.marginTop = `${dashHeight}px`;
             iframe.style.height = `${dashHeight}px`;
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
