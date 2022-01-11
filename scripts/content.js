@@ -7,6 +7,7 @@ const DEFAULT_SEND_IMAGES_INTERVAL = 30 * 1000;
 let sendImagesInterval = Infinity;
 let faceMeshLoaded = false;
 let videoTabId;
+let thisTabId;
 
 function debug(...messages) {
     console.debug(`vch 🕵️‍ `, ...messages);
@@ -78,9 +79,7 @@ async function toggleDash() {
         // document.body.style.marginTop = `${dashHeight}px`;
 
         debug("created dash");
-
-        await sendMessage('dash', 'tab', 'dash_init');
-
+        
         // iframe.blur();   // didn't work; neither did visibility
 
     } else {
@@ -259,6 +258,8 @@ chrome.runtime.onMessage.addListener(
         } else if (to === 'content') {
             // Nothing to do here yet
             debug("message for content.js", request)
+        } else if (to === 'dash'){
+            // Nothing to do here yet
         } else {
             if (sender.tab)
                 debug(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
@@ -328,6 +329,9 @@ document.addEventListener('vch', async e => {
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
+    // ToDo: handle unload
+
+
     await sendMessage('all', 'tab', 'unload')
 });
 

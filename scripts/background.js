@@ -161,10 +161,13 @@ chrome.runtime.onMessage.addListener(
                 await chrome.tabs.sendMessage(videoTabId, request, {}, null);
             }
             else log(`videoTab is not open for  ${message} from ${from}`, request)
-
         }
 
         if(from === 'tab' && to ==='all' && message){
+            // Don't store audio-levels
+            if(message === 'audio_level')
+                return;
+
             const storageObj = {
                 source: sender.tab.url,
                 sourceId: sender.tab.id,
@@ -200,6 +203,28 @@ chrome.runtime.onMessage.addListener(
              */
         }
 
+        if(from==='dash' && message === 'dash_init'){
+            let tabEventData;
+            chrome.storage.local.get(['tabData'], async messageObj => {
+                if(!messageObj.tabData){
+                    log("no tabData in storage");
+                    return;
+                }
+
+                log("loaded data", messageObj.tabData);
+
+                const data = messageObj.tabData.filter(data=>data.sourceId===tabId);
+
+                const messageToSend = {
+                    from: 'background',
+                    to: 'dash',
+                    message: 'dash_init_data',
+                    data: data
+                }
+                await chrome.tabs.sendMessage(tabId, {...messageToSend})
+                log("sent data", data);
+            });
+        }
 
         if( from === 'video' && to !== 'background'){
             request.data = {sourceTabId: tabId};

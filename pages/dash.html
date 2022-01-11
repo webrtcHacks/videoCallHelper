@@ -6,6 +6,7 @@
     <style>
         div {
             position: fixed;
+            display: flex;
             top: 0;
             left: 0;
             width: 100%;
@@ -21,22 +22,28 @@
             vertical-align: top;
         }
         .eventBox{
+            position: relative;
             overflow-y: scroll;
-            width: 100%;
+            width: 50%;
             height: 100%;
             /* background-color: lightslategrey; */
         }
+
 
     </style>
 </head>
 <body>
 <div class="vch">
     <div class="eventBox">
-        Message log: <br>
+        <p>Message log:</p>
         <span class="vch"></span>
+    </div>
+    <div class="eventBox">
+        <p>Remove audio levels:</p>
+        <span class="audio_level"></span>
     </div>
 
 </div>
-<script defer src="../scripts/dash.js"></script>
+<script defer src="../scripts/dash.js" type="module"></script>
 </body>
 </html>

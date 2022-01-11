@@ -68,7 +68,7 @@ function processTrack(track, sourceLabel = ""){
     const {id, kind, label, readyState} = track;
     const trackData = {id, kind, label, readyState};
     sendMessage('all', `${sourceLabel}_track_added`, {trackData});
-    
+
     function trackEventHandler(event){
         const type = event.type;
         const {id, kind, label, readyState, enabled, contentHint, muted} = event.target;
@@ -102,7 +102,7 @@ if (!window.videoCallHelper) {
     const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     async function shimGetUserMedia(constraints) {
         const stream = await origGetUserMedia(constraints);
-        transferStream(stream);
+        // transferStream(stream);
         const tracks = stream.getTracks();
         // ToDo:
         tracks.forEach(track=>processTrack(track, "gum"))
@@ -159,6 +159,27 @@ if (!window.videoCallHelper) {
 
     const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
     RTCPeerConnection.prototype.setRemoteDescription = function () {
+        // ToDo: audio-level experimentation
+        let interval = setInterval(()=>
+            this.getReceivers().forEach(receiver=>{
+                const {track, transport} = receiver;
+                const {id, kind, label} = track;
+                if(transport.state !=='connected'){
+                    // debug("not connected", transport.state);
+                    clearInterval(interval);
+                    return
+                }
+
+                if(kind==='audio'){
+                    const sources = receiver.getSynchronizationSources();
+                    sources.forEach(syncSource=>{
+                       const {audioLevel, source} = syncSource;
+                        sendMessage('all', 'audio_level', {audioLevel, source, id, kind});
+                        debug(`${source} audioLevel: ${audioLevel}`)
+                    })
+                }
+            }), 1000);
+
         this.addEventListener('track', (e) => {
             const track = e.track;
             processTrack(track, "remote")
