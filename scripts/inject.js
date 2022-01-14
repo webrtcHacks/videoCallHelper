@@ -1,10 +1,11 @@
 'use strict';
 
-// ToDo: build process to import message module
+// ToDo: build process to import message types module
+// Todo: make this an anonymous function
 
 let gumStream;
-//window.vchStreams = [];
 const appEnabled = true;
+const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
 
 function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
@@ -63,6 +64,7 @@ function transferStream(stream){
 
 }
 
+// extract and send track event data
 function processTrack(track, sourceLabel = ""){
 
     const {id, kind, label, readyState} = track;
@@ -83,6 +85,34 @@ function processTrack(track, sourceLabel = ""){
 
 }
 
+// monitor local audio track audio levels
+// ToDo: need to stop / pause this
+function monitorAudio(peerConnection){
+    //[...await pc1.getStats()].filter(report=>/RTCAudioSource_1/.test(report))[0][1].audioLevel
+    const audioLevels = new Array(LOCAL_AUDIO_SAMPLES_PER_SECOND);
+    let counter = 0;
+
+    const interval = setInterval(async ()=>{
+        counter++;
+        // get audio energies from getStats
+        const reports = await peerConnection.getStats();
+        const {audioLevel, totalAudioEnergy} = [...reports].filter(report=>/RTCAudioSource/.test(report))[0][1];
+        audioLevels.push(audioLevel);
+        if(counter>=LOCAL_AUDIO_SAMPLES_PER_SECOND){
+            const avg = audioLevels.reduce((p, c) => p + c, 0) / audioLevels.length;
+            // debug("audioLevel", avg);
+            sendMessage('all', 'local_audio_level', {audioLevel: avg, totalAudioEnergy});
+            audioLevels.length = 0;
+            counter = 0
+        }
+    }, 1000 / LOCAL_AUDIO_SAMPLES_PER_SECOND)
+
+    peerConnection.onconnectionstatechange = () => {
+        if(peerConnection.connectionState !== 'connected')
+            clearInterval(interval);
+    }
+}
+
 if (!window.videoCallHelper) {
 
     // getDisplayMedia Shim
@@ -91,6 +121,7 @@ if (!window.videoCallHelper) {
     const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getDisplayMedia = async (constraints) => {
         const gdmStream = await origGetDisplayMedia(constraints);
+        // ToDo: check for audio too?
         const [track] = gdmStream.getVideoTracks();
         debug(`getDisplayMedia tracks: `, gdmStream.getTracks());
         processTrack(track, "gdm");
@@ -104,7 +135,6 @@ if (!window.videoCallHelper) {
         const stream = await origGetUserMedia(constraints);
         // transferStream(stream);
         const tracks = stream.getTracks();
-        // ToDo:
         tracks.forEach(track=>processTrack(track, "gum"))
         debug("got stream", stream);
         return stream
@@ -145,6 +175,8 @@ if (!window.videoCallHelper) {
     RTCPeerConnection.prototype.addTrack = function (track, stream) {
         debug(`addTrack shimmed on peerConnection`, this, track, stream);
         processTrack(track, "local");
+        monitorAudio(this);
+
         return origAddTrack.apply(this, arguments)
     };
 
@@ -153,17 +185,16 @@ if (!window.videoCallHelper) {
         debug(`addStream shimmed on peerConnection`, this, stream);
         const tracks = stream.getTracks();
         tracks.forEach(track=>processTrack(track,"local"));
-        // ToDo: track events
         return origPeerConnAddStream.apply(this, arguments)
     };
 
     const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
     RTCPeerConnection.prototype.setRemoteDescription = function () {
-        // ToDo: audio-level experimentation
+        // ToDo: average this locally before sending?
         let interval = setInterval(()=>
             this.getReceivers().forEach(receiver=>{
-                const {track, transport} = receiver;
-                const {id, kind, label} = track;
+                const {track:  {id, kind, label}, transport} = receiver;
+                // const {id, kind, label} = track;
                 if(transport.state !=='connected'){
                     // debug("not connected", transport.state);
                     clearInterval(interval);
@@ -174,8 +205,8 @@ if (!window.videoCallHelper) {
                     const sources = receiver.getSynchronizationSources();
                     sources.forEach(syncSource=>{
                        const {audioLevel, source} = syncSource;
-                        sendMessage('all', 'audio_level', {audioLevel, source, id, kind});
-                        debug(`${source} audioLevel: ${audioLevel}`)
+                        sendMessage('all', 'remote_audio_level', {audioLevel, source, id, kind, label});
+                        // debug(`${source} audioLevel: ${audioLevel}`)
                     })
                 }
             }), 1000);
@@ -183,11 +214,11 @@ if (!window.videoCallHelper) {
         this.addEventListener('track', (e) => {
             const track = e.track;
             processTrack(track, "remote")
-            // ToDo: track events
             debug(`setRemoteDescription track event on peerConnection`, this, track)
         });
         return origPeerConnSRD.apply(this, arguments)
     };
+
 
     const origPeerConnClose = RTCPeerConnection.prototype.close;
     RTCPeerConnection.prototype.close = function() {

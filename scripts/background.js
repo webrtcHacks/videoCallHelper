@@ -40,7 +40,7 @@ async function removeTab(tabId) {
 
             const arr = data.tabData.filter(data=>data.sourceId !== tabId);
             await chrome.storage.local.set({tabData: arr});
-            log("tabData: ", arr);
+            // log("tabData: ", arr);
         });
 
     } catch (err) {
@@ -73,8 +73,8 @@ function log(...messages) {
 // let gumActive = false;
 chrome.runtime.onStartup.addListener(async () => {
     // trainingState = await chrome.storage.local.get(trainingState.storageName);
-    trainingState = chrome.local.storage.get(['trainingState'], data=>trainingState=data.trainingState);
-    await getVideoTabId();
+    // trainingState = chrome.local.storage.get(['trainingState'], data=>trainingState=data.trainingState);
+    // await getVideoTabId();
 })
 
 /*
@@ -165,7 +165,7 @@ chrome.runtime.onMessage.addListener(
 
         if(from === 'tab' && to ==='all' && message){
             // Don't store audio-levels
-            if(message === 'audio_level')
+            if(message === 'local_audio_level' || message === 'remote_audio_level')
                 return;
 
             const storageObj = {
@@ -177,6 +177,7 @@ chrome.runtime.onMessage.addListener(
             }
 
             log(`receiving "${message}" from ${from} to ${to}`, request);
+
             // storage.push(storageObj);
             chrome.storage.local.get(['tabData'], async data=>{
                 const arr = [];
@@ -184,7 +185,7 @@ chrome.runtime.onMessage.addListener(
                     arr.push(...data.tabData);
                 arr.push(storageObj);
                 await chrome.storage.local.set({tabData: arr});
-                log("tabData: ", arr);
+                // log("tabData: ", arr);
             });
         }
 

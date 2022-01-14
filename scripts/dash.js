@@ -3,11 +3,14 @@ function debug(...messages) {
 }
 
 let currentTabId;
-const audioLevels = [];
+const remoteAudioLevels = [];
+const localAudioLevel = [];
 let audioLevelInterval = false;
 
 const EventSpanElem = document.querySelector('span.vch');
-const audioLevelSpan = document.querySelector('span.audio_level');
+const remoteAudioLevelSpan = document.querySelector('span.remote_audio_level');
+const localAudioLevelSpan = document.querySelector('span.local_audio_level');
+
 
 async function sendMessage(to = 'all', from = 'dash', message, data = {}, responseCallBack = null) {
 
@@ -46,23 +49,32 @@ chrome.runtime.onMessage.addListener(
 
         } else if (from === 'tab') {
             const ts = data.timestamp || Date.now();
+            
 
             // https://github.com/jitsi/lib-jitsi-meet/blob/adf2f15d0045747ba609b1fe19c088841717da11/modules/statistics/RTPStatsCollector.js#L209
             // https://jsfiddle.net/fippo/1eL9dm6u/20/
-            if (message === 'audio_level') {
-                audioLevels.push(data.audioLevel);
+            if (message === 'remote_audio_level') {
+                remoteAudioLevelSpan.innerText = `Average: ${data.audioLevel}`;
+
+                /*
+                remoteAudioLevels.push(data.audioLevel);
 
                 if (!audioLevelInterval)
                     audioLevelInterval = setInterval(() => {
-                        const avg = audioLevels.reduce((p, c) => p + c, 0) / audioLevels.length;
-                        const max = audioLevels.reduce((p,c) => c>p? c : p);
-                        audioLevelSpan.innerText =  `Average: \u00A0${avg}\n`+
+                        const avg = remoteAudioLevels.reduce((p, c) => p + c, 0) / remoteAudioLevels.length;
+                        const max = remoteAudioLevels.reduce((p,c) => c>p? c : p);
+                        remoteAudioLevelSpan.innerText =  `Average: \u00A0${avg}\n`+
                                                     `Max: \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0${max}\n`+
                                                     `Samples: \u00A0${audioLevels.length}`;
-                        audioLevels.length = 0;
+                        remoteAudioLevels.length = 0;
                         // audioLevelSpan.innerText += `${new Date(ts).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
                     }, 1000)
+                 */
 
+            }
+            else if (message === 'local_audio_level') {
+                localAudioLevelSpan.innerText = `Average: ${data.audioLevel}\n`+
+                                                `Total audio energy: ${data.totalAudioEnergy}`;
             } else
                 EventSpanElem.innerText += `${new Date(ts).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
         }
