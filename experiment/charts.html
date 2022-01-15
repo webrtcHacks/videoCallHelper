@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>My speech</title>
     <script src="https://cdn.plot.ly/plotly-2.4.1.min.js"></script>
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js'></script>
+    <!--script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js'></script-->
     <style>
         table {
             border: 1px solid;
@@ -37,23 +37,15 @@
         x: [],
         y: [],
         type: 'scatter',
-        name: `local`,
+        name: 'local',
     };
 
-    /*
     let remoteLevelsSeries = {
         x: [],
         y: [],
         type: 'scatter',
-        name: `remote`,
-        transforms: [{
-            type: 'aggregate',
-            aggregations: [
-                {target: 'y', func: 'sum', enabled: true},
-            ]
-        }]
+        name: 'remote',
     };
-     */
 
 
     let layout = {
@@ -166,32 +158,36 @@
         console.log("remote before", remoteLevels.length);
         const remoteTimes = remoteLevels
             .filter((el, idx, arr) => arr[idx - 1] && el.timeString !== arr[idx - 1].timeString)
-            .map(el => el.timeString);
+            .map(el => el.timeString)
 
+        // console.log("remoteTimes", remoteTimes);
 
-        console.log(remoteTimes);
+        const remoteSums = remoteTimes.map(t=>{
+            const filtered = remoteLevels.filter(e=>t===e.timeString);
+            // console.log(filtered);
+            return filtered.reduce((p,c)=>c.level+p, 0) / filtered.length;
+        })
+            // Jitsi uses a 2.5 scale to match this to local
+            // https://github.com/jitsi/lib-jitsi-meet/blob/adf2f15d0045747ba609b1fe19c088841717da11/modules/statistics/RTPStatsCollector.js#L209
+        .map(e=>e*7);
 
-
+        console.log(remoteSums);
 
         // Plot data
         localLevelsSeries.x = localTimes;
         localLevelsSeries.y = localLevels.map(e=>e.level);
 
-        // remoteLevelsSeries.x = remoteLevels.map(e=>e.time);
-        // remoteLevelsSeries.y = localLevels.map(e=>e.level);
+        remoteLevelsSeries.x = remoteTimes; // remoteLevels.map(e=>e.timeString);
+        remoteLevelsSeries.y = remoteSums; // localLevels.map(e=>e.level);
 
+        /*
         let remoteLevelsSeries = {
             x: remoteLevels.map(e=>e.timeString),
             y: localLevels.map(e=>e.level),
-            type: 'scatter',
-            name: `remote`,
-            transforms: [{
-                type: 'aggregate',
-                aggregations: [
-                    {target: 'y', func: 'sum', enabled: true},
-                ]
-            }]
+            type: 'histogram',
+            name: `remote`
         };
+         */
 
         Plotly.newPlot(chart, [localLevelsSeries, remoteLevelsSeries], layout);
 
