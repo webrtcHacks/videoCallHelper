@@ -11,6 +11,8 @@ const EventSpanElem = document.querySelector('span.vch');
 const remoteAudioLevelSpan = document.querySelector('span.remote_audio_level');
 const localAudioLevelSpan = document.querySelector('span.local_audio_level');
 
+// for chart testing
+window.events = [];
 
 async function sendMessage(to = 'all', from = 'dash', message, data = {}, responseCallBack = null) {
 
@@ -49,7 +51,9 @@ chrome.runtime.onMessage.addListener(
 
         } else if (from === 'tab') {
             const ts = data.timestamp || Date.now();
-            
+
+            // for chart testing
+            window.events.push({ message, ts, data});
 
             // https://github.com/jitsi/lib-jitsi-meet/blob/adf2f15d0045747ba609b1fe19c088841717da11/modules/statistics/RTPStatsCollector.js#L209
             // https://jsfiddle.net/fippo/1eL9dm6u/20/
@@ -78,6 +82,9 @@ chrome.runtime.onMessage.addListener(
             } else
                 EventSpanElem.innerText += `${new Date(ts).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
         }
+
+
+
     }
 );
 

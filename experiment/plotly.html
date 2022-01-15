@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My speech</title>
+    <script src="https://cdn.plot.ly/plotly-2.4.1.min.js"></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js'></script>
+    <style>
+        table {
+            border: 1px solid;
+        }
+        div#chart{
+            width:80%;
+            height:300px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+<div id="chart" style=""></div>
+<span id="output"></span>
+
+<script src="events.json" type="application/json"></script>
+<script>
+    const localLevels = [];
+    const remoteLevels = [];
+    const trackEvents = [];
+    let dupeCount = 0;
+
+    /*
+     *  Plotly setup
+     */
+
+    const chart = document.getElementById('chart');
+
+    let localLevelsSeries = {
+        x: [],
+        y: [],
+        type: 'scatter',
+        name: `local`,
+    };
+
+    /*
+    let remoteLevelsSeries = {
+        x: [],
+        y: [],
+        type: 'scatter',
+        name: `remote`,
+        transforms: [{
+            type: 'aggregate',
+            aggregations: [
+                {target: 'y', func: 'sum', enabled: true},
+            ]
+        }]
+    };
+     */
+
+
+    let layout = {
+        grid: {rows: 2, columns: 1, pattern: 'independent'},
+        xaxis: {
+            autorange: true,
+            fixedrange: false,
+            showgrid: true,
+            type: 'time'
+        },
+        yaxis: {
+            autorange: true,
+            showgrid: true,
+            title: 'AudioLevels',
+            range: [0],
+
+        },
+        margin: {t: 0}
+    };
+
+
+    async function main() {
+        const response = await fetch("events.json");
+        const events = await response.json();
+        console.log("all", events.length);
+
+        let lastEvent = {message: null, ts: null, data: null};
+        events.forEach(event => {
+            // Dedupe the same
+            const lastEventDelta = Math.abs(event.ts - lastEvent.ts);
+            const dataTheSame = JSON.stringify(event.data) === JSON.stringify(lastEvent.data);
+            const dupe = event.message === lastEvent.message && dataTheSame && lastEventDelta < 100;
+            lastEvent = event;
+            if (dupe) {
+                //console.log("repeat", lastEventDelta, event);
+                dupeCount++;
+                return
+            }
+
+            const datetime = new Date(event.ts).toLocaleString();
+            if (event.message === 'local_audio_level') {
+                const audioLevelData = {timeString: datetime, ts: event.ts, level: event.data.audioLevel};
+                localLevels.push(audioLevelData)
+                // console.log(datetime, event.message, event.data.audioLevel)
+            } else if (event.message === 'remote_audio_level') {
+                const audioLevelData = {timeString: datetime, ts: event.ts, level: event.data.audioLevel, source: event.data.source};
+                remoteLevels.push(audioLevelData)
+                // console.log(datetime, event.message, event.data.audioLevel)
+            } else {
+                const eventData = {
+                    timeString: datetime,
+                    ts: event.ts,
+                    message: event.message,
+                    kind: event.data.kind || event.data?.trackData?.kind || null,
+                    id: event.data.id || event.data?.trackData?.id || null
+                }
+                trackEvents.push(eventData)
+                /*
+
+                if(event.message === 'local_track_added' || event.message === 'remote_track_added' || event.message === 'gum_track_added'){
+                    const {id, kind, label} = event.data.trackData;
+                    const eventData = {time: datetime, message: event.message, kind: kind, id: id};
+                    events.push(eventData)
+                    // console.log(datetime, event.message, kind, label);
+                }
+                else{
+                    const {id, kind, label, trackData} = event.data;
+                    let eventData;
+                    if(trackData){
+                        eventData = {time: datetime, message: event.message, data: event.data.trackData};
+                    } else
+                        eventData = {time: datetime, message: event.message, data: event.data};
+                    //events.push(eventData)
+
+                }
+
+                 */
+            }
+        });
+
+        console.log("dupes", dupeCount);
+
+        console.log("local before reduce", localLevels.length);
+        localLevels.sort((a, b) => a.ts - b.ts);
+
+        const localLevelReduced = [];
+        //const localTimes = [];
+
+        const localTimes = localLevels
+            .filter((el, idx, arr) => arr[idx - 1] && el.timeString !== arr[idx - 1].timeString)
+            .map(el => el.timeString);
+
+        /*
+                localLevels.forEach( (el, idx, arr) =>{
+                    if(arr[idx-1] && el.time !== arr[idx-1].time)
+                        localTimes.push(el.time)
+                })
+                localTimes.forEach(time=>{
+                    const sum = localLevels.reduce()
+                })
+
+         */
+        // console.log(localTimes);
+
+
+        // console.log("local", localLevels);
+
+        remoteLevels.sort((a, b) => a.ts - b.ts);
+
+        console.log("remote before", remoteLevels.length);
+        const remoteTimes = remoteLevels
+            .filter((el, idx, arr) => arr[idx - 1] && el.timeString !== arr[idx - 1].timeString)
+            .map(el => el.timeString);
+
+
+        console.log(remoteTimes);
+
+
+
+        // Plot data
+        localLevelsSeries.x = localTimes;
+        localLevelsSeries.y = localLevels.map(e=>e.level);
+
+        // remoteLevelsSeries.x = remoteLevels.map(e=>e.time);
+        // remoteLevelsSeries.y = localLevels.map(e=>e.level);
+
+        let remoteLevelsSeries = {
+            x: remoteLevels.map(e=>e.timeString),
+            y: localLevels.map(e=>e.level),
+            type: 'scatter',
+            name: `remote`,
+            transforms: [{
+                type: 'aggregate',
+                aggregations: [
+                    {target: 'y', func: 'sum', enabled: true},
+                ]
+            }]
+        };
+
+        Plotly.newPlot(chart, [localLevelsSeries, remoteLevelsSeries], layout);
+
+        // console.log("events", trackEvents);
+
+    }
+
+    main();
+
+    /*
+    fetch("events.json")
+        .then(response => response.json())
+        .then(json => console.log(json.events));
+
+     */
+</script>
+</body>
+</html>
