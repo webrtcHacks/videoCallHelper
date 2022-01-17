@@ -89,24 +89,5 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
-
-// Initial data load
-// finding: content scripts can use chrome.tabs.query - you need to send a message to get the tabID;
-// so you might as well just ask for the init data
-
-/*
-chrome.storage.local.get(['tabData'], messageObj => {
-    if(!messageObj.tabData)
-        return;
-
-    debug(messageObj.tabData);
-    messageObj.tabData.forEach(event => {
-        const {message, timeStamp, data} = event;
-        EventSpanElem.innerText += `${new Date(timeStamp).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
-    });
-});
-
- */
-
 // await sendMessage('background', 'dash', 'dash_init', (response)=>{debug(response)});
 await sendMessage('background', 'dash', 'dash_init');

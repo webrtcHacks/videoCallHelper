@@ -32,9 +32,7 @@
   "permissions": [
     "http://*/",
     "https://*/",
-    "activeTab",
-    "tabs",
-    "storage"
+    "activeTab"
   ],
   "web_accessible_resources": [
     "styles/*.css",

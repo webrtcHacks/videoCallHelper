@@ -1,43 +1,7 @@
-let streamTabs;     // ToDo: remove this?
-
 // Keep state on tabs; uses a Set to only store unique items
-async function addTab(tabId) {
-    try {
-        // const {streamTabs} = await chrome.storage.local.get('streamTabs');
-        chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-        const activeTabs = new Set(streamTabs);
-        activeTabs.add(tabId );
-        await chrome.storage.local.set({streamTabs: [...activeTabs]});
-        log(`Added tab: ${tabId}; streamTabs: ${[...activeTabs]}`);
-    } catch (err) {
-        console.error(`Issue adding ${tabId}`, err)
-    }
-}
 
-// Keep state on tabs; uses a Set to only store unique items
-async function removeTab(tabId) {
-    try {
-        //const {streamTabs} = await chrome.storage.local.get('streamTabs');
-        chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-        const activeTabs = new Set(streamTabs);
-        activeTabs.delete(tabId);
-        await chrome.storage.local.set({activeTabs: [...activeTabs]});
-        log(`activeTabs: ${[...activeTabs]}`);
-
-        // now clear storage
-        chrome.storage.local.get(['tabData'], async data=>{
-            if(!data.tabData)
-                return;
-
-            const arr = data.tabData.filter(data=>data.sourceId !== tabId);
-            await chrome.storage.local.set({tabData: arr});
-            // log("tabData: ", arr);
-        });
-
-    } catch (err) {
-        console.error(`Issue removing ${tabId}`, err)
-    }
-}
+const tabs = new Set();
+const tabData = new Set();
 
 function log(...messages) {
     console.log(`👷 `, ...messages);
@@ -49,22 +13,6 @@ function log(...messages) {
 
      */
 }
-
-chrome.runtime.onStartup.addListener(async () => {
-})
-
-/*
- * Inter-script messaging
- */
-
-chrome.runtime.onInstalled.addListener(async () => {
-
-    await chrome.storage.local.clear();     // ToDo: Reconsider this for some data
-    await chrome.storage.local.set({streamTabs: []});
-
-    // chrome.runtime.openOptionsPage();
-
-});
 
 chrome.runtime.onMessage.addListener(
     async (request, sender, sendResponse) => {
@@ -96,18 +44,23 @@ chrome.runtime.onMessage.addListener(
 
             log(`receiving "${message}" from ${from} to ${to}`, request);
 
-            chrome.storage.local.get(['tabData'], async data=>{
-                const arr = [];
-                if(data.tabData)
-                    arr.push(...data.tabData);
-                arr.push(storageObj);
-                await chrome.storage.local.set({tabData: arr});
-                // log("tabData: ", arr);
-            });
+            tabData.add(storageObj);
         }
 
         else if(from==='dash' && message === 'dash_init'){
-            let tabEventData;
+
+            const messageHistory = [];
+            [...tabData].filter(data=>data.sourceId===tabId);
+            const messageToSend = {
+                from: 'background',
+                to: 'dash',
+                message: 'dash_init_data',
+                data: data
+            }
+            await chrome.tabs.sendMessage(tabId, {...messageToSend})
+            log("sent data", data);
+
+            /*
             chrome.storage.local.get(['tabData'], async messageObj => {
                 if(!messageObj.tabData){
                     log("no tabData in storage");
@@ -127,24 +80,23 @@ chrome.runtime.onMessage.addListener(
                 await chrome.tabs.sendMessage(tabId, {...messageToSend})
                 log("sent data", data);
             });
+
+             */
         }
 
         if (message === 'gum_stream_start') {
-
-            // log("DEBUG: gum_stream_start - stopping here");
-            // return;
-
-            await addTab(tabId);
+            tabs.add(tabId);
         } else if (message === "gum_stream_stop") {
-            await removeTab(tabId)
+            tabs.remove(tabId);
         } else if (from === "popup" && message === "open") {
             // ToDo: check to see if tabs are still open
             // const {streamTabs} = await chrome.storage.local.get('streamTabs');
-            chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-            sendResponse({message: streamTabs.length > 0 ? "active" : "inactive"})
+            // chrome.storage.local.get(['streamTabs'], data=>{tabs = data.streamTabs});
+
+            sendResponse({message: tabs.length > 0 ? "active" : "inactive"})
         } else if (message === 'unload') {
             log("tab unloading");
-            await removeTab(tabId);
+            tabs.remove(tabId);
         }
     });
 
@@ -179,15 +131,6 @@ function inject(...files) {
         (document.head || document.documentElement).appendChild(script); //prepend
     });
 }
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    // log(`tab ${tabId} updated`, changeInfo, tab);
-
-    if (tab.url.match(/^chrome-extension:\/\//) && changeInfo.status === 'complete') {
-        log(`extension tab opened: ${tab.url}`)
-    }
-
-});
 
 log("background.js loaded");
 
