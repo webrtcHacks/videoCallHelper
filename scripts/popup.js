@@ -1,6 +1,3 @@
-const statusSpan = document.querySelector('span#gumStatus');
-const trainBtn = document.querySelector('button#train');
-
 function log(...messages) {
     if (messages.length > 1 || typeof messages[0] === 'object')
         console.log(`🐰 ️${JSON.stringify(...messages)}`);
@@ -56,55 +53,26 @@ chrome.runtime.onMessage.addListener(
         if(to === 'popup' || to === 'all'){
             log(`message from ${from}: ${message}`);
         }
-        else {
-            /*
-            if(sender.tab)
-                log(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
-            else
-                log(`unrecognized format : `, sender, request);
-            return
-             */
-        }
 
         // message handlers
         if(message === "gum_stream_start") {
             statusSpan.textContent = "active";
             trainBtn.disabled = false;
         }
-        if(message === "gum_stream_stop") {
+        else if(message === "gum_stream_stop") {
             statusSpan.textContent = "stopped";
             trainBtn.disabled = true;
         }
-        if(message === "unload") {
+        else if(message === "unload") {
             statusSpan.textContent = "closed";
             trainBtn.disabled = true;
         }
-        if(message === "training_image") {
-            log(data)
-        }
         else {
             log("unrecognized request: ", request)
-            // statusSpan.textContent = "inactive";
-            // trainBtn.disabled = true;
         }
    });
-
 
 // Get state
 sendMessage('background', "open", {}, response=> {
     log("response: ", response);
-    if (response?.message)
-        statusSpan.textContent = response;
 });
-
-trainBtn.onclick = async () => {
-    //sendMessage('tab', "train_start", {sendImagesInterval: 5000});
-    // ToDo: make sure there is only one training tab at a time
-    let url = chrome.runtime.getURL("pages/training.html");
-    url += `?source=${tabId}`;
-    let inputTab = await chrome.tabs.create({url});
-    log(inputTab);
-    // these never happen
-    // sendMessage('all', 'training_tab_id', {id: inputTab.id});
-    // log(`training page open on tab ${inputTab.id}`)
-}

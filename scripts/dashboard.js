@@ -1,5 +1,5 @@
 function debug(...messages) {
-    console.debug(`vch 📈️‍ `, ...messages);
+    // console.debug(`vch 📈️‍ `, ...messages);
 }
 
 let currentTabId;
@@ -50,6 +50,7 @@ chrome.runtime.onMessage.addListener(
             });
 
         } else if (from === 'tab') {
+            debug(`receiving "${message}" from ${from} to ${to}. Full request: `, request);
             const ts = data.timestamp || Date.now();
 
             // for chart testing

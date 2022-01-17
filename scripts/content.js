@@ -1,6 +1,5 @@
 const streams = [];
 let trackInfos = [];
-// const trackIds = new Set();
 
 window.vchStreams = streams;
 const DEFAULT_SEND_IMAGES_INTERVAL = 30 * 1000;
@@ -10,55 +9,12 @@ let videoTabId;
 let thisTabId;
 
 function debug(...messages) {
-    console.debug(`vch 🕵️‍ `, ...messages);
+    // console.debug(`vch 🕵️‍ `, ...messages);
 }
 
 debug(`content.js loaded on ${window.location.href}`);
 
-// Testing visualization options
-/*
- * DOMContentLoaded - doesn't work with Meet
- */
-
-/*
-function addDisplay(){
-    const display = document.createElement("div");
-    display.id = "vch";
-    display.offsetHeight = 50;
-    display.style.cssText = "position: fixed; top: 0px; left: 0px; height: 0px; width: 100%; z-index: 1000; transition: height 500ms ease 0s;";
-    display.style.color = 'red';
-    display.style.backgroundColor = "aqua";
-    display.style.textAlign = "center";
-    display.innerText = "This is some text"
-    document.body.prepend(display);
-}
- */
-
 const dashHeight = 100;
-
-/*
-const dashStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: 100,
-    zIndex: 10000,
-    transition: {
-        height: 500,
-        ease: 0
-    },
-    backgroundColor: 'aqua',
-    color: 'red'
-}
-const dashOpenStyle = {
-    height: 100
-}
-
-const dashClosedStyle = {
-    height: 0
-}
- */
-
 const dashStyle = `position:fixed;top:0;left:0;width:100%;height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}`;
 
 async function toggleDash() {
@@ -70,7 +26,7 @@ async function toggleDash() {
     if (!iframe) {
         iframe = document.createElement('iframe');
         iframe.style.cssText = dashStyle;
-        iframe.src = chrome.runtime.getURL("/pages/dash.html");
+        iframe.src = chrome.runtime.getURL("/pages/dashboard.html");
         iframe.id = "vch_dash";
         // iframe.sandbox;      // ToDo: turn this on with the right settings for prod
         iframe.classList.add('dashOpen');
@@ -79,8 +35,6 @@ async function toggleDash() {
         // document.body.style.marginTop = `${dashHeight}px`;
 
         debug("created dash");
-        
-        // iframe.blur();   // didn't work; neither did visibility
 
     } else {
         // Close if open
@@ -94,12 +48,10 @@ async function toggleDash() {
         }
         // open if closed
         else {
-            // document.body.style.marginTop = `${dashHeight}px`;
             iframe.style.height = `${dashHeight}px`;
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
             debug("opened dash");
-
         }
     }
 }
@@ -120,102 +72,6 @@ function addScript(path) {
 
 addScript('/scripts/inject.js');
 debug("inject injected");
-
-async function syncTrackInfo() {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter((device) => device.kind === 'videoinput');
-    debug("getting current video devices:", videoDevices);
-
-    // just use the last stream for now
-    const stream = streams.at(-1);
-    // ToDo: stream event handlers
-    stream.onremovetrack = async (track) => {
-        debug("track removed", track);
-        await sendMessage('video', 'tab', 'remove_track', track.id);
-        trackInfos = trackInfos.filter(info => info.id !== track.id);
-        debug("updated trackInfos", trackInfos);
-    };
-
-    const [videoTrack] = stream.getVideoTracks();
-    videoTrack.onended = (e) => {
-        debug("track stopped: ", e.srcElement);
-        const {id} = e.srcElement;
-        trackInfos = trackInfos.filter(info => info.id !== id);
-        debug("updated trackInfos", trackInfos);
-    };
-    videoTrack.onmute = async e => {
-        await sendMessage('video', 'tab', 'mute', e.srcElement.id)
-        debug("track muted: ", e.srcElement)
-    };
-    videoTrack.onunmute = async e => {
-        await sendMessage('video', 'tab', 'unmute', e.srcElement.id)
-        debug("track unmuted: ", e.srcElement)
-    };
-
-
-    // ToDo: find out if a gUM stream can ever have more than 1 video track
-    const settings = videoTrack.getSettings();
-    debug("settings: ", settings);
-
-    const {label} = videoDevices.find(device => settings.deviceId === device.deviceId);
-    debug("device label: ", label);
-    if (label !== "")
-        settings.label = label;
-
-    // ToDo: make sure to only push unique tracks
-    settings.id = videoTrack.id;
-    trackInfos = trackInfos.filter(info => info.id !== videoTrack.id);
-    debug("updated trackInfos", trackInfos);
-
-    trackInfos.push(settings);
-    await sendMessage('video', 'tab', 'track_info', {trackInfo: settings});
-    // Keep for debugging
-    /*
-    streams.forEach( stream => {
-
-        // ToDo: stream event handlers
-        stream.onremovetrack = async (track) => {
-            debug("track removed", track);
-            await sendMessage('video', 'tab', 'remove_track', track.id)
-            // ToDo: take it out of the list
-        };
-
-        const [videoTrack] = stream.getVideoTracks();
-        videoTrack.onended = (e) => {
-            debug("track stopped: ", e.srcElement);
-            const {id} = e.srcElement;
-            trackInfos = trackInfos.filter(info => info.id !== id);
-            debug()
-        };
-        videoTrack.onmute = async e => {
-            await sendMessage('video', 'tab', 'mute', e.srcElement.id)
-            debug("track muted: ", e.srcElement)
-        };
-        videoTrack.onunmute = async e => {
-            await sendMessage('video', 'tab', 'unmute', e.srcElement.id)
-            debug("track unmuted: ", e.srcElement)
-        };
-
-
-        // ToDo: find out if a gUM stream can ever have more than 1 video track
-        const settings = videoTrack.getSettings();
-        debug("settings: ", settings);
-
-        const {label} = videoDevices.find(device => settings.deviceId === device.deviceId);
-        debug("device label: ", label);
-        if (label !== "")
-            settings.label = label;
-
-        // trackIds.add(settings.id);
-        // ToDo: make sure to only push unique tracks
-        trackInfos.push(settings);
-        sendMessage('video', 'tab', 'track_info', {trackInfos})
-            .catch(err=>debug("sendMessage error: ", err));
-
-    });
-
-     */
-}
 
 /*
  * Communicate with the background worker context
@@ -258,7 +114,7 @@ chrome.runtime.onMessage.addListener(
         } else if (to === 'content') {
             // Nothing to do here yet
             debug("message for content.js", request)
-        } else if (to === 'dash'){
+        } else if (to === 'dash') {
             // Nothing to do here yet
         } else {
             if (sender.tab)
@@ -306,16 +162,6 @@ document.addEventListener('vch', async e => {
         debug(`stream video settings: `, stream.getVideoTracks()[0].getSettings());
         await sendMessage(to, 'tab', message, data);
 
-        // check if videoTab is already open
-        // ToDo: query this
-        //  const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-        // Learning: not allowed in content
-        // const videoTab = await chrome.tabs.query({url: url});
-        //  debug("videoTab", videoTab);
-
-        if (videoTabId)
-            await syncTrackInfo();
-
         // send a message back to inject to remove the temp video element
         const responseMessage = {
             to: 'tab',
@@ -330,8 +176,6 @@ document.addEventListener('vch', async e => {
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
     // ToDo: handle unload
-
-
     await sendMessage('all', 'tab', 'unload')
 });
 

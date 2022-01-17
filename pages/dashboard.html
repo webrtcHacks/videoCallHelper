@@ -5,13 +5,14 @@
     <title>VCH Panel</title>
     <style>
         div {
-            position: fixed;
             display: flex;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100px;
             background-color: lightgrey;
+
             /*
             color: red;
             text-align: center;
@@ -22,11 +23,16 @@
             vertical-align: top;
         }
         .eventBox{
+            display: block;
             position: relative;
             overflow-y: scroll;
             width: 50%;
             height: 100%;
+
             /* background-color: lightslategrey; */
+        }
+        h3{
+            margin: 0;
         }
 
 
@@ -35,18 +41,17 @@
 <body>
 <div class="vch">
     <div class="eventBox">
-        <p>Message log:</p>
+        <h3>Message log:</h3>
         <span class="vch"></span>
     </div>
     <div class="eventBox">
-        <p>Remote audio levels:</p>
+        <h3>Remote audio levels:</h3>
         <span class="remote_audio_level"></span>
-        <br>
-        <p>Local audio levels:</p>
+        <h3>Local audio levels:</h3>
         <span class="local_audio_level"></span>
     </div>
 
 </div>
-<script defer src="../scripts/dash.js" type="module"></script>
+<script defer src="../scripts/dashboard.js" type="module"></script>
 </body>
 </html>
