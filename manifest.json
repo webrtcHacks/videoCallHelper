@@ -14,8 +14,13 @@
         "scripts/content.js"
       ],
       "matches": [
-        "http://*/*",
-        "https://*/*"
+        "https://meet.google.com/*",
+        "https://webrtc.github.io/samples/*",
+        "https://meet.jit.si/*",
+        "https://meet.jitsi.org/",
+        "https://*.session.com/*",
+        "https://whereby.com/*",
+        "https://duo.google.com/*"
       ],
       "all_frames": false,
       "match_about_blank": false,
@@ -30,8 +35,6 @@
     "default_title": "Video Call Helper"
   },
   "permissions": [
-    "http://*/",
-    "https://*/",
     "activeTab"
   ],
   "web_accessible_resources": [

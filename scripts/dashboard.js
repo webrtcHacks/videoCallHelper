@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener(
 
         if (message === 'toggle_dash') {
             currentTabId = data.tabId;
-        } else if (message === 'dash_init_data') {
+        } else if (message === 'dash_init_data' && data.length > 0) {
             data.forEach(event => {
                 const {message, timeStamp, data} = event;
                 EventSpanElem.innerText += `${new Date(timeStamp).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;

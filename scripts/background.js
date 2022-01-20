@@ -3,6 +3,10 @@
 const tabs = new Set();
 const tabData = new Set();
 
+// debugging from console
+window.tabs = tabs;
+window.tabData = tabData;
+
 function log(...messages) {
     console.log(`👷 `, ...messages);
     /*
@@ -50,7 +54,7 @@ chrome.runtime.onMessage.addListener(
         else if(from==='dash' && message === 'dash_init'){
 
             const messageHistory = [];
-            [...tabData].filter(data=>data.sourceId===tabId);
+            const data = [...tabData].filter(data=>data.sourceId===tabId);
             const messageToSend = {
                 from: 'background',
                 to: 'dash',
@@ -59,44 +63,17 @@ chrome.runtime.onMessage.addListener(
             }
             await chrome.tabs.sendMessage(tabId, {...messageToSend})
             log("sent data", data);
-
-            /*
-            chrome.storage.local.get(['tabData'], async messageObj => {
-                if(!messageObj.tabData){
-                    log("no tabData in storage");
-                    return;
-                }
-
-                log("loaded data", messageObj.tabData);
-
-                const data = messageObj.tabData.filter(data=>data.sourceId===tabId);
-
-                const messageToSend = {
-                    from: 'background',
-                    to: 'dash',
-                    message: 'dash_init_data',
-                    data: data
-                }
-                await chrome.tabs.sendMessage(tabId, {...messageToSend})
-                log("sent data", data);
-            });
-
-             */
         }
 
         if (message === 'gum_stream_start') {
             tabs.add(tabId);
         } else if (message === "gum_stream_stop") {
-            tabs.remove(tabId);
+            tabs.delete(tabId);
         } else if (from === "popup" && message === "open") {
-            // ToDo: check to see if tabs are still open
-            // const {streamTabs} = await chrome.storage.local.get('streamTabs');
-            // chrome.storage.local.get(['streamTabs'], data=>{tabs = data.streamTabs});
-
             sendResponse({message: tabs.length > 0 ? "active" : "inactive"})
         } else if (message === 'unload') {
             log("tab unloading");
-            tabs.remove(tabId);
+            tabs.delete(tabId);
         }
     });
 
