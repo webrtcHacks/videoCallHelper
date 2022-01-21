@@ -168,41 +168,54 @@
         // console.log(localDisplayValues);
 
         // ToDo: turn this all into a class if it works
-        const localSpeakingIntervals = [];
-        let lastSampleSpeaking = false;
-        let sampleCount = 0;
-        let lastStart = {};
-        localLevels.forEach(value => {
-            // console.log(value);
+        async function getLevels(audioLevelArray = []){
+            const returnArray = [];
+            let lastSampleSpeaking = false;
+            let sampleCount = 0;
+            let lastStart = {};
 
-            const {timeString, ts, level} = value;
+            // Get thresholds based on the input
+            const levels = audioLevelArray.map(e => e.level);
+            const lowerThreshold = Math.max(...levels) * MIN_THRESHOLD;
 
-            // console.log(timeString, level >= localThreshold);
-            if (level >= localThreshold) {
-                // console.log("speaking");
-                sampleCount++;
-                if (!lastSampleSpeaking) {
-                    lastStart = value;
-                }
-                lastSampleSpeaking = true;
 
-            } else if (level < localThreshold) {
-                if (lastSampleSpeaking && sampleCount > 1) {
-                    const interval = {
-                        start: lastStart,
-                        stop: value,
-                        sampleCount: sampleCount
+            for(const value in audioLevelArray ){
+                //audioLevelArray.forEach(value => {
+                console.log(value);
+
+                const {timeString, ts, level} = value;
+
+                // console.log(timeString, level >= localThreshold);
+                if (level >= lowerThreshold) {
+                    // console.log("speaking");
+                    sampleCount++;
+                    if (!lastSampleSpeaking) {
+                        lastStart = value;
                     }
+                    lastSampleSpeaking = true;
 
-                    localSpeakingIntervals.push(interval);
-                    console.log("start:", lastStart.timeString)
-                    console.log("stop:", timeString)
+                } else if (level < lowerThreshold) {
+                    if (lastSampleSpeaking && sampleCount > 1) {
+                        const interval = {
+                            start: lastStart,
+                            stop: value,
+                            sampleCount: sampleCount
+                        }
+
+                        returnArray.push(interval);
+                        console.log("start:", lastStart.timeString)
+                        console.log("stop:", timeString)
+                    }
+                    sampleCount = 0;
+                    lastSampleSpeaking = false;
                 }
-                sampleCount = 0;
-                lastSampleSpeaking = false;
+
             }
 
-        });
+            return returnArray;
+        }
+
+        const localSpeakingIntervals = getLevels(localLevels);
 
         // console.log(localSpeakingIntervals);
 

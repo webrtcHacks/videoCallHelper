@@ -137,6 +137,7 @@
         // console.log(localDisplayValues);
 
         // ToDo: turn this all into a class if it works
+        
         const localSpeakingIntervals = [];
         let lastSampleSpeaking = false;
         let sampleCount = 0;
@@ -175,6 +176,10 @@
 
         // https://codepen.io/manglass/pen/MvLBRz
 
+        console.log(JSON.stringify(localSpeakingIntervals));
+
+
+        /*
         const times = localSpeakingIntervals.map(e => {
             return {
                 "starting_time": e.start.ts,
@@ -182,6 +187,8 @@
 
             }
         });
+
+         */
 
         const testData = [
             {
@@ -194,7 +201,7 @@
             { times: [{ starting_time: 1355761910000, ending_time: 1355763910000 }] }
         ];
 
-        console.log(testData);
+        // console.log(testData);
         console.log([{times}]);
 
         const myChart = d3.timeline()
