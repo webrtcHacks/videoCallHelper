@@ -161,17 +161,18 @@
 
         // ToDo: needs calibration
         const MIN_THRESHOLD = 0.05;
-        const localValues = localLevels.map(e => e.level);
-        const localThreshold = Math.max(...localValues) * MIN_THRESHOLD;
+        // const localValues = localLevels.map(e => e.level);
+        // const localThreshold = Math.max(...localValues) * MIN_THRESHOLD;
 
         // const localDisplayValues = localValues.map(level=>level>localThreshold);
         // console.log(localDisplayValues);
 
         // ToDo: turn this all into a class if it works
-        async function getLevels(audioLevelArray = []){
+        async function getLevels(audioLevelArray = []) {
             const returnArray = [];
             let lastSampleSpeaking = false;
             let sampleCount = 0;
+            let avgAudioLevel = 0;
             let lastStart = {};
 
             // Get thresholds based on the input
@@ -179,16 +180,20 @@
             const lowerThreshold = Math.max(...levels) * MIN_THRESHOLD;
 
 
-            for(const value in audioLevelArray ){
-                //audioLevelArray.forEach(value => {
-                console.log(value);
+            //for( const [key, value] in Object.entries(localLevels) ){ console.log(localLevels[key])};
 
-                const {timeString, ts, level} = value;
+            for (const key in Object.entries(audioLevelArray)) {
+                //audioLevelArray.forEach(value => {
+                const value = audioLevelArray[key];
+                // console.log(value);
+
+                const {timeString, ts, level} = value
 
                 // console.log(timeString, level >= localThreshold);
                 if (level >= lowerThreshold) {
                     // console.log("speaking");
                     sampleCount++;
+                    avgAudioLevel += level;
                     if (!lastSampleSpeaking) {
                         lastStart = value;
                     }
@@ -199,14 +204,16 @@
                         const interval = {
                             start: lastStart,
                             stop: value,
-                            sampleCount: sampleCount
+                            sampleCount: sampleCount,
+                            avgAudioLevel: avgAudioLevel / sampleCount
                         }
 
                         returnArray.push(interval);
-                        console.log("start:", lastStart.timeString)
-                        console.log("stop:", timeString)
+                        // console.log("start:", lastStart.timeString)
+                        // console.log("stop:", timeString)
                     }
                     sampleCount = 0;
+                    avgAudioLevel = 0;
                     lastSampleSpeaking = false;
                 }
 
@@ -215,7 +222,23 @@
             return returnArray;
         }
 
-        const localSpeakingIntervals = getLevels(localLevels);
+        const localSpeakingIntervals = await getLevels(localLevels);
+        console.log("local levels: ", JSON.stringify(localSpeakingIntervals));
+
+        const remoteSpeakingIntervals = await getLevels(remoteLevels);
+        console.log("remote levels: ", JSON.stringify(remoteSpeakingIntervals));
+
+        // ToDo: bette dedupe; need to incldue ts
+        // Dedupe and extract audio events
+        const s = new Set(trackEvents.filter(e => e.kind === 'audio').map(e => {
+            const {timeString, message, kind} = e;
+            return JSON.stringify({timeString, message, kind})
+        }));
+        const uniqueEvents = [...s].map(v => JSON.parse(v));
+        console.log("events: ", JSON.stringify(uniqueEvents));
+
+        const data = {localSpeakingIntervals, remoteSpeakingIntervals, uniqueEvents};
+        console.log(JSON.stringify(data));
 
         // console.log(localSpeakingIntervals);
 
@@ -246,7 +269,7 @@
                 showline: false,
                 showticklabels: false
             },
-           //  xaxis: {type: "time"}
+            //  xaxis: {type: "time"}
         };
 
 
@@ -269,20 +292,20 @@
          */
 
 
-/*
+        /*
 
-        Plotly.plot('chart', [{
-            type: 'bar',
-            x: ["10:05:23 AM", "10:05:27 AM", "10:05:53 AM"],
-            y: [0, 0, 0],
-            // line: {width: 30},
-            orientation: 'h',
-            base: [4,26,0]
+                Plotly.plot('chart', [{
+                    type: 'bar',
+                    x: ["10:05:23 AM", "10:05:27 AM", "10:05:53 AM"],
+                    y: [0, 0, 0],
+                    // line: {width: 30},
+                    orientation: 'h',
+                    base: [4,26,0]
 
-        }], {xaxis:{type:"time"}})
+                }], {xaxis:{type:"time"}})
 
 
- */
+         */
 
 
     }
