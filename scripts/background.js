@@ -7,7 +7,28 @@ let trainingState = {
     sendImagesInterval: Infinity,
     storageName: "trainingState"
 }
-let videoTabId;
+
+const _log = console.log;
+const log = console.log = function(message){
+    let newArgs = [];
+    newArgs[0] =  `👷`;
+    for(const arg of arguments){
+        newArgs.push(arg);
+    }
+    _log.apply(console, newArgs);
+}
+
+/*
+function log(...messages) {
+    console.log(`👷 `, ...messages);
+    /*
+    if(messages.length > 1 || typeof messages[0]==='object')
+        console.log(`👷 ️${JSON.stringify(...messages)}`);
+    else
+        console.log(`👷 ️${messages}`);
+}
+     */
+
 
 // Keep state on tabs; uses a Set to only store unique items
 async function addTab(tabId) {
@@ -52,22 +73,12 @@ async function getVideoTabId(){
     // ToDo: there is also a chrome extension method to get all extension pages
     const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
     //const [videoTab] = await chrome.tabs.query({url: url});
-    chrome.tabs.query({url: url}, data=>{
-        videoTabId = [data].id || false;
+    const videoTab = await chrome.tabs.query({url: url});
+         // ToDo: this isn't working - opens twice
+        const videoTabId = videoTab[0]?.id;
+        log(`getVideoTabId:: videoTabId: ${videoTabId}`);
         return videoTabId
-    });
     // log("videoTab", videoTab);
-}
-
-function log(...messages) {
-    console.log(`👷 `, ...messages);
-    /*
-    if(messages.length > 1 || typeof messages[0]==='object')
-        console.log(`👷 ️${JSON.stringify(...messages)}`);
-    else
-        console.log(`👷 ️${messages}`);
-
-     */
 }
 
 // let gumActive = false;
@@ -130,7 +141,7 @@ chrome.runtime.onMessage.addListener(
 
         // ToDo: debugging
         if(sendResponse){
-            log("sending a response");
+            // log("sending a response");
             sendResponse(true);
         } else log("no response requested");
 
@@ -139,6 +150,7 @@ chrome.runtime.onMessage.addListener(
         const {to, from, message, data} = request;
 
         // forward "tab" messages to all tabs
+        // This was for eye level training
         if (to === 'tab' && from === 'training') {
             // keep state on training
             if ([train.start, train.stop, train.updateInterval].includes(message)) {
@@ -160,7 +172,7 @@ chrome.runtime.onMessage.addListener(
                 log(`sending ${message} from ${from} to video`, request);
                 await chrome.tabs.sendMessage(videoTabId, request, {}, null);
             }
-            else log(`videoTab is not open for  ${message} from ${from}`, request)
+            else log(`could not send ${message} from ${from} to videoTab. videoTab not open`, request)
         }
 
         if(from === 'tab' && to ==='all' && message){
@@ -231,9 +243,11 @@ chrome.runtime.onMessage.addListener(
             request.data = {sourceTabId: tabId};
 
             // const {streamTabs} = await chrome.storage.local.get("streamTabs");
-            chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-            log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
-            streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
+            chrome.storage.local.get(['streamTabs'], data=>{
+                streamTabs = data.streamTabs
+                log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
+                streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
+            });
         }
 
         // Relay messages to training
@@ -243,9 +257,6 @@ chrome.runtime.onMessage.addListener(
 
         if (message === 'gum_stream_start') {
 
-            // log("DEBUG: gum_stream_start - stopping here");
-            // return;
-
             await addTab(tabId);
 
             // ToDo: better to query all tabs for the video tab url than use local storage so I don't need to worry
@@ -253,29 +264,27 @@ chrome.runtime.onMessage.addListener(
             // let {videoTabId} = await chrome.storage.local.get("videoTabId");
             // log("videoTabId from storage: ", videoTabId);
 
-            const videoTabId = await getVideoTabId();
-
-            if(!videoTabId){
-                // open the video tab
+            // open the video tab
+            async function openVideoTab(){
                 const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-                // await chrome.tabs.create({url});
-                // v3
-                // const videoTab = await chrome.tabs.create({url});
-                // log(`video tab ${videoTab.id}`)
+                const videoTab = await chrome.tabs.create({url});
+                const videoTabId = videoTab.id
+                log(`new video tab ${videoTab.id}`)
                 // sendResponse({message: 'videoTabId', data: videoTabId});
+                const messageToSend = {
+                    from: 'background',
+                    to: 'tab',
+                    message: 'video_tab_id',
+                    data: { videoTabId: videoTabId }
+                }
+                chrome.tabs.sendMessage(tabId, {...messageToSend});
             }
 
-            /*
-            const messageToSend = {
-                from: 'background',
-                to: 'tab',
-                message: 'video_tab_id',
-                data: { videoTabId: videoTab.id }
-            }
-            chrome.tabs.sendMessage(tabId, {...messageToSend});
+            const videoTabId = await getVideoTabId();
+            log(`"gum_stream_start" videoTabId: ${videoTabId}`);
 
-             */
-
+            if(!videoTabId)
+                await openVideoTab();
 
             // ToDo: handle training later
             /*
@@ -296,8 +305,8 @@ chrome.runtime.onMessage.addListener(
             }
              */
 
-
-        } else if (message === "gum_stream_stop") {
+        }
+        else if (message === "gum_stream_stop") {
             await removeTab(tabId)
         } else if (message === train.image) {
             log('training_image: ', data);
@@ -306,6 +315,34 @@ chrome.runtime.onMessage.addListener(
             // const {streamTabs} = await chrome.storage.local.get('streamTabs');
             chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
             sendResponse({message: streamTabs.length > 0 ? "active" : "inactive"})
+        }
+
+        // Open the video page
+        else if (message === 'peerconnection_open'){
+
+            /*
+            // Right now only adding new tabs on pc_open
+            await addTab(tabId);
+
+            // see if there is already a video tab id
+            if(!videoTabId) {
+                // make sure it is still valid
+                videoTabId = await getVideoTabId();
+
+                // ToDo: When 2 PC's open in succession this opens 2 video tabs
+                // the below didn't work
+                // open a new one if it is not
+                if(!videoTabId){
+                    videoTabId = "temp";    // don't do this twice if there is concurrnecy
+                    const url = chrome.runtime.getURL("pages/video.html");
+                    const videoTab = await chrome.tabs.create({url});
+                    log(`video tab ${videoTab.id} created: ${url} `)
+                }
+            }
+            sendResponse({message: 'videoTabId', data: videoTabId});
+
+             */
+
         } else if (message === 'unload') {
             log("tab unloading");
             await removeTab(tabId);
@@ -318,7 +355,7 @@ chrome.runtime.onMessage.addListener(
  */
 
 // ToDo: change to pageAction?
-chrome.browserAction.onClicked.addListener(async (tab)=>{
+chrome.action.onClicked.addListener(async (tab)=>{
     const messageToSend = {
         to: 'tab',
         from: 'background',
@@ -327,10 +364,8 @@ chrome.browserAction.onClicked.addListener(async (tab)=>{
     }
     chrome.tabs.sendMessage(tab.id, {...messageToSend})
 
-
     // const url = chrome.runtime.getURL("pages/video.html");
     // const videoTab = await chrome.tabs.create({url});
-    // ToDo: this worked in manifest v3
     // log(videoTab);  // undefined
     // log(`video tab ${videoTab.id}`)
 

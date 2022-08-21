@@ -6,6 +6,7 @@
 let gumStream;
 const appEnabled = true;
 const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
+const monitorAudioSwitch = false; // ToDo: make this a switch
 
 function debug(...messages) {
     console.debug(`vch 💉 `, ...messages);
@@ -101,6 +102,7 @@ function monitorAudio(peerConnection){
         if(counter>=LOCAL_AUDIO_SAMPLES_PER_SECOND){
             const avg = audioLevels.reduce((p, c) => p + c, 0) / audioLevels.length;
             // debug("audioLevel", avg);
+            // ToDo: stop this when it is null or the PC is closed
             sendMessage('all', 'local_audio_level', {audioLevel: avg, totalAudioEnergy});
             audioLevels.length = 0;
             counter = 0
@@ -133,7 +135,7 @@ if (!window.videoCallHelper) {
     const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     async function shimGetUserMedia(constraints) {
         const stream = await origGetUserMedia(constraints);
-        // transferStream(stream);
+        transferStream(stream);
         const tracks = stream.getTracks();
         tracks.forEach(track=>processTrack(track, "gum"))
         debug("got stream", stream);
@@ -175,7 +177,8 @@ if (!window.videoCallHelper) {
     RTCPeerConnection.prototype.addTrack = function (track, stream) {
         debug(`addTrack shimmed on peerConnection`, this, track, stream);
         processTrack(track, "local");
-        monitorAudio(this);
+        if(monitorAudioSwitch)  // ToDo: handle if the switch is changed
+            monitorAudio(this);
 
         return origAddTrack.apply(this, arguments)
     };
@@ -190,6 +193,10 @@ if (!window.videoCallHelper) {
 
     const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
     RTCPeerConnection.prototype.setRemoteDescription = function () {
+
+        // ToDo: do this as part of onconnectionstatechange
+        sendMessage('all', 'peerconnection_open', {});
+
         // ToDo: average this locally before sending?
         let interval = setInterval(()=>
             this.getReceivers().forEach(receiver=>{
@@ -201,7 +208,7 @@ if (!window.videoCallHelper) {
                     return
                 }
 
-                if(kind==='audio'){
+                if(kind==='audio' && monitorAudioSwitch){
                     const sources = receiver.getSynchronizationSources();
                     sources.forEach(syncSource=>{
                        const {audioLevel, source} = syncSource;

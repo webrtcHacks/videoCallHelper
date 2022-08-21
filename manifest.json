@@ -1,42 +1,61 @@
-{
+﻿{
+  "name": "Video Call Helper",
+  "action": {
+    "default_icon": {
+    },
+    "default_title": "Click Me"
+  },
+  "manifest_version": 3,
+  "version": "0.0.1",
+  "description": "Video Call Helper",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "scripts/background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
-      "js": [
-        "scripts/content.js"
-      ],
       "matches": [
         "http://*/*",
         "https://*/*"
       ],
+      "exclude_matches": [],
       "all_frames": false,
-      "match_about_blank": false,
-      "run_at": "document_start"
+      "match_about_blank": true,
+      "run_at": "document_start",
+      "js": [
+        "scripts/content.js"
+      ]
     }
   ],
-  "background": {
-    "page": "pages/background.html",
-    "persistent": false
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' ; object-src 'self'; style-src 'self' 'unsafe-inline'",
+    "isolated_world": "script-src 'self' 'unsafe-inline'"
   },
-  "browser_action": {
-    "default_title": "Video Call Helper"
-  },
-  "manifest_version": 2,
-  "name": "Video Call Helper",
-  "description": "Video Call Helper",
-  "version": "0.0.1",
-  "permissions": [
-    "http://*/",
-    "https://*/",
-    "activeTab",
-    "tabs",
-    "storage"
-  ],
+  "options_page": "pages/options.html",
   "web_accessible_resources": [
-    "styles/*.css",
-    "pages/*.html",
-    "scripts/*.js",
-    "modules/*.?js"
+    {
+      "resources": [
+        "pages/dash.html",
+        "scripts/dash.js",
+        "scripts/inject.js",
+        "modules/processStream.js",
+        "node_modules/@mediapipe/face_mesh/*",
+        "styles/*.css"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
   ],
-  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'; style-src 'self' 'unsafe-inline'",
-  "options_page": "pages/options.html"
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ]
 }

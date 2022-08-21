@@ -79,7 +79,7 @@ async function toggleDash() {
         // document.body.style.marginTop = `${dashHeight}px`;
 
         debug("created dash");
-        
+
         // iframe.blur();   // didn't work; neither did visibility
 
     } else {
@@ -129,6 +129,7 @@ async function syncTrackInfo() {
     // just use the last stream for now
     const stream = streams.at(-1);
     // ToDo: stream event handlers
+    debug("syncTrackInfo:: selected stream", stream)
     stream.onremovetrack = async (track) => {
         debug("track removed", track);
         await sendMessage('video', 'tab', 'remove_track', track.id);
@@ -155,17 +156,17 @@ async function syncTrackInfo() {
 
     // ToDo: find out if a gUM stream can ever have more than 1 video track
     const settings = videoTrack.getSettings();
-    debug("settings: ", settings);
+    debug("syncTrackInfo:: settings: ", settings);
 
     const {label} = videoDevices.find(device => settings.deviceId === device.deviceId);
-    debug("device label: ", label);
+    debug("syncTrackInfo:: device label: ", label);
     if (label !== "")
         settings.label = label;
 
     // ToDo: make sure to only push unique tracks
     settings.id = videoTrack.id;
     trackInfos = trackInfos.filter(info => info.id !== videoTrack.id);
-    debug("updated trackInfos", trackInfos);
+    debug("syncTrackInfo:: updated trackInfos", trackInfos);
 
     trackInfos.push(settings);
     await sendMessage('video', 'tab', 'track_info', {trackInfo: settings});
@@ -255,7 +256,11 @@ chrome.runtime.onMessage.addListener(
         if (message === 'toggle_dash') {
             await toggleDash();
 
-        } else if (to === 'content') {
+        } else if(message === 'video_tab'){
+            debug("send syncTrackInfo here");
+            await syncTrackInfo();
+        }
+        else if (to === 'content') {
             // Nothing to do here yet
             debug("message for content.js", request)
         } else if (to === 'dash'){
@@ -298,13 +303,15 @@ document.addEventListener('vch', async e => {
     }
 
     // Relay to extension contexts
+    // ToDo: never get this event
     if (message === 'gum_stream_start') {
         const id = data.id;
         const video = document.querySelector(`video#${id}`);
         const stream = video.srcObject;
         streams.push(stream);
         debug(`stream video settings: `, stream.getVideoTracks()[0].getSettings());
-        await sendMessage(to, 'tab', message, data);
+        debug("current streams", streams);
+        // await sendMessage(to, 'tab', message, data);
 
         // check if videoTab is already open
         // ToDo: query this
@@ -313,8 +320,8 @@ document.addEventListener('vch', async e => {
         // const videoTab = await chrome.tabs.query({url: url});
         //  debug("videoTab", videoTab);
 
-        if (videoTabId)
-            await syncTrackInfo();
+        // if (videoTabId)
+        // await syncTrackInfo();
 
         // send a message back to inject to remove the temp video element
         const responseMessage = {
