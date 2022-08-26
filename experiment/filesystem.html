@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File System API</title>
+</head>
+<body>
+<button>Start</button>
+<textarea></textarea>
+<script type="module">
+
+    import {get, set} from 'https://unpkg.com/idb-keyval@5.0.2/dist/esm/index.js';
+
+
+    const btnStart = document.querySelector("button");
+    const textArea = document.querySelector("textarea");
+
+    async function writeFiles(dirHandle, parentDirectoryHandle) {
+        //try {
+
+            // Permissions are not persisted across sessions, so there is no point to this
+            // ToDo: transfer this to background.js?
+            // is it easier to just upload to gdrive?
+            if ((await dirHandle.queryPermission({mode: 'readwrite'})) !== 'granted') {
+                console.log(`no permissions to ${dirHandle.name}`);
+                dirHandle = await parentDirectoryHandle.getDirectoryHandle('test', {
+                    create: false,
+                });
+            }
+
+            for (let n = 1; n <= 5; n++) {
+                const fileHandle = await dirHandle.getFileHandle(`test${n}_${Date.now()}.txt`, {create: true});
+                const contents = `this is text file number ${n}`;
+                const writable = await fileHandle.createWritable();
+                // Write the contents of the file to the stream.
+                await writable.write(contents);
+                // Close the file and write the contents to disk.
+                await writable.close();
+            }
+       /* } catch (error) {
+            console.error(error);
+            // alert(error.name, error.message);
+
+        }
+
+        */
+    }
+
+    btnStart.addEventListener('click', async () => {
+
+        let directoryHandle = await get('directory');
+        let parentDirectoryHandle = await get('parentDirectory');
+
+        console.log(directoryHandle, parentDirectoryHandle);
+
+        if (directoryHandle && parentDirectoryHandle) {
+            await writeFiles(directoryHandle, parentDirectoryHandle);
+        } else {
+            try {
+                if(!parentDirectoryHandle){
+                    parentDirectoryHandle = await window.showDirectoryPicker();
+                    console.log(`directory handle for "${parentDirectoryHandle.name}"`);
+                    await set('parentDirectory', parentDirectoryHandle);
+                }
+
+                // In an existing directory, create a new directory named "test".
+                directoryHandle = await parentDirectoryHandle.getDirectoryHandle('test', {
+                    create: true,
+                });
+                await set('directory', directoryHandle);
+                await writeFiles(directoryHandle, parentDirectoryHandle);
+            } catch (error) {
+                console.error(error);
+                // alert(error.name, error.message);
+            }
+        }
+    });
+</script>
+</body>
+</html>

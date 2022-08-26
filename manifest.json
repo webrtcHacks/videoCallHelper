@@ -41,10 +41,9 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "pages/dash.html",
-        "scripts/dash.js",
-        "scripts/inject.js",
-        "modules/processStream.js",
+        "pages/*.html",
+        "scripts/*.js",
+        "modules/*.js",
         "node_modules/@mediapipe/face_mesh/*",
         "styles/*.css"
       ],

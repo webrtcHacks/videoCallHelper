@@ -126,7 +126,14 @@ async function syncTrackInfo() {
     const videoDevices = devices.filter((device) => device.kind === 'videoinput');
     debug("getting current video devices:", videoDevices);
 
+    // video.js can ask for syncTrackInfo at any time, so see if there are still streams
+    if(streams.length === 0){
+        debug("No streams to syncTrackInfo");
+        return
+    }
+
     // just use the last stream for now
+    // ToDo: get the highest res stream
     const stream = streams.at(-1);
     // ToDo: stream event handlers
     debug("syncTrackInfo:: selected stream", stream)
@@ -331,6 +338,7 @@ document.addEventListener('vch', async e => {
             data: {id}
         }
         sendToInject(responseMessage);
+
     }
 });
 
