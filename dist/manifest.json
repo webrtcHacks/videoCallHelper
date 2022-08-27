@@ -3,7 +3,7 @@
   "action": {
     "default_icon": {
     },
-    "default_title": "Click Me"
+    "default_title": "Video Call Helper"
   },
   "manifest_version": 3,
   "version": "0.0.1",
@@ -43,8 +43,6 @@
       "resources": [
         "pages/*.html",
         "scripts/*.js",
-        "modules/*.js",
-        "node_modules/@mediapipe/face_mesh/*",
         "styles/*.css"
       ],
       "matches": [

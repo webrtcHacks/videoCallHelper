@@ -1,3 +1,5 @@
+import {get, set} from "idb-keyval";
+
 const streams = [];
 let trackInfos = [];
 // const trackIds = new Set();
@@ -14,6 +16,7 @@ function debug(...messages) {
 }
 
 debug(`content.js loaded on ${window.location.href}`);
+
 
 // Testing visualization options
 /*
@@ -104,17 +107,11 @@ async function toggleDash() {
     }
 }
 
-document.addEventListener('readystatechange', (event) => {
-    if (document.readyState === 'complete') {
-        debug("readyState complete");
-    }
-});
-
 // inject inject script
 function addScript(path) {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL(path);
-    script.onload = () => this.remove;
+    script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
 }
 
@@ -240,7 +237,7 @@ async function sendMessage(to = 'all', from = 'tab', message = "", data = {}, re
             from: from,
             to: to,
             message: message,
-            timestamp: Date.now(),
+            timestamp: (new Date).toLocaleString(),
             data: data
         };
 
@@ -339,13 +336,22 @@ document.addEventListener('vch', async e => {
         }
         sendToInject(responseMessage);
 
+        // ToDo: save frames here
+
     }
 });
+
+document.addEventListener('readystatechange', async (event) => {
+    if (document.readyState === 'complete') {
+        debug("readyState complete");
+        await set('time', (new Date).toLocaleString());
+    }
+});
+
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
     // ToDo: handle unload
-
 
     await sendMessage('all', 'tab', 'unload')
 });

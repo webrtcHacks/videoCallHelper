@@ -1,4 +1,4 @@
-import {trainingMessages as train} from "../modules/messages.mjs";
+import {trainingMessages as train} from "../../modules/messages.mjs";
 
 const storage = []; // temp storage holder
 let streamTabs;
@@ -283,8 +283,13 @@ chrome.runtime.onMessage.addListener(
             const videoTabId = await getVideoTabId();
             log(`"gum_stream_start" videoTabId: ${videoTabId}`);
 
-            if(!videoTabId)
-                await openVideoTab();
+            if(!videoTabId){
+                // ToDo: testing
+                // await openVideoTab();
+                log("there is where I would have opened the video tab");
+            }
+
+
 
             // ToDo: handle training later
             /*
