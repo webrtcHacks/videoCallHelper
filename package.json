@@ -1,7 +1,9 @@
 {
   "private": true,
   "scripts": {
-    "build": "webpack"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack",
+    "watch": "webpack --watch"
   },
   "dependencies": {
     "@mediapipe/drawing_utils": "^0.3.1620248257",

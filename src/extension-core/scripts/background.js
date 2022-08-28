@@ -1,4 +1,7 @@
 import {trainingMessages as train} from "../../modules/messages.mjs";
+import {get, set} from "idb-keyval";
+// import 'lovefield';
+
 
 const storage = []; // temp storage holder
 let streamTabs;
@@ -8,26 +11,18 @@ let trainingState = {
     storageName: "trainingState"
 }
 
-const _log = console.log;
-const log = console.log = function(message){
-    let newArgs = [];
-    newArgs[0] =  `👷`;
-    for(const arg of arguments){
-        newArgs.push(arg);
-    }
-    _log.apply(console, newArgs);
-}
+const log = function() {
+    return Function.prototype.bind.call(console.log, console, `👷`);
+}();
 
-/*
-function log(...messages) {
-    console.log(`👷 `, ...messages);
-    /*
-    if(messages.length > 1 || typeof messages[0]==='object')
-        console.log(`👷 ️${JSON.stringify(...messages)}`);
-    else
-        console.log(`👷 ️${messages}`);
-}
-     */
+
+// ToDo: testing
+
+await set('time', (new Date).toLocaleString());
+const time = await get('time');
+
+log(time);
+
 
 
 // Keep state on tabs; uses a Set to only store unique items
@@ -255,6 +250,13 @@ chrome.runtime.onMessage.addListener(
             log(`training tab open on ${data.id}`);
         }
 
+        if (message === 'frame_cap'){
+            const imageBlob = await fetch(data.blobUrl).then(response => response.blob());
+            // data.image = imageBlob;
+            // log(imageBlob);
+            // ToDo: save images here
+        }
+
         if (message === 'gum_stream_start') {
 
             await addTab(tabId);
@@ -288,8 +290,6 @@ chrome.runtime.onMessage.addListener(
                 // await openVideoTab();
                 log("there is where I would have opened the video tab");
             }
-
-
 
             // ToDo: handle training later
             /*

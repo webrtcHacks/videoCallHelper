@@ -8,9 +8,9 @@ const appEnabled = true;
 const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
 const monitorAudioSwitch = false; // ToDo: make this a switch
 
-function debug(...messages) {
-    console.debug(`vch 💉 `, ...messages);
-}
+const debug = function() {
+    return Function.prototype.bind.call(console.debug, console, `vch 💉  `);
+}();
 
 function sendMessage(to = 'all', message, data = {}) {
     debug(`dispatching "${message}" from inject to ${to} with data:`, data)

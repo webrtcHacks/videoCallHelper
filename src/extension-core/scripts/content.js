@@ -1,4 +1,4 @@
-import {get, set} from "idb-keyval";
+import {capImgToDb, getImages} from "../../modules/capImgToDb";
 
 const streams = [];
 let trackInfos = [];
@@ -11,9 +11,9 @@ let faceMeshLoaded = false;
 let videoTabId;
 let thisTabId;
 
-function debug(...messages) {
-    console.debug(`vch 🕵️‍ `, ...messages);
-}
+const debug = function() {
+    return Function.prototype.bind.call(console.debug, console, `vch 🕵️‍ `);
+}();
 
 debug(`content.js loaded on ${window.location.href}`);
 
@@ -337,6 +337,24 @@ document.addEventListener('vch', async e => {
         sendToInject(responseMessage);
 
         // ToDo: save frames here
+        //let captureInterval = capImgToDb(stream, sendMessage)
+
+        // ToDo: set this from a message
+        let intervalTime = 5*1000;
+
+        const getImg = getImages(stream);
+
+        let captureInterval = setInterval(async ()=>{
+            const imgData = await getImg.next();
+            if(imgData.value) //&& imgData.done !== false)
+                // debug(imgData.value);
+                await sendMessage('all', 'content', 'frame_cap', imgData.value);
+            if(imgData.done){
+                clearInterval(captureInterval);
+                debug("No more image data", imgData);
+            }
+
+        }, intervalTime);
 
     }
 });
@@ -344,10 +362,8 @@ document.addEventListener('vch', async e => {
 document.addEventListener('readystatechange', async (event) => {
     if (document.readyState === 'complete') {
         debug("readyState complete");
-        await set('time', (new Date).toLocaleString());
     }
 });
-
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {

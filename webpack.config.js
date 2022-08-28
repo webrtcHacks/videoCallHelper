@@ -2,10 +2,11 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-    mode: 'none',
+    mode: 'development',
     experiments: {
         topLevelAwait: true,
     },
+    devtool: 'inline-source-map',
     entry: {
         background: './src/extension-core/scripts/background.js',
         content: './src/extension-core/scripts/content.js',
