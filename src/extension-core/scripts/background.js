@@ -1,9 +1,7 @@
 import {trainingMessages as train} from "../../modules/messages.mjs";
 import {get, set} from "idb-keyval";
-// import 'lovefield';
+// import '../../modules/lovefield';
 
-
-const storage = []; // temp storage holder
 let streamTabs;
 let trainingState = {
     state: "not started",
@@ -18,10 +16,13 @@ const log = function() {
 
 // ToDo: testing
 
-await set('time', (new Date).toLocaleString());
-const time = await get('time');
-
-log(time);
+const timeString = (new Date).toLocaleString()
+await set('time', timeString );
+// const time = await get('time');
+await chrome.storage.local.set({time: timeString})
+log(timeString);
+const url = chrome.runtime.getURL("pages/storage.html"); // + `?source=${tabId}`;
+await chrome.tabs.create({url});
 
 
 

@@ -12,10 +12,13 @@ module.exports = {
         content: './src/extension-core/scripts/content.js',
         inject: './src/extension-core/scripts/inject.js',
         dash: './src/dash/dash.mjs',
+        storage: './src/extension-core/scripts/storage.js'
     },
     plugins: [
         new HtmlWebpackPlugin({
             title: 'Options page',
+            chunks: [''],
+            template: "src/extension-core/pages/options.html",
             filename: "../pages/options.html",
         }),
         new HtmlWebpackPlugin({
@@ -23,6 +26,12 @@ module.exports = {
             chunks: ['dash'],
             template: "src/dash/dash.html",
             filename: "../pages/dash.html",
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Storage page',
+            chunks: [''],
+            template: "src/extension-core/pages/storage.html",
+            filename: "../pages/storage.html",
         })
     ],
     output: {
