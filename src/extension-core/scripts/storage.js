@@ -1,13 +1,13 @@
 // Testing storage options
-import { get, set } from 'idb-keyval';
+import {entries} from 'idb-keyval';
 const span = document.createElement('span');
 
-const {time: timeString1} = await chrome.storage.local.get(['time']);
-console.log(timeString1);
-span.innerText = `chrome.storage.local: ${timeString1}`;
+const chromeStorage = await chrome.storage.local.get();
+console.log(chromeStorage);
+span.innerText = `chrome.storage.local: \n${JSON.stringify(chromeStorage)}`;
 
-const timeString2 = await get('time');
-console.log(timeString2);
-span.innerText += `\n` + `idb-keyval: ${timeString2}`;
+const idbStorage = await entries();
+console.log(idbStorage);
+span.innerText += `\n` + `idb-keyval: \n${JSON.stringify(idbStorage)}`;
 
 document.body.appendChild(span);

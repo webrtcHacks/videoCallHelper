@@ -1,5 +1,5 @@
 import {trainingMessages as train} from "../../modules/messages.mjs";
-import {get, set} from "idb-keyval";
+import {get, set, update} from "idb-keyval";
 // import '../../modules/lovefield';
 
 let streamTabs;
@@ -15,7 +15,7 @@ const log = function() {
 
 
 // ToDo: testing
-
+/*
 const timeString = (new Date).toLocaleString()
 await set('time', timeString );
 // const time = await get('time');
@@ -23,7 +23,7 @@ await chrome.storage.local.set({time: timeString})
 log(timeString);
 const url = chrome.runtime.getURL("pages/storage.html"); // + `?source=${tabId}`;
 await chrome.tabs.create({url});
-
+ */
 
 
 // Keep state on tabs; uses a Set to only store unique items
@@ -256,6 +256,20 @@ chrome.runtime.onMessage.addListener(
             // data.image = imageBlob;
             // log(imageBlob);
             // ToDo: save images here
+
+            const imgData = {
+                url: data.url,
+                date: data.date,
+                deviceId: data.deviceId,
+                image: imageBlob
+            }
+
+            const id = `image_${(Math.random() + 1).toString(36).substring(2)}`;
+            const dataToSave = {};
+            dataToSave[id] = imgData;
+            // await chrome.storage.local.set(dataToSave);
+
+            await set(id, imgData);
         }
 
         if (message === 'gum_stream_start') {

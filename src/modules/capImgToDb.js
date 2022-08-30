@@ -5,7 +5,7 @@ export async function* getImages(stream){
     const processor = new MediaStreamTrackProcessor(track);
     const reader = await processor.readable.getReader();
 
-    const {width, height} = stream.getVideoTracks()[0].getSettings()
+    const {width, height, deviceId, groupId} = stream.getVideoTracks()[0].getSettings()
     const canvas = new OffscreenCanvas(width,height);
     const ctx = canvas.getContext("bitmaprenderer");
 
@@ -34,6 +34,7 @@ export async function* getImages(stream){
             const imgData = {
                 url: window?.location.href || "",
                 date: (new Date()).toLocaleString(),
+                deviceId: deviceId,
                 blobUrl: blobUrl
             }
             yield imgData
@@ -54,7 +55,7 @@ export async function __capImgToDb(stream, afterImageFunction) {
 
     let captureInterval;
 
-    const {width, height} = stream.getVideoTracks()[0].getSettings()
+    const {width, height, deviceId, groupId} = stream.getVideoTracks()[0].getSettings()
     const canvas = new OffscreenCanvas(width,height);
     const ctx = canvas.getContext("bitmaprenderer");
 
@@ -70,6 +71,7 @@ export async function __capImgToDb(stream, afterImageFunction) {
             const imgData = {
                 url: window?.location.href || "",
                 date: (new Date()).toLocaleString(),
+                deviceId: deviceId,
                 blobUrl: blobUrl
             }
             // await set(`image_${Date.now()}`, imgData);
