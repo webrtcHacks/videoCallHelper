@@ -255,13 +255,14 @@ chrome.runtime.onMessage.addListener(
             const imageBlob = await fetch(data.blobUrl).then(response => response.blob());
             // data.image = imageBlob;
             // log(imageBlob);
-            // ToDo: save images here
 
             const imgData = {
                 url: data.url,
                 date: data.date,
                 deviceId: data.deviceId,
-                image: imageBlob
+                image: imageBlob,
+                width: data.width,
+                height: data.height
             }
 
             const id = `image_${(Math.random() + 1).toString(36).substring(2)}`;

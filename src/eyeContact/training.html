@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Training</title>
+    <link rel="stylesheet" href="/styles/training.css">
+</head>
+<body>
+<h2>Database</h2>
+<p><span id="db_count"></span> rows</p>
+<button id="db_show">Load</button>
+<button id="db_clear">Clear</button>
+<h2>Training</h2>
+<p>Get images</p>
+<label for="interval">Time between images in sec: </label>
+<input id="interval" type="text" value="10" size="8"/>
+<button id="get_images">Start</button>
+<br>
+<button id="train" disabled>Train</button>
+<h2>Images</h2>
+<label for="show_mesh">Show face mesh:</label>
+<input id="show_mesh" type="checkbox"/>
+<div id="training"></div>
+<script src="/scripts/training.js" type="module"></script>
+</body>
+</html>

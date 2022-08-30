@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View and save images</title>
+    <style>
+        span.dataCol{
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body>
+<h2>Database Control</h2>
+<p><span id="db_count"></span> Images</p>
+<button id="db_show">Load</button>
+<button id="db_save">Save</button>
+<button id="db_clear">Clear</button>
+<br>
+<label for="interval">Time between images in sec: </label>
+
+<input id="interval" type="text" value="10" size="8"/>
+<button id="apply_settings">Start</button>
+<button id="stop">Stop</button>
+
+
+<h2>Images</h2>
+<div id="images"></div>
+<!--script src="../scripts/images.js" type="module"></script-->
+
+</body>
+</html>

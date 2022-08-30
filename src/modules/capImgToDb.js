@@ -15,7 +15,7 @@ export async function* getImages(stream){
         const {value: frame, done} = await reader.read();
         if (frame && !done) {
 
-            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedHeight, frame.codedWidth);
+            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight);
             ctx.transferFromImageBitmap(bitmap);
             const blob = await canvas.convertToBlob({type: "image/jpeg"});
             const blobUrl = window.URL.createObjectURL(blob);
@@ -35,7 +35,9 @@ export async function* getImages(stream){
                 url: window?.location.href || "",
                 date: (new Date()).toLocaleString(),
                 deviceId: deviceId,
-                blobUrl: blobUrl
+                blobUrl: blobUrl,
+                width: width,
+                height: height
             }
             yield imgData
         }
@@ -72,7 +74,9 @@ export async function __capImgToDb(stream, afterImageFunction) {
                 url: window?.location.href || "",
                 date: (new Date()).toLocaleString(),
                 deviceId: deviceId,
-                blobUrl: blobUrl
+                blobUrl: blobUrl,
+                width: frame.codedWidth,
+                height: frame.codedHeight
             }
             // await set(`image_${Date.now()}`, imgData);
             // ToDo: put sendMessage into a module

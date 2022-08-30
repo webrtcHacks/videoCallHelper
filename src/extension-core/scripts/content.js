@@ -340,7 +340,7 @@ document.addEventListener('vch', async e => {
         //let captureInterval = capImgToDb(stream, sendMessage)
 
         // ToDo: set this from a message
-        let intervalTime = 5*1000;
+        let intervalTime = 15*1000;
 
         const getImg = getImages(stream);
 

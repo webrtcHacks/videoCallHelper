@@ -38,6 +38,7 @@ document.addEventListener('vch', async e => {
         return
     }
 
+    // ToDo: check to make sure this is happening. I was getting echo on Edge
     if(to === 'tab' && message === 'stream_transfer_complete'){
         const video = document.querySelector(`video#${data.id}`);
         document.body.removeChild(video);
@@ -60,6 +61,7 @@ function transferStream(stream){
     video.id = `vch-${Math.random().toString().substring(10)}`;
     video.srcObject = stream;
     video.hidden = true;
+    video.muted = true;
     document.body.appendChild(video);
     video.oncanplay = () => sendMessage('all', "gum_stream_start", {id: video.id});
 
