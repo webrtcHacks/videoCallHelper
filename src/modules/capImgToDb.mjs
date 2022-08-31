@@ -17,7 +17,7 @@ export async function* getImages(stream){
 
             const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight);
             ctx.transferFromImageBitmap(bitmap);
-            const blob = await canvas.convertToBlob({type: "image/jpeg"});
+            const blob = await canvas.convertToBlob({type: "image/jpeg", quality: 1});
             const blobUrl = window.URL.createObjectURL(blob);
 
             frame.close();
@@ -47,7 +47,7 @@ export async function* getImages(stream){
         }
     }
 }
-
+/*
 export async function __capImgToDb(stream, afterImageFunction) {
     // Insertable stream image capture
     // This guarantees every frame is unique
@@ -94,4 +94,4 @@ export async function __capImgToDb(stream, afterImageFunction) {
     captureInterval = setInterval(async () => await readFrame(), interval);
     return captureInterval
 }
-
+*/

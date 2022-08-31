@@ -1,12 +1,11 @@
 'use strict';
 
-// ToDo: build process to import message types module
 // Todo: make this an anonymous function
 
-let gumStream;
 const appEnabled = true;
 const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
-const monitorAudioSwitch = false; // ToDo: make this a switch
+let monitorAudioSwitch = false; // ToDo: make this a switch
+let processTrackSwitch = false;  // ToDo: find a better way to do this
 
 const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 💉  `);
@@ -41,6 +40,7 @@ document.addEventListener('vch', async e => {
     // ToDo: check to make sure this is happening. I was getting echo on Edge
     if(to === 'tab' && message === 'stream_transfer_complete'){
         const video = document.querySelector(`video#${data.id}`);
+        video.srcObject = null;
         document.body.removeChild(video);
     }
 
@@ -70,6 +70,9 @@ function transferStream(stream){
 // extract and send track event data
 function processTrack(track, sourceLabel = ""){
 
+    if(!processTrackSwitch)
+        return;
+
     const {id, kind, label, readyState} = track;
     const trackData = {id, kind, label, readyState};
     sendMessage('all', `${sourceLabel}_track_added`, {trackData});
@@ -83,8 +86,10 @@ function processTrack(track, sourceLabel = ""){
     }
 
     track.addEventListener('ended', trackEventHandler);
-    track.addEventListener('mute', trackEventHandler);
-    track.addEventListener('unmute', trackEventHandler);
+
+    // ToDo: these were firing too often
+    // track.addEventListener('mute', trackEventHandler);
+    // track.addEventListener('unmute', trackEventHandler);
 
 }
 
@@ -179,7 +184,10 @@ if (!window.videoCallHelper) {
     RTCPeerConnection.prototype.addTrack = function (track, stream) {
         debug(`addTrack shimmed on peerConnection`, this, track, stream);
         processTrack(track, "local");
-        if(monitorAudioSwitch)  // ToDo: handle if the switch is changed
+
+        // ToDo: handle if the switch is changed
+        // ToDo: no check to see if this is an audio track?
+        if(monitorAudioSwitch)
             monitorAudio(this);
 
         return origAddTrack.apply(this, arguments)

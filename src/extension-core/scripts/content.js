@@ -1,4 +1,4 @@
-import {capImgToDb, getImages} from "../../modules/capImgToDb";
+import {capImgToDb, getImages} from "../../modules/capImgToDb.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -17,6 +17,9 @@ const debug = function() {
 
 debug(`content.js loaded on ${window.location.href}`);
 
+// ToDo: setup chrome.storage.onChanged.addListener(
+const storage = await chrome.storage.local.get(null);
+await debug("storage contents:", storage);
 
 // Testing visualization options
 /*
@@ -148,6 +151,7 @@ async function syncTrackInfo() {
         trackInfos = trackInfos.filter(info => info.id !== id);
         debug("updated trackInfos", trackInfos);
     };
+
     videoTrack.onmute = async e => {
         await sendMessage('video', 'tab', 'mute', e.srcElement.id)
         debug("track muted: ", e.srcElement)
@@ -340,7 +344,8 @@ document.addEventListener('vch', async e => {
         //let captureInterval = capImgToDb(stream, sendMessage)
 
         // ToDo: set this from a message
-        let intervalTime = 15*1000;
+        // let intervalTime = get("settings.interval") || 15 * 1000;
+        let intervalTime = 30 * 1000;
 
         const getImg = getImages(stream);
 

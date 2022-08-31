@@ -13,7 +13,7 @@ module.exports = {
         inject: './src/extension-core/scripts/inject.js',
         dash: './src/dash/dash.mjs',
         storage: './src/extension-core/scripts/storage.js',
-        images: './src/imageCapture/scripts/images.js'
+        images: './src/imageCapture/scripts/imageCapture.js'
     },
     plugins: [
         new HtmlWebpackPlugin({
