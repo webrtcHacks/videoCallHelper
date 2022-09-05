@@ -95,6 +95,16 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.local.set({streamTabs: []});
     await chrome.storage.local.set({trainingState});
 
+    const settings = {
+        startOnPc: false,
+        captureIntervalMs: (30 * 1000),
+        samplingActive: false,
+    }
+    await chrome.storage.local.set({settings});
+
+    const allSettings = await chrome.storage.local.get(null);
+    log("onInstalled local storage: ", allSettings);
+
     // Testing
 
     /*

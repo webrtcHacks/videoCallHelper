@@ -1,4 +1,5 @@
-import {capImgToDb, getImages} from "../../modules/capImgToDb.mjs";
+import {grabFrames} from "../../modules/grabFrames.mjs";
+import {sendMessage} from "../../modules/messageHandler.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -95,7 +96,7 @@ async function toggleDash() {
             iframe.style.height = 0;
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
-            debug("closed dash");
+            // debug("closed dash");
 
         }
         // open if closed
@@ -104,7 +105,7 @@ async function toggleDash() {
             iframe.style.height = `${dashHeight}px`;
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
-            debug("opened dash");
+            // debug("opened dash");
 
         }
     }
@@ -226,33 +227,6 @@ async function syncTrackInfo() {
      */
 }
 
-/*
- * Communicate with the background worker context
- */
-
-async function sendMessage(to = 'all', from = 'tab', message = "", data = {}, responseCallBack = null) {
-
-    if (from === 'tab' && to === 'tab')
-        return;
-
-    try {
-        // ToDo: response callback
-        const messageToSend = {
-            from: from,
-            to: to,
-            message: message,
-            timestamp: (new Date).toLocaleString(),
-            data: data
-        };
-
-        // ToDo: this is expecting a response
-        await chrome.runtime.sendMessage(messageToSend, {});
-
-        // debug(`sent "${message}" from "tab" to ${to} with data ${JSON.stringify(data)}`);
-    } catch (err) {
-        debug("ERROR", err);
-    }
-}
 
 // Main message handler
 chrome.runtime.onMessage.addListener(
@@ -343,7 +317,9 @@ document.addEventListener('vch', async e => {
         // ToDo: save frames here
         //let captureInterval = capImgToDb(stream, sendMessage)
 
-        // ToDo: set this from a message
+        grabFrames(stream);
+
+        /*
         // let intervalTime = get("settings.interval") || 15 * 1000;
         let intervalTime = 30 * 1000;
 
@@ -351,6 +327,7 @@ document.addEventListener('vch', async e => {
 
         let captureInterval = setInterval(async ()=>{
             const imgData = await getImg.next();
+
             if(imgData.value) //&& imgData.done !== false)
                 // debug(imgData.value);
                 await sendMessage('all', 'content', 'frame_cap', imgData.value);
@@ -360,6 +337,8 @@ document.addEventListener('vch', async e => {
             }
 
         }, intervalTime);
+
+         */
 
     }
 });

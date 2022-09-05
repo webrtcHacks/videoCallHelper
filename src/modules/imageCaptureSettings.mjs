@@ -15,7 +15,7 @@ let ignoreStorageChange = true;
 // Save to chrome storage local
 async function saveSettings() {
     settings.startOnPc = startOnPcCheck.checked;
-    settings.captureInterval = captureIntervalInput.value * 1000;
+    settings.captureIntervalMs = captureIntervalInput.value * 1000;
     settings.samplingActive = samplingStartBtn.disabled;
 
     ignoreStorageChange = true;
@@ -28,14 +28,14 @@ async function saveSettings() {
 // Sync the UI with the settings values and set starting values if needed
 async function initSettings(){
     // default values
-    let {startOnPc, captureInterval, samplingActive} = settings;
+    let {startOnPc, captureIntervalMs, samplingActive} = settings;
     settings.startOnPc = startOnPc || false;
-    settings.captureInterval = captureInterval || (30 * 1000);
+    settings.captureIntervalMs = captureIntervalMs || (30 * 1000);
     settings.samplingActive = samplingActive || false;
     console.log("initial settings:",  settings);
 
     startOnPcCheck.checked = settings.startOnPc;
-    captureIntervalInput.value = settings.captureInterval / 1000;
+    captureIntervalInput.value = settings.captureIntervalMs / 1000;
     samplingStartBtn.disabled = settings.samplingActive;
     samplingStopBtn.disabled = !settings.samplingActive;
 
