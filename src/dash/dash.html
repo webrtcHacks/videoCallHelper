@@ -47,9 +47,16 @@
 <div class="vch">
     <div class="eventBox">
         <h3>Settings:</h3>
-        <label for="image_samples_check">Sample images</label>
-        <input type="checkbox" id="image_samples_check" checked>
-        <button>Image Sampling</button>
+        <label for="start_on_pc_check">Start on peerConnection? </label>
+        <input type="checkbox" id="start_on_pc_check" disabled>
+        <br>
+        <label for="interval">Time between images in sec: </label>
+        <input id="interval" type="text" value="30" size="8" required pattern="^[0-9]{1,9}$"/>
+        <button id="apply_settings">Apply</button>
+        <br>
+        <button id="sampling_start">Start</button>
+        <button id="sampling_stop">Stop</button>
+        <button id="open_sampling">Open Sampling</button>
     </div>
     <div class="eventBox">
         <h3>Message log:</h3>

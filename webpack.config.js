@@ -11,7 +11,7 @@ module.exports = {
         background: './src/extension-core/scripts/background.js',
         content: './src/extension-core/scripts/content.js',
         inject: './src/extension-core/scripts/inject.js',
-        dash: './src/dash/dash.mjs',
+        dash: './src/dash/dash.js',
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCapture.js'
     },
@@ -27,7 +27,7 @@ module.exports = {
             chunks: ['dash'],
             template: "src/dash/dash.html",
             filename: "../pages/dash.html",
-            inject: "body"
+            inject: "body",
         }),
         new HtmlWebpackPlugin({
             title: 'Storage page',

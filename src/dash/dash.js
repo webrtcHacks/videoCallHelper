@@ -1,6 +1,8 @@
-function debug(...messages) {
-    console.debug(`vch 📈️‍ `, ...messages);
-}
+const debug = function() {
+    return Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
+}();
+
+import '../modules/imageCaptureSettings.mjs';
 
 let currentTabId;
 const remoteAudioLevels = [];
@@ -10,6 +12,7 @@ let audioLevelInterval = false;
 const EventSpanElem = document.querySelector('span.vch');
 const remoteAudioLevelSpan = document.querySelector('span.remote_audio_level');
 const localAudioLevelSpan = document.querySelector('span.local_audio_level');
+
 
 // for chart testing
 window.events = [];
@@ -108,4 +111,14 @@ chrome.storage.local.get(['tabData'], messageObj => {
  */
 
 // await sendMessage('background', 'dash', 'dash_init', (response)=>{debug(response)});
-await sendMessage('background', 'dash', 'dash_init');
+
+document.querySelector("button#open_sampling").onclick = async ()=> {
+    const url = chrome.runtime.getURL("pages/imageCapture.html");
+    await chrome.tabs.create({url});
+}
+
+async function main(){
+    await sendMessage('background', 'dash', 'dash_init');
+}
+
+main().catch(err=>debug(err));
