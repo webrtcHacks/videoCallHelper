@@ -1,5 +1,6 @@
 import {trainingMessages as train} from "../../modules/messages.mjs";
 import {get, set, update} from "idb-keyval";
+import {MessageHandler} from "../../modules/messageHandler.mjs";
 // import '../../modules/lovefield';
 
 let streamTabs;
@@ -13,17 +14,10 @@ const log = function() {
     return Function.prototype.bind.call(console.log, console, `👷`);
 }();
 
-
-// ToDo: testing
-/*
-const timeString = (new Date).toLocaleString()
-await set('time', timeString );
-// const time = await get('time');
-await chrome.storage.local.set({time: timeString})
-log(timeString);
-const url = chrome.runtime.getURL("pages/storage.html"); // + `?source=${tabId}`;
-await chrome.tabs.create({url});
- */
+const sm = new MessageHandler('background', log);
+// const sendMessage = sm.sendMessage;
+// await sendMessage('all', 'hello content', {foo: 'bar'});
+// await chrome.runtime.sendMessage({to: 'all', from: 'background', message: 'hi', data: {foo: 'bar'} });
 
 
 // Keep state on tabs; uses a Set to only store unique items
@@ -209,7 +203,7 @@ chrome.runtime.onMessage.addListener(
 
         // ['background', 'all', 'training'].includes(to)
         if (to === 'all' || to === 'background' || to === 'training') {
-            log(`message from ${from} ${sender.tab ? sender.tab.id : ""} : ${message}, data:`, data);
+            log(`message "${message}" from ${from} ${sender.tab ? sender.tab.id : ""}, data:`, data);
         }
         else {
             /*
@@ -388,7 +382,7 @@ chrome.runtime.onMessage.addListener(
 // ToDo: change to pageAction?
 chrome.action.onClicked.addListener(async (tab)=>{
     const messageToSend = {
-        to: 'tab',
+        to: 'content',
         from: 'background',
         message: 'toggle_dash',
         data: {tabId: tab.id}
@@ -399,6 +393,10 @@ chrome.action.onClicked.addListener(async (tab)=>{
     // const videoTab = await chrome.tabs.create({url});
     // log(videoTab);  // undefined
     // log(`video tab ${videoTab.id}`)
+
+
+    // ToDo: testing - this doesn't work
+    // await sendMessage('all', 'hello', {foo: 'bar'});
 
 });
 

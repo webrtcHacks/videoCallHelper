@@ -1,15 +1,18 @@
-import {sendMessage} from "./messageHandler.mjs";
+import {MessageHandler} from "./messageHandler.mjs";
 
 // Image capture module for content.js
 const debug = function() {
-    return Function.prototype.bind.call(console.debug, console, `vch 🕵️:imageCapture:: `);
+    return Function.prototype.bind.call(console.debug, console, `vch 🕵️ imageCapture: `);
 }();
+
+const sendMessage = new MessageHandler('content', debug, false).sendMessage;
+
 
 let captureInterval;
 let currentStream = null;
 
 let {settings} = await chrome.storage.local.get('settings');
-console.log("Image Capture settings:", settings);
+debug("Image Capture settings:", settings);
 
 // Set default values if storage is blank
 if (!settings) {
@@ -64,7 +67,7 @@ export function grabFrames(stream){
             const imgData = await getImg.next();
 
             if(imgData.value)
-                await sendMessage('all', 'content', 'frame_cap', imgData.value);
+                await sendMessage('all', 'frame_cap', imgData.value);
             if(imgData.done){
                 clearInterval(captureInterval);
                 debug("No more image data", imgData);
@@ -122,51 +125,3 @@ async function* getImages(stream){
         }
     }
 }
-/*
-export async function __capImgToDb(stream, afterImageFunction) {
-    // Insertable stream image capture
-    // This guarantees every frame is unique
-    const [track] = stream.getVideoTracks();
-    const processor = new MediaStreamTrackProcessor(track);
-    const reader = await processor.readable.getReader();
-
-    let captureInterval;
-
-    const {width, height, deviceId, groupId} = stream.getVideoTracks()[0].getSettings()
-    const canvas = new OffscreenCanvas(width,height);
-    const ctx = canvas.getContext("bitmaprenderer");
-
-    async function readFrame() {
-        const {value: frame, done} = await reader.read();
-        if (frame) {
-
-            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedHeight, frame.codedWidth);
-            ctx.transferFromImageBitmap(bitmap);
-            const blob = await canvas.convertToBlob({type: "image/jpeg"});
-            const blobUrl = window.URL.createObjectURL(blob);
-
-            const imgData = {
-                url: window?.location.href || "",
-                date: (new Date()).toLocaleString(),
-                deviceId: deviceId,
-                blobUrl: blobUrl,
-                width: frame.codedWidth,
-                height: frame.codedHeight
-            }
-            // await set(`image_${Date.now()}`, imgData);
-            // ToDo: put sendMessage into a module
-            afterImageFunction('all', 'content', 'frame_cap', imgData);
-            frame.close();
-            bitmap.close();
-        }
-        if (done)
-            clearInterval(captureInterval);
-    }
-
-    // ToDo: set this from a message
-    let interval = 5*1000;
-
-    captureInterval = setInterval(async () => await readFrame(), interval);
-    return captureInterval
-}
-*/

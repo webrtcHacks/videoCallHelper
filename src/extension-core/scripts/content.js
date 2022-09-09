@@ -1,5 +1,6 @@
 import {grabFrames} from "../../modules/grabFrames.mjs";
-import {sendMessage} from "../../modules/messageHandler.mjs";
+//import {sendMessage} from "../../modules/messageHandler.mjs";
+import {MessageHandler} from "../../modules/messageHandler.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -18,54 +19,15 @@ const debug = function() {
 
 debug(`content.js loaded on ${window.location.href}`);
 
-// ToDo: setup chrome.storage.onChanged.addListener(
+// ToDo: testing
+const mh = new MessageHandler('content', debug);
+const sendMessage = mh.sendMessage;
+// await sendMessage('all', 'hello there', {foo: 'bar'});
+
 const storage = await chrome.storage.local.get(null);
 await debug("storage contents:", storage);
 
-// Testing visualization options
-/*
- * DOMContentLoaded - doesn't work with Meet
- */
-
-/*
-function addDisplay(){
-    const display = document.createElement("div");
-    display.id = "vch";
-    display.offsetHeight = 50;
-    display.style.cssText = "position: fixed; top: 0px; left: 0px; height: 0px; width: 100%; z-index: 1000; transition: height 500ms ease 0s;";
-    display.style.color = 'red';
-    display.style.backgroundColor = "aqua";
-    display.style.textAlign = "center";
-    display.innerText = "This is some text"
-    document.body.prepend(display);
-}
- */
-
 const dashHeight = 100;
-
-/*
-const dashStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: 100,
-    zIndex: 10000,
-    transition: {
-        height: 500,
-        ease: 0
-    },
-    backgroundColor: 'aqua',
-    color: 'red'
-}
-const dashOpenStyle = {
-    height: 100
-}
-
-const dashClosedStyle = {
-    height: 0
-}
- */
-
 const dashStyle = `position:fixed;top:0;left:0;width:100%;height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}`;
 
 async function toggleDash() {
@@ -106,21 +68,10 @@ async function toggleDash() {
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
             // debug("opened dash");
-
         }
     }
 }
-
-// inject inject script
-function addScript(path) {
-    const script = document.createElement('script');
-    script.src = chrome.runtime.getURL(path);
-    script.onload = () => script.remove();
-    (document.head || document.documentElement).appendChild(script);
-}
-
-addScript('/scripts/inject.js');
-debug("inject injected");
+mh.addListener("toggle_dash", toggleDash);
 
 async function syncTrackInfo() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -227,133 +178,51 @@ async function syncTrackInfo() {
      */
 }
 
+// function showDebug(d) {console.debug(JSON.stringify(arguments))}
+// mh.addListener("toggle_dash", showDebug);
 
-// Main message handler
-chrome.runtime.onMessage.addListener(
-    async (request, sender) => {
-        const {to, from, message, data} = request;
-        debug(`receiving "${message}" from ${from} to ${to}`, request);
+async function gumStreamStart(data){
+    const id = data.id;
+    const video = document.querySelector(`video#${id}`);
+    const stream = video.srcObject;
+    streams.push(stream);
+    debug(`stream video settings: `, stream.getVideoTracks()[0].getSettings());
+    debug("current streams", streams);
 
-        // if (to === 'tab' || to === 'all') {
-        if (message === 'toggle_dash') {
-            await toggleDash();
+    // send a message back to inject to remove the temp video element
+    await sendMessage('inject', 'stream_transfer_complete', {id});
 
-        } else if(message === 'video_tab'){
-            debug("send syncTrackInfo here");
-            await syncTrackInfo();
-        }
-        else if (to === 'content') {
-            // Nothing to do here yet
-            debug("message for content.js", request)
-        } else if (to === 'dash'){
-            // Nothing to do here yet
-        } else {
-            if (sender.tab)
-                debug(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
-            else
-                debug(`unrecognized format : `, sender, request);
-        }
-    }
-);
+    //
+    grabFrames(stream);
 
+}
 
+mh.addListener("gum_stream_start", gumStreamStart);
+
+// For timing testing
 /*
- * Communicate with the injected content
- */
-
-const sendToInject = message => {
-    debug("sending this to inject.js", message);
-    const toInjectEvent = new CustomEvent('vch', {detail: message});
-    document.dispatchEvent(toInjectEvent);
-};
-
-// Messages from inject
-document.addEventListener('vch', async e => {
-    const {to, from, message, data} = e.detail;
-    // ToDo: stop inject for echoing back
-    if (from === 'content')
-        return;
-
-    debug("message from inject", e.detail);
-
-    if (!e.detail) {
-        return
-    }
-
-    if (to === 'all' || to === 'background') {
-        await sendMessage(to, from, message, data);
-    }
-
-    // Relay to extension contexts
-    // ToDo: never get this event
-    if (message === 'gum_stream_start') {
-        const id = data.id;
-        const video = document.querySelector(`video#${id}`);
-        const stream = video.srcObject;
-        streams.push(stream);
-        debug(`stream video settings: `, stream.getVideoTracks()[0].getSettings());
-        debug("current streams", streams);
-        // await sendMessage(to, 'tab', message, data);
-
-        // check if videoTab is already open
-        // ToDo: query this
-        //  const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-        // Learning: not allowed in content
-        // const videoTab = await chrome.tabs.query({url: url});
-        //  debug("videoTab", videoTab);
-
-        // if (videoTabId)
-        // await syncTrackInfo();
-
-        // send a message back to inject to remove the temp video element
-        const responseMessage = {
-            to: 'tab',
-            from: 'content',
-            message: 'stream_transfer_complete',
-            data: {id}
-        }
-        sendToInject(responseMessage);
-
-        // ToDo: save frames here
-        //let captureInterval = capImgToDb(stream, sendMessage)
-
-        grabFrames(stream);
-
-        /*
-        // let intervalTime = get("settings.interval") || 15 * 1000;
-        let intervalTime = 30 * 1000;
-
-        const getImg = getImages(stream);
-
-        let captureInterval = setInterval(async ()=>{
-            const imgData = await getImg.next();
-
-            if(imgData.value) //&& imgData.done !== false)
-                // debug(imgData.value);
-                await sendMessage('all', 'content', 'frame_cap', imgData.value);
-            if(imgData.done){
-                clearInterval(captureInterval);
-                debug("No more image data", imgData);
-            }
-
-        }, intervalTime);
-
-         */
-
-    }
-});
-
 document.addEventListener('readystatechange', async (event) => {
     if (document.readyState === 'complete') {
         debug("readyState complete");
     }
 });
+ */
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
-    // ToDo: handle unload
-
+    // ToDo: handle unload?
     await sendMessage('all', 'tab', 'unload')
 });
+
+// inject inject script
+function addScript(path) {
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL(path);
+    script.onload = () => script.remove();
+    (document.head || document.documentElement).appendChild(script);
+}
+
+addScript('/scripts/inject.js');
+debug("inject injected");
 
 // sendMessage('background', 'content', 'tab_loaded', {url: window.location.href});

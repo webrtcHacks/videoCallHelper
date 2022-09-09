@@ -18,7 +18,7 @@ function sendMessage(to = 'all', message, data = {}) {
         debug("ERROR: no message in sendMessage request");
     }
     const messageToSend = {
-        from: 'tab',
+        from: 'inject',
         to: to,
         message: message,
         data: JSON.parse(JSON.stringify(data))      // can't pass objects:
@@ -33,15 +33,16 @@ document.addEventListener('vch', async e => {
     const {from, to, message, data} = e.detail;
 
     // Edge catching its own events
-    if (from === 'tab' || to !== 'tab') {
+    if (from === 'inject' || to !== 'inject') {
         return
     }
 
-    // ToDo: check to make sure this is happening. I was getting echo on Edge
-    if(to === 'tab' && message === 'stream_transfer_complete'){
+    if(to === 'inject' && message === 'stream_transfer_complete'){
         const video = document.querySelector(`video#${data.id}`);
         video.srcObject = null;
         document.body.removeChild(video);
+        // ToDo: testing
+        debug(`removed video element ${data.id}`);
     }
 
 });
