@@ -1,5 +1,7 @@
 /*
  * Communicate with the background worker context
+ *
+ * content can send to 'all', 'background', and 'inject' and relays to and from inject
  */
 
 export class MessageHandler {
@@ -10,14 +12,27 @@ export class MessageHandler {
     constructor(context, debug = console.debug, listen = true) {
         this.context = context;
         this.debug = debug; // debug function
-        if(context === 'content' && listen){
-            this.#documentListener('content', this.#listeners);
+        if(listen){
+            if(context === 'content'){
+                this.#documentListener('content', this.#listeners);
+                this.#runtimeListener('content', this.#listeners);
+            }
+            else if(context === 'inject')
+                this.#documentListener('inject', this.#listeners);
+            else if(context === 'background')
+                this.#runtimeListener('background', this.#listeners);
+            else
+                this.debug(`invalid context for listener ${context}`);
         }
-        this.#runtimeListener(context, this.#listeners);
+
+
+        // ToDo: is this better than returning the class?
+        // return {send: this.sendMessage, listen: this.addListener}
+
     }
 
     // Learning - use arrow function if you want to inherit the class's `this`
-    sendMessage = async (to = 'all', message, data = {}, responseCallBack = null) => {
+    sendMessage = (to = 'all', message, data = {}, responseCallBack = null) => {
         if (this.context === to)
             return;
 
@@ -30,12 +45,17 @@ export class MessageHandler {
                 data: data
             };
 
-            if(to==='inject'){
+            if(this.context === 'content' && to==='inject'){
                 const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
                 document.dispatchEvent(toInjectEvent);
             }
+            else if(this.context === 'inject'){
+                messageToSend.data = JSON.stringify(messageToSend.data);  // can't pass objects:
+                const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
+                document.dispatchEvent(toContentEvent);
+            }
             else{
-                await chrome.runtime.sendMessage(messageToSend, {});
+                chrome.runtime.sendMessage(messageToSend, {});
             }
 
             this.debug(`sent "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
@@ -51,7 +71,8 @@ export class MessageHandler {
                 const {to, from, message, data} = request;
                 this.debug(`runtimeListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, request);
 
-                if (from === this.context && (to === this.context || to !== 'all'))
+                // ignore messages to self
+                if (from === this.context) // && (to === this.context || to !== 'all'))
                     return
 
                 // this.debug(this.#listeners);
@@ -63,15 +84,6 @@ export class MessageHandler {
                         listener.callback.call(listener.callback, data, listener.arguments);
                     }
                 });
-
-                /*
-                if (messageHits === 0) {
-                    if (sender.tab)
-                        this.debug(`No messages handled from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
-                    else
-                        this.debug(`No messages handled : `, sender, request);
-                }
-                 */
 
                 if (sendResponse)
                     sendResponse(true);
@@ -85,28 +97,27 @@ export class MessageHandler {
             const {to, from, message, data} = e.detail;
             this.debug(`documentListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, e.detail);
 
-            // only handle messages from inject
-            if (from !== 'inject')
+            // if (from !== 'inject')
+            // ignore messages to self
+            if (from === this.context) // && (to === this.context || to !== 'all'))
                 return
 
             // relay the message to background
             else if ( to === 'all' || to === 'background') {
-                await this.sendMessage(to, from, message, data);
+                await this.sendMessage(to, from, message, JSON.parse(data));
             }
 
             this.#listeners.forEach(listener => {
                 this.debug("trying this listener", listener);
                 if (message === listener.message){
-                    listener.callback.call(listener.callback, data, listener.arguments);
+                    let dataObj = typeof data === 'string'? JSON.parse(data): data;
+                    listener.callback.call(listener.callback, dataObj, listener.arguments);
                 }
             });
-
-
-
         });
     }
 
-    addListener(message, callback) {
+    addListener = (message = "", callback = null) => {
         this.#listeners.push({message, callback});
         this.debug(`added listener "${message}" from "${this.context}"`);
     }

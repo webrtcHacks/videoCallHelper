@@ -1,4 +1,5 @@
 'use strict';
+import {MessageHandler} from "../../modules/messageHandler.mjs";
 
 // Todo: make this an anonymous function
 
@@ -11,41 +12,24 @@ const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 💉  `);
 }();
 
-function sendMessage(to = 'all', message, data = {}) {
-    debug(`dispatching "${message}" from inject to ${to} with data:`, data)
+/*
+const {send, listen} = new MessageHandler('inject', debug);
+const sendMessage = send;
+const addListener = listen;
+ */
 
-    if (!message) {
-        debug("ERROR: no message in sendMessage request");
-    }
-    const messageToSend = {
-        from: 'inject',
-        to: to,
-        message: message,
-        data: JSON.parse(JSON.stringify(data))      // can't pass objects:
-    };
+const mh = new MessageHandler('inject', debug);
+const sendMessage = mh.sendMessage;
+const addListener = mh.addListener;
 
-    const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
-    // debug("CustomEvent: ", toContentEvent);
-    document.dispatchEvent(toContentEvent);
+function streamTransferComplete(data){
+    const video = document.querySelector(`video#${data.id}`);
+    video.srcObject = null;
+    document.body.removeChild(video);
+    // ToDo: testing
+    debug(`removed video element ${data.id}`);
 }
-
-document.addEventListener('vch', async e => {
-    const {from, to, message, data} = e.detail;
-
-    // Edge catching its own events
-    if (from === 'inject' || to !== 'inject') {
-        return
-    }
-
-    if(to === 'inject' && message === 'stream_transfer_complete'){
-        const video = document.querySelector(`video#${data.id}`);
-        video.srcObject = null;
-        document.body.removeChild(video);
-        // ToDo: testing
-        debug(`removed video element ${data.id}`);
-    }
-
-});
+addListener("stream_transfer_complete", streamTransferComplete);
 
 // Put the stream in a temp DOM element for transfer to content.js context
 function transferStream(stream){
@@ -69,7 +53,7 @@ function transferStream(stream){
 }
 
 // extract and send track event data
-function processTrack(track, sourceLabel = ""){
+async function processTrack(track, sourceLabel = ""){
 
     if(!processTrackSwitch)
         return;
@@ -78,12 +62,12 @@ function processTrack(track, sourceLabel = ""){
     const trackData = {id, kind, label, readyState};
     sendMessage('all', `${sourceLabel}_track_added`, {trackData});
 
-    function trackEventHandler(event){
+    async function trackEventHandler(event){
         const type = event.type;
         const {id, kind, label, readyState, enabled, contentHint, muted} = event.target;
         const trackData = {id, kind, label, readyState, enabled, contentHint, muted};
         debug(`${sourceLabel}_${type}`, trackData);
-        sendMessage('all', `${sourceLabel}_track_${type}`, trackData);
+        sendMessage('all', `${sourceLabel}_track_${type}`, {trackData});
     }
 
     track.addEventListener('ended', trackEventHandler);
