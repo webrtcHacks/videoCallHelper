@@ -59,6 +59,7 @@ async function removeTab(tabId) {
     }
 }
 
+// for video processing in an extension tab
 async function getVideoTabId(){
     // ToDo: there is also a chrome extension method to get all extension pages
     const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
@@ -216,8 +217,9 @@ chrome.runtime.onMessage.addListener(
              */
         }
 
-        if(from==='dash' && message === 'dash_init'){
-            let tabEventData;
+        //if(from==='dash' && message === 'dash_init'){
+        if(message === 'dash_init'){
+        let tabEventData;
             chrome.storage.local.get(['tabData'], async messageObj => {
                 if(!messageObj.tabData){
                     log("no tabData in storage");

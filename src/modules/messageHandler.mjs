@@ -64,12 +64,18 @@ export class MessageHandler {
         }
     }
 
+    #sendMessageToTab = (tabId, message)=>{
+        message.from = this.context;
+        chrome.tabs.sendMessage(tabId, {...message})
+    }
+
     #runtimeListener() {
         chrome.runtime.onMessage.addListener(
             async (request, sender, sendResponse) => {
 
+                const tabId = sender?.tab?.id;
                 const {to, from, message, data} = request;
-                this.debug(`runtimeListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, request);
+                this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request);
 
                 // ignore messages to self
                 if (from === this.context) // && (to === this.context || to !== 'all'))
@@ -81,7 +87,11 @@ export class MessageHandler {
                     //this.debug("with this callback args", listener.callback.arguments);
                     if (message === listener.message){ //&& (from === null || from === listener.from)){
                         //this.debug(listener.callback.arguments);
-                        listener.callback.call(listener.callback, data, listener.arguments);
+                        // ToDo: listener.arguments doesn't exist - should I make that?
+                        if(this.context === 'background')
+                            listener.callback.call(listener.callback, data, listener.arguments);
+                        else
+                            listener.callback.call(listener.callback, data, listener.arguments);
                     }
                 });
 
@@ -111,14 +121,15 @@ export class MessageHandler {
                 this.debug("trying this listener", listener);
                 if (message === listener.message){
                     let dataObj = typeof data === 'string'? JSON.parse(data): data;
+                    // ToDo: listener.arguments doesn't exist - should I make that?
                     listener.callback.call(listener.callback, dataObj, listener.arguments);
                 }
             });
         });
     }
 
-    addListener = (message = "", callback = null) => {
-        this.#listeners.push({message, callback});
-        this.debug(`added listener "${message}" from "${this.context}"`);
+    addListener = (message = "", callback = null, tabId = null) => {
+        this.#listeners.push({message, callback, tabId});
+        this.debug(`added listener "${message}" from "${this.context}` + `${tabId ? " for " + tabId : ""}`);
     }
 }

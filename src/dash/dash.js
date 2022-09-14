@@ -1,8 +1,9 @@
+import {MessageHandler} from "../modules/messageHandler.mjs";
+import '../modules/imageCaptureSettings.mjs';
+
 const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
-}();
-
-import '../modules/imageCaptureSettings.mjs';
+}
 
 let currentTabId;
 const remoteAudioLevels = [];
@@ -17,28 +18,20 @@ const localAudioLevelSpan = document.querySelector('span.local_audio_level');
 // for chart testing
 window.events = [];
 
-async function sendMessage(to = 'all', from = 'dash', message, data = {}, responseCallBack = null) {
+const mh = new MessageHandler('content', debug);
+const sendMessage = mh.sendMessage;
 
-    if (from === 'dash' && to === 'dash')
-        return;
 
-    try {
-        // ToDo: response callback
-        const messageToSend = {
-            from: from,
-            to: to,
-            message: message,
-            data: data
-        };
-
-        // ToDo: this is expecting a response
-        await chrome.runtime.sendMessage(messageToSend, responseCallBack);
-        debug(`sent "${message}" from "tab" to ${to} with data ${JSON.stringify(data)}`);
-    } catch (err) {
-        debug("ERROR", err);
-    }
+function handleMessage(message){
+    EventSpanElem.innerText += `${new Date(message.timestamp).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
+    debug('dash_init_data');
 }
 
+// ToDo: I don't think this is working
+mh.addListener("dash_init_data", handleMessage);
+
+
+/*
 chrome.runtime.onMessage.addListener(
     async (request, sender) => {
         const {to, from, message, data} = request;
@@ -63,20 +56,18 @@ chrome.runtime.onMessage.addListener(
             if (message === 'remote_audio_level') {
                 remoteAudioLevelSpan.innerText = `Average: ${data.audioLevel}`;
 
-                /*
-                remoteAudioLevels.push(data.audioLevel);
-
-                if (!audioLevelInterval)
-                    audioLevelInterval = setInterval(() => {
-                        const avg = remoteAudioLevels.reduce((p, c) => p + c, 0) / remoteAudioLevels.length;
-                        const max = remoteAudioLevels.reduce((p,c) => c>p? c : p);
-                        remoteAudioLevelSpan.innerText =  `Average: \u00A0${avg}\n`+
-                                                    `Max: \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0${max}\n`+
-                                                    `Samples: \u00A0${audioLevels.length}`;
-                        remoteAudioLevels.length = 0;
-                        // audioLevelSpan.innerText += `${new Date(ts).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
-                    }, 1000)
-                 */
+                // remoteAudioLevels.push(data.audioLevel);
+                //
+                // if (!audioLevelInterval)
+                //     audioLevelInterval = setInterval(() => {
+                //         const avg = remoteAudioLevels.reduce((p, c) => p + c, 0) / remoteAudioLevels.length;
+                //         const max = remoteAudioLevels.reduce((p,c) => c>p? c : p);
+                //         remoteAudioLevelSpan.innerText =  `Average: \u00A0${avg}\n`+
+                //                                     `Max: \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0${max}\n`+
+                //                                     `Samples: \u00A0${audioLevels.length}`;
+                //         remoteAudioLevels.length = 0;
+                //         // audioLevelSpan.innerText += `${new Date(ts).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
+                //     }, 1000)
 
             }
             else if (message === 'local_audio_level') {
@@ -85,12 +76,9 @@ chrome.runtime.onMessage.addListener(
             } else
                 EventSpanElem.innerText += `${new Date(ts).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
         }
-
-
-
     }
 );
-
+*/
 
 // Initial data load
 // finding: content scripts can use chrome.tabs.query - you need to send a message to get the tabID;
@@ -118,7 +106,7 @@ document.querySelector("button#open_sampling").onclick = async ()=> {
 }
 
 async function main(){
-    await sendMessage('background', 'dash', 'dash_init');
+    await sendMessage('background', 'dash_init');
 }
 
 main().catch(err=>debug(err));

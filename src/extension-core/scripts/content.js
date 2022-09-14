@@ -1,6 +1,6 @@
-import {grabFrames} from "../../modules/grabFrames.mjs";
 //import {sendMessage} from "../../modules/messageHandler.mjs";
 import {MessageHandler} from "../../modules/messageHandler.mjs";
+import {grabFrames} from "../../modules/grabFrames.mjs";
 
 const streams = [];
 let trackInfos = [];
