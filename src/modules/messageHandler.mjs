@@ -37,7 +37,7 @@ export class MessageHandler {
             return;
 
         try {
-            const messageToSend = {
+            let messageToSend = {
                 from: this.context,
                 to: to,
                 message: message,
@@ -45,7 +45,12 @@ export class MessageHandler {
                 data: data
             };
 
-            if(this.context === 'content' && to==='inject'){
+            if(this.context === 'background'){
+                // const tabId = data.tabId; // ToDo: error checking
+                // this.debug(data.tabId);
+                chrome.tabs.sendMessage(data.tabId, {...messageToSend})
+            }
+            else if(this.context === 'content' && to==='inject'){
                 const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
                 document.dispatchEvent(toInjectEvent);
             }
@@ -55,6 +60,9 @@ export class MessageHandler {
                 document.dispatchEvent(toContentEvent);
             }
             else{
+                // this should only handle content -> background
+                // ToDo: debug
+                this.debug(`content -> background: ${this.context}`);
                 chrome.runtime.sendMessage(messageToSend, {});
             }
 
@@ -69,13 +77,23 @@ export class MessageHandler {
         chrome.tabs.sendMessage(tabId, {...message})
     }
 
+    // to and from content and background
     #runtimeListener() {
         chrome.runtime.onMessage.addListener(
             async (request, sender, sendResponse) => {
 
-                const tabId = sender?.tab?.id;
-                const {to, from, message, data} = request;
-                this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request);
+                // ToDo: tabId not coming through
+                const {to, from, message} = request;
+                let data = request?.data || {};
+
+                // background doesn't its own tabId in sender
+                // We need it in cases when background is responding to a request from content
+                // so it is appended as `data.tabId` there
+                const tabId = sender?.tab?.id || data?.tabId;
+                if(tabId)
+                    data.tabId = tabId;
+
+                this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 
                 // ignore messages to self
                 if (from === this.context) // && (to === this.context || to !== 'all'))
@@ -83,7 +101,7 @@ export class MessageHandler {
 
                 // this.debug(this.#listeners);
                 this.#listeners.forEach(listener => {
-                    this.debug("trying this listener", listener);
+                    // this.debug("trying this listener", listener);
                     //this.debug("with this callback args", listener.callback.arguments);
                     if (message === listener.message){ //&& (from === null || from === listener.from)){
                         //this.debug(listener.callback.arguments);
@@ -97,7 +115,6 @@ export class MessageHandler {
 
                 if (sendResponse)
                     sendResponse(true);
-
             })
     }
 
@@ -114,11 +131,11 @@ export class MessageHandler {
 
             // relay the message to background
             else if ( to === 'all' || to === 'background') {
-                await this.sendMessage(to, from, message, JSON.parse(data));
+                await this.sendMessage(to, message, JSON.parse(data));
             }
 
             this.#listeners.forEach(listener => {
-                this.debug("trying this listener", listener);
+                // this.debug("trying this listener", listener);
                 if (message === listener.message){
                     let dataObj = typeof data === 'string'? JSON.parse(data): data;
                     // ToDo: listener.arguments doesn't exist - should I make that?

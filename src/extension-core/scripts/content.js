@@ -211,7 +211,7 @@ document.addEventListener('readystatechange', async (event) => {
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
     // ToDo: handle unload?
-    await sendMessage('all', 'tab', 'unload')
+    await sendMessage('all', 'unload')
 });
 
 // inject inject script
@@ -225,4 +225,7 @@ function addScript(path) {
 addScript('/scripts/inject.js');
 debug("inject injected");
 
-// sendMessage('background', 'content', 'tab_loaded', {url: window.location.href});
+
+// testing
+// sendMessage('background', 'new_tab', {url: window.location.href});
+// mh.addListener("background_response", (data)=>debug("background response:", data));

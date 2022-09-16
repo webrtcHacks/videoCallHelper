@@ -1,6 +1,6 @@
-import {trainingMessages as train} from "../../modules/messages.mjs";
 import {get, set, update} from "idb-keyval";
 import {MessageHandler} from "../../modules/messageHandler.mjs";
+// import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
 // import '../../modules/lovefield';
 
 let streamTabs;
@@ -10,15 +10,11 @@ let trainingState = {
     storageName: "trainingState"
 }
 
-const log = function() {
+const debug = function() {
     return Function.prototype.bind.call(console.log, console, `👷`);
 }();
 
-const sm = new MessageHandler('background', log);
-// const sendMessage = sm.sendMessage;
-// await sendMessage('all', 'hello content', {foo: 'bar'});
-// await chrome.runtime.sendMessage({to: 'all', from: 'background', message: 'hi', data: {foo: 'bar'} });
-
+const mh = new MessageHandler('background', debug);
 
 // Keep state on tabs; uses a Set to only store unique items
 async function addTab(tabId) {
@@ -28,7 +24,7 @@ async function addTab(tabId) {
         const activeTabs = new Set(streamTabs);
         activeTabs.add(tabId);
         await chrome.storage.local.set({streamTabs: [...activeTabs]});
-        log(`Added tab: ${tabId}; streamTabs: ${[...activeTabs]}`);
+        debug(`Added tab: ${tabId}; streamTabs: ${[...activeTabs]}`);
     } catch (err) {
         console.error(`Issue adding ${tabId}`, err)
     }
@@ -42,7 +38,7 @@ async function removeTab(tabId) {
         const activeTabs = new Set(streamTabs);
         activeTabs.delete(tabId);
         await chrome.storage.local.set({activeTabs: [...activeTabs]});
-        log(`activeTabs: ${[...activeTabs]}`);
+        debug(`activeTabs: ${[...activeTabs]}`);
 
         // now clear storage
         chrome.storage.local.get(['tabData'], async data=>{
@@ -67,7 +63,7 @@ async function getVideoTabId(){
     const videoTab = await chrome.tabs.query({url: url});
          // ToDo: this isn't working - opens twice
         const videoTabId = videoTab[0]?.id;
-        log(`getVideoTabId:: videoTabId: ${videoTabId}`);
+        debug(`getVideoTabId:: videoTabId: ${videoTabId}`);
         return videoTabId
     // log("videoTab", videoTab);
 }
@@ -98,7 +94,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.local.set({settings});
 
     const allSettings = await chrome.storage.local.get(null);
-    log("onInstalled local storage: ", allSettings);
+    debug("onInstalled local storage: ", allSettings);
 
     // Testing
 
@@ -137,245 +133,78 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 });
 
-chrome.runtime.onMessage.addListener(
-    async (request, sender, sendResponse) => {
-
-        // ToDo: debugging
-        if(sendResponse){
-            // log("sending a response");
-            sendResponse(true);
-        } else log("no response requested");
-
-        const tabId = sender?.tab?.id || "not specified";
-        // log(`DEBUG: from ${sender.tab ? sender.tab.id : "unknown"}`, request, sender);
-        const {to, from, message, data} = request;
-
-        // forward "tab" messages to all tabs
-        // This was for eye level training
-        if (to === 'tab' && from === 'training') {
-            // keep state on training
-            if ([train.start, train.stop, train.updateInterval].includes(message)) {
-                trainingState.state = message === train.updateInterval ? train.start : message;
-                if (data?.sendImagesInterval)
-                    trainingState.sendImagesInterval = data.sendImagesInterval;
-                await chrome.storage.local.set({trainingState});
-            }
-
-            // const {streamTabs} = await chrome.storage.local.get("streamTabs");
-            chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-            log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
-            streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}, null));
+async function dashInit(data){
+    const tabId = data.tabId;
+    const tabDataObj = await chrome.storage.local.get(['tabData']);
+        if(!tabDataObj.tabData){
+            debug("no tabData in storage");
+            return;
         }
 
-        if(to==='video'){
-            const videoTabId = await getVideoTabId();
-            if(videoTabId){
-                log(`sending ${message} from ${from} to video`, request);
-                await chrome.tabs.sendMessage(videoTabId, request, {}, null);
-            }
-            else log(`could not send ${message} from ${from} to videoTab. videoTab not open`, request)
+        debug("loaded data", tabDataObj.tabData);
+
+        let responseData = tabDataObj.tabData.filter(data=>data.sourceId===tabId);
+        responseData.tabId = tabId;
+
+        const messageToSend = {
+            from: 'background',
+            to: 'context',
+            message: 'dash_init_data',
+            data: responseData
         }
+        mh.sendMessage('to', messageToSend, data);
+        // await chrome.tabs.sendMessage(tabId, {...messageToSend})
 
-        if(from === 'tab' && to ==='all' && message){
-            // Don't store audio-levels
-            if(message === 'local_audio_level' || message === 'remote_audio_level')
-                return;
+        debug("sent data", data);
+}
 
-            const storageObj = {
-                source: sender.tab.url,
-                sourceId: sender.tab.id,
-                message: message,
-                timeStamp: Date.now(),
-                data: data,
-            }
+async function frameCap(data){
+    const imageBlob = await fetch(data.blobUrl).then(response => response.blob());
 
-            log(`receiving "${message}" from ${from} to ${to}`, request);
+    const imgData = {
+        url: data.url,
+        date: data.date,
+        deviceId: data.deviceId,
+        image: imageBlob,
+        width: data.width,
+        height: data.height
+    }
 
-            // storage.push(storageObj);
-            chrome.storage.local.get(['tabData'], async data=>{
-                const arr = [];
-                if(data.tabData)
-                    arr.push(...data.tabData);
-                arr.push(storageObj);
-                await chrome.storage.local.set({tabData: arr});
-                // log("tabData: ", arr);
-            });
-        }
+    const id = `image_${(Math.random() + 1).toString(36).substring(2)}`;
+    const dataToSave = {};
+    dataToSave[id] = imgData;
 
-        // ['background', 'all', 'training'].includes(to)
-        if (to === 'all' || to === 'background' || to === 'training') {
-            log(`message "${message}" from ${from} ${sender.tab ? sender.tab.id : ""}, data:`, data);
-        }
-        else {
-            /*
-            if(sender.tab)
-                log(`unrecognized format from tab ${sender.tab.id} on ${sender.tab ? sender.tab.url : "undefined url"}`, request);
-            else
-                log(`unrecognized format : `, sender, request);
+    await set(id, imgData);
+}
 
-            return
-             */
-        }
 
-        //if(from==='dash' && message === 'dash_init'){
-        if(message === 'dash_init'){
-        let tabEventData;
-            chrome.storage.local.get(['tabData'], async messageObj => {
-                if(!messageObj.tabData){
-                    log("no tabData in storage");
-                    return;
-                }
+mh.addListener('dash_init', dashInit);
+mh.addListener('frame_cap', frameCap);
 
-                log("loaded data", messageObj.tabData);
+// Keep sync with tabs that have a gUM stream
+mh.addListener('gum_stream_start', data=>
+    data?.tabId ? addTab(data.tabId): debug("gum_stream_start missing tabId", data));
 
-                const data = messageObj.tabData.filter(data=>data.sourceId===tabId);
+mh.addListener('gum_stream_stop', data=>
+    data?.tabId ? removeTab(data.tabId): debug("gum_stream_stop missing tabId", data));
 
-                const messageToSend = {
-                    from: 'background',
-                    to: 'dash',
-                    message: 'dash_init_data',
-                    data: data
-                }
-                await chrome.tabs.sendMessage(tabId, {...messageToSend})
-                log("sent data", data);
-            });
-        }
+mh.addListener('unload', async data=>{
+    debug(`tab ${data.tabId} unloaded`);
+    await removeTab(data.tabId);
+});
 
-        if( from === 'video' && to !== 'background'){
-            request.data = {sourceTabId: tabId};
 
-            // const {streamTabs} = await chrome.storage.local.get("streamTabs");
-            chrome.storage.local.get(['streamTabs'], data=>{
-                streamTabs = data.streamTabs
-                log(`sending ${message} from ${from} to tabs: ${streamTabs}`);
-                streamTabs.forEach(tabId => chrome.tabs.sendMessage(tabId, request, {}));
-            });
-        }
+/*
+// testing
+function testTabResponse(data){
+    const tabId = data.tabId;     // ToDo - see if I can get mh to do this
+    const responseData = {tabId: tabId, statement: "hello there"};
+    mh.sendMessage('context', 'background_response', responseData);
+    log("testTabResponse data", responseData);
+}
 
-        // Relay messages to training
-        if (from === 'training' && message === train.id) {
-            log(`training tab open on ${data.id}`);
-        }
-
-        if (message === 'frame_cap'){
-            const imageBlob = await fetch(data.blobUrl).then(response => response.blob());
-            // data.image = imageBlob;
-            // log(imageBlob);
-
-            const imgData = {
-                url: data.url,
-                date: data.date,
-                deviceId: data.deviceId,
-                image: imageBlob,
-                width: data.width,
-                height: data.height
-            }
-
-            const id = `image_${(Math.random() + 1).toString(36).substring(2)}`;
-            const dataToSave = {};
-            dataToSave[id] = imgData;
-            // await chrome.storage.local.set(dataToSave);
-
-            await set(id, imgData);
-        }
-
-        if (message === 'gum_stream_start') {
-
-            await addTab(tabId);
-
-            // ToDo: better to query all tabs for the video tab url than use local storage so I don't need to worry
-            //  about keeping localStorage synced
-            // let {videoTabId} = await chrome.storage.local.get("videoTabId");
-            // log("videoTabId from storage: ", videoTabId);
-
-            // open the video tab
-            async function openVideoTab(){
-                const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-                const videoTab = await chrome.tabs.create({url});
-                const videoTabId = videoTab.id
-                log(`new video tab ${videoTab.id}`)
-                // sendResponse({message: 'videoTabId', data: videoTabId});
-                const messageToSend = {
-                    from: 'background',
-                    to: 'tab',
-                    message: 'video_tab_id',
-                    data: { videoTabId: videoTabId }
-                }
-                chrome.tabs.sendMessage(tabId, {...messageToSend});
-            }
-
-            const videoTabId = await getVideoTabId();
-            log(`"gum_stream_start" videoTabId: ${videoTabId}`);
-
-            if(!videoTabId){
-                // ToDo: testing
-                // await openVideoTab();
-                log("there is where I would have opened the video tab");
-            }
-
-            // ToDo: handle training later
-            /*
-            const {trainingState} = await chrome.storage.local.get("trainingState");
-
-            if (trainingState.state === train.start) {
-                const messageToSend = {
-                    from: 'background',
-                    to: 'tab',
-                    message: trainingState.state,
-                    data: { sendImagesInterval: trainingState.sendImagesInterval }
-                }
-                chrome.tabs.sendMessage(tabId, {...messageToSend});
-            }
-            else{
-                log("trainingState", trainingState);
-
-            }
-             */
-
-        }
-        else if (message === "gum_stream_stop") {
-            await removeTab(tabId)
-        } else if (message === train.image) {
-            log('training_image: ', data);
-        } else if (from === "popup" && message === "open") {
-            // ToDo: check to see if tabs are still open
-            // const {streamTabs} = await chrome.storage.local.get('streamTabs');
-            chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-            sendResponse({message: streamTabs.length > 0 ? "active" : "inactive"})
-        }
-
-        // Open the video page
-        else if (message === 'peerconnection_open'){
-
-            /*
-            // Right now only adding new tabs on pc_open
-            await addTab(tabId);
-
-            // see if there is already a video tab id
-            if(!videoTabId) {
-                // make sure it is still valid
-                videoTabId = await getVideoTabId();
-
-                // ToDo: When 2 PC's open in succession this opens 2 video tabs
-                // the below didn't work
-                // open a new one if it is not
-                if(!videoTabId){
-                    videoTabId = "temp";    // don't do this twice if there is concurrnecy
-                    const url = chrome.runtime.getURL("pages/video.html");
-                    const videoTab = await chrome.tabs.create({url});
-                    log(`video tab ${videoTab.id} created: ${url} `)
-                }
-            }
-            sendResponse({message: 'videoTabId', data: videoTabId});
-
-             */
-
-        } else if (message === 'unload') {
-            log("tab unloading");
-            await removeTab(tabId);
-        }
-    });
-
+mh.addListener('new_tab', testTabResponse);
+ */
 
 /*
  *  Extension icon control
@@ -396,58 +225,16 @@ chrome.action.onClicked.addListener(async (tab)=>{
     // log(videoTab);  // undefined
     // log(`video tab ${videoTab.id}`)
 
-
-    // ToDo: testing - this doesn't work
-    // await sendMessage('all', 'hello', {foo: 'bar'});
-
 });
-
-/*
- * Add our injection script new tabs
- */
-
-// Learning: needed vs. file method to give scripts access to window
-function inject(...files) {
-    files.forEach(file => {
-        let script = document.createElement('script');
-        script.src = chrome.runtime.getURL(file);
-        script.onload = function () {
-            document.head.removeChild(this)
-        };
-        (document.head || document.documentElement).appendChild(script); //prepend
-    });
-}
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     // log(`tab ${tabId} updated`, changeInfo, tab);
 
     if (tab.url.match(/^chrome-extension:\/\//) && changeInfo.status === 'complete') {
-        log(`extension tab opened: ${tab.url}`)
-    } else if (changeInfo.status === 'loading' && /^http/.test(tab.url)) { // complete
-
-        // ToDo: find a better way
-        // This didn't work on Hangouts
-        // Finding: this was too slow; didn't always load prior to target page loading gUM (like jitsi)
-        /*
-        await chrome.scripting.executeScript({
-            args: ['/node_modules/@mediapipe/face_mesh/face_mesh.js'],
-            // args: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js'],
-            // learning: file method doesn't add to page context
-            // files: ['/scripts/inject.js', '/node_modules/@mediapipe/face_mesh/face_mesh.js']
-            function: inject,
-            target: {tabId: tabId}
-        })
-            .catch(err => log(err));
-
-        log(`faceMesh into tab ${tabId}`);
-        // log(`inject.js into tab ${tabId}`);
-         */
-
-
+        debug(`extension tab opened: ${tab.url}`)
     }
-    //else log(`tab ${tabId} updated to ${changeInfo.status}`, tab);
-
+    // else if (changeInfo.status === 'loading' && /^http/.test(tab.url)) { });
 });
 
-log("background.js loaded");
+debug("background.js loaded");
 
