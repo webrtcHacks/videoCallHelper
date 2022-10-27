@@ -1,12 +1,13 @@
 //import {sendMessage} from "../../modules/messageHandler.mjs";
 import {MessageHandler} from "../../modules/messageHandler.mjs";
-import {grabFrames} from "../../modules/grabFrames.mjs";
+import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 
 const streams = [];
 let trackInfos = [];
 // const trackIds = new Set();
 
 window.vchStreams = streams;
+
 const DEFAULT_SEND_IMAGES_INTERVAL = 30 * 1000;
 let sendImagesInterval = Infinity;
 let faceMeshLoaded = false;
@@ -186,7 +187,7 @@ async function gumStreamStart(data){
     const video = document.querySelector(`video#${id}`);
     const stream = video.srcObject;
     streams.push(stream);
-    debug(`stream video settings: `, stream.getVideoTracks()[0].getSettings());
+    debug(`new stream ${stream.id} video settings: `, stream.getVideoTracks()[0].getSettings());
     debug("current streams", streams);
 
     // send a message back to inject to remove the temp video element
