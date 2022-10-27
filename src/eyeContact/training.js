@@ -4,7 +4,7 @@ import '/node_modules/@mediapipe/face_mesh/face_mesh.js';
 import '/node_modules/lovefield/dist/lovefield.js';
  */
 
-import {trainingMessages as train} from "../modules/messages.mjs";
+import {trainingMessages as train} from "../modules/trainingMessages.mjs";
 
 const trainingDiv = document.querySelector('div#training');
 const getImagesBtn = document.querySelector('button#get_images');
