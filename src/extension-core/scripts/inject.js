@@ -1,7 +1,7 @@
 'use strict';
 import {MessageHandler} from "../../modules/messageHandler.mjs";
 
-// Todo: make this an anonymous function
+// Todo: make this an anonymous function for prod
 
 const appEnabled = true;
 const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
@@ -118,7 +118,7 @@ if (!window.videoCallHelper) {
         // ToDo: check for audio too?
         const [track] = gdmStream.getVideoTracks();
         debug(`getDisplayMedia tracks: `, gdmStream.getTracks());
-        processTrack(track, "gdm");
+        await processTrack(track, "gdm");
         return gdmStream
     }
 

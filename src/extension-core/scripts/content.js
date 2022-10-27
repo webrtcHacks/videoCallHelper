@@ -1,18 +1,10 @@
-//import {sendMessage} from "../../modules/messageHandler.mjs";
 import {MessageHandler} from "../../modules/messageHandler.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 
 const streams = [];
 let trackInfos = [];
-// const trackIds = new Set();
 
 window.vchStreams = streams;
-
-const DEFAULT_SEND_IMAGES_INTERVAL = 30 * 1000;
-let sendImagesInterval = Infinity;
-let faceMeshLoaded = false;
-let videoTabId;
-let thisTabId;
 
 const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 🕵️‍ `);
@@ -20,7 +12,6 @@ const debug = function() {
 
 debug(`content.js loaded on ${window.location.href}`);
 
-// ToDo: testing
 const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
 // await sendMessage('all', 'hello there', {foo: 'bar'});
@@ -32,7 +23,6 @@ const dashHeight = 100;
 const dashStyle = `position:fixed;top:0;left:0;width:100%;height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}`;
 
 async function toggleDash() {
-    // keep stateless for v3 transition
 
     // see if the iframe has already been loaded
     let iframe = document.querySelector('iframe#vch_dash');
@@ -56,7 +46,7 @@ async function toggleDash() {
         // Close if open
         if (iframe.classList.contains('dashOpen')) {
             // document.body.style.marginTop = "0px";
-            iframe.style.height = 0;
+            iframe.style.height = "0px";
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
             // debug("closed dash");
@@ -74,6 +64,8 @@ async function toggleDash() {
 }
 mh.addListener("toggle_dash", toggleDash);
 
+// Monitor and share track changes
+// useful for replicating the stream in another tab
 async function syncTrackInfo() {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter((device) => device.kind === 'videoinput');
@@ -193,7 +185,7 @@ async function gumStreamStart(data){
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', 'stream_transfer_complete', {id});
 
-    //
+    // Todo: do I need a registry of applet functions to run here?
     grabFrames(stream);
 
 }
@@ -211,7 +203,6 @@ document.addEventListener('readystatechange', async (event) => {
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
-    // ToDo: handle unload?
     await sendMessage('all', 'unload')
 });
 

@@ -4,11 +4,6 @@ import {MessageHandler} from "../../modules/messageHandler.mjs";
 // import '../../modules/lovefield';
 
 let streamTabs;
-let trainingState = {
-    state: "not started",
-    sendImagesInterval: Infinity,
-    storageName: "trainingState"
-}
 
 const debug = function() {
     return Function.prototype.bind.call(console.log, console, `👷`);
@@ -70,8 +65,6 @@ async function getVideoTabId(){
 
 // let gumActive = false;
 chrome.runtime.onStartup.addListener(async () => {
-    // trainingState = await chrome.storage.local.get(trainingState.storageName);
-    // trainingState = chrome.local.storage.get(['trainingState'], data=>trainingState=data.trainingState);
     // await getVideoTabId();
 })
 
@@ -84,7 +77,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.local.clear();     // ToDo: Reconsider this for some data
 
     await chrome.storage.local.set({streamTabs: []});
-    await chrome.storage.local.set({trainingState});
 
     const settings = {
         startOnPc: false,
@@ -119,8 +111,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     const videoTab = await chrome.tabs.create({url});
     log(`webgazer tab ${videoTab.id}`)
      */
-
-    // ToDo: make user accept gUM permissions
 
     // Do this to load a help page
     /*
