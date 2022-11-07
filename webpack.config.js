@@ -13,7 +13,8 @@ module.exports = {
         inject: './src/extension-core/scripts/inject.js',
         dash: './src/dash/dash.js',
         storage: './src/extension-core/scripts/storage.js',
-        images: './src/imageCapture/scripts/imageCapture.js'
+        images: './src/imageCapture/scripts/imageCapture.js',
+        framing: './src/framing/scripts/framingAnalysis.js'
     },
     plugins: [
         new HtmlWebpackPlugin({
@@ -41,6 +42,13 @@ module.exports = {
             chunks: ['images'],
             template: "src/imageCapture/pages/imageCapture.html",
             filename: "../pages/imageCapture.html",
+            inject: "body"
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Framing analysis',
+            chunks: ['framing'],
+            template: "src/framing/pages/framingAnalysis.html",
+            filename: "../pages/framingAnalysis.html",
             inject: "body"
         })
     ],
