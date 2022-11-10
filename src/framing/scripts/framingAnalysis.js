@@ -1,3 +1,5 @@
+// import {FaceMesh} from '/node_modules/@mediapipe/face_mesh/face_mesh.js';
+import {FaceMesh} from '@mediapipe/face_mesh';
 import {entries} from 'idb-keyval';
 const dbCountSpan = document.querySelector('span#db_count');
 const startBtn = document.querySelector('button#start');
@@ -29,16 +31,53 @@ async function getImageData() {
 }
 
 
+
+
+/*
+const faceMesh = new FaceMesh({locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+    }});
+ */
+const faceMesh = new FaceMesh({locateFile: (file) => {
+        return `../face_mesh/${file}`;
+    }});
+
+// const faceMesh = new FaceMesh();
+faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
+faceMesh.onResults(results=>console.log(results));
+
+
+
 startBtn.onclick = async () => {
     const imageData = await getImageData();
     console.log(imageData);
 
-    imageData
-        .forEach(row => {
+    const row = imageData[10]; // ToDo: debugging
+    // imageData
+    //    .forEach(row => {
+            // Don't include Meet screen shares
             if(row.deviceId.match(/screen|window|tab|web-contents/))
                 return
+
+            const img = new Image();
+            if (row.width && row.height) {
+                img.width = row.width;
+                img.height = row.height;
+            } else
+                // skip if bad data
+                return
+
+            img.src = URL.createObjectURL(row.image);
+            faceMesh.send({image: row.image});
+
             const aspectRatio = (row.width/row.height).toFixed(1);
             console.log(`${row.width}hx${row.height}w; ${aspectRatio}`)
-        });
+      //   })
 
 }
+

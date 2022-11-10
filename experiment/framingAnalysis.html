@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebCam Framing Analysis Experiment</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <style>
+        div#one_to_three{
+            height: 480px;
+        }
+        div#sixteen_to_nine{
+            height: 720px;
+        }
+        img {
+            position: absolute;
+            opacity: 0.2;
+        }
+        img.temp{
+            position: relative;
+        }
+
+
+    </style>
+</head>
+<body>
+<button id="start">Start</button>
+
+<h2>temp image</h2>
+<img id="temp_img" class="temp">
+<h2>Images</h2>
+<div id="images">
+    <h3>1:3 Aspect Ratio</h3>
+    <div id="one_to_three" class="overlap">
+    </div>
+    <h3>16:9 Aspect Ratio</h3>
+    <div id="sixteen_to_nine" class="overlap">
+    </div>
+    <h3>Other Aspect Ratios</h3>
+    <div id="other_ratio" class="overlap">
+    </div>
+</div>
+<div id="results"></div>
+
+
+<script type="module">
+    // import {FaceMesh} from '/node_modules/@mediapipe/face_mesh/face_mesh.js';
+    // import {FaceMesh} from '../node_modules/@mediapipe/face_mesh';
+    // import {entries} from '../node_modules/idb-keyval/dist/index.js';
+    // import {entries} from "idb-keyval";
+
+    const startBtn = document.querySelector('button#start');
+    const results = document.querySelector('div#results');
+    // const rowDiv = document.querySelector('div#images');
+    const oneThreeDiv = document.querySelector('div#one_to_three');
+    const sixteenNineDiv = document.querySelector('div#sixteen_to_nine');
+    const otherRatioDiv = document.querySelector('div#other_ratio');
+
+
+    const tmpImg = document.querySelector('img#temp_img');
+
+    const faceMesh = new FaceMesh({
+        locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }
+    });
+
+    await faceMesh.initialize();
+
+    /*const faceMesh = new FaceMesh({locateFile: (file) => {
+        return `../face_mesh/${file}`;
+      }});
+
+     */
+
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+    faceMesh.onResults(results => console.log("faceMesh result:", results));
+
+
+    startBtn.onclick = async () => {
+
+        const parentDirectoryHandle = await window.showDirectoryPicker();
+        // In that existing directory, create a new directory
+        const directoryHandle = await parentDirectoryHandle.getDirectoryHandle('vch_images', {
+            create: false,
+        });
+        console.log(`directory handle "${directoryHandle.name}" under "${parentDirectoryHandle.name}"`);
+
+        let count = 0;
+
+        // const offscreenCanvas = new OffscreenCanvas(1,1)
+
+        for await (const [name, handle] of directoryHandle.entries()) {
+
+            if (count > 20)
+                break;
+
+            // console.log({ name, handle })
+            const file = await handle.getFile();
+            // console.log(file);
+
+            // Check if the file is an image.
+            if (file.type && !file.type.startsWith('image/')) {
+                console.log('File is not an image.', file.type, file);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.addEventListener('load', async (event) => {
+                count++;
+
+                const imgData = event.target.result;
+                tmpImg.src = imgData;
+                // await tmpImg;
+
+                const img = new Image();
+                img.src = imgData;
+                await img.decode().catch(err => console.error(err));
+
+                const aspectRatio = (img.naturalWidth / img.naturalHeight).toFixed(1);
+                console.log(`${img.naturalWidth}wx${img.naturalHeight}h; ${aspectRatio}`)
+
+
+                if (aspectRatio === "1.3")
+                    oneThreeDiv.appendChild(img);
+                else if (aspectRatio === "1.8")
+                    sixteenNineDiv.appendChild(img);
+                else
+                    otherRatioDiv.appendChild(img);
+
+                // faceMesh.send({image: tmpImg});
+            });
+            reader.readAsDataURL(file);
+
+        }
+    }
+
+
+</script>
+</body>
+</html>

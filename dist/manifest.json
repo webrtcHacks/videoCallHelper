@@ -35,8 +35,13 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' ; object-src 'self'; style-src 'self' 'unsafe-inline'",
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'",
     "isolated_world": "script-src 'self' 'unsafe-inline'"
+  },
+  "sandbox": {
+    "pages": [
+      "pages/framingAnalysis.html"
+    ]
   },
   "options_page": "pages/options.html",
   "web_accessible_resources": [
