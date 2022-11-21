@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebCam Framing Analysis Experiment</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+            crossorigin="anonymous"></script>
+    <style>
+        div{
+            margin-left: 15%;   /* ToDo: figure out how to center this */
+            align-items: center;
+            display: block;
+            justify-content: center;
+        }
+        video {
+            position: absolute;
+            display: flex;
+            opacity: 50%;
+            transform: scaleX(-1);
+        }
+
+        canvas {
+            position: absolute;
+            display: flex;
+            z-index: 100;
+            /*background-color: black;*/
+            width: 1280px;
+            height: 720px;
+            transform: scaleX(-1);
+        }
+
+    </style>
+</head>
+<body>
+<div>
+    <!-- TODO: replace with a grid -->
+    <table>
+        <tr>
+            <td>
+                <span id="coords">Coordinates go here</span>
+            </td>
+            <td>
+                <span id="status">Status go here</span>
+            </td>
+        </tr>
+    </table>
+</div>
+<div>
+    <video autoplay playsinline muted></video>
+    <canvas></canvas>
+</div>
+
+
+<script type="module">
+    const coordSpan = document.querySelector('span#coords');
+    const statusSpan = document.querySelector('span#status');
+
+    const videoElement = document.querySelector('video');
+    const canvas = document.querySelector('canvas');
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // const ctx = canvasElem.getContext("2d");
+
+
+    let stop = false;
+
+    const faceMesh = new FaceMesh({
+        locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }
+    });
+
+    await faceMesh.initialize();
+
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.8,
+        minTrackingConfidence: 0.5
+    });
+
+    let maxFaceHeight = 0;
+
+    // Status
+    let zLevel = false;
+    let xyLevel = false;
+    let fromCenter = "unknown";
+    let fromEyeLine = "unknown";
+
+    faceMesh.onResults(results => {
+        // console.log("faceMesh result:", results)
+
+        // const aspectRatio = (results.image.width / results.image.height).toFixed(1);
+        // ctx.save();
+
+        ctx.clearRect(0,0, w, h);
+        coordSpan.innerText = "";
+        statusSpan.innerText = "";
+
+        if (results.multiFaceLandmarks) {
+            for (const landmarks of results.multiFaceLandmarks) {
+
+                ctx.lineWidth = 1;
+                ctx.fillStyle = 'rgba(0, 0, 240, 1)';
+                ctx.strokeStyle = 'rgba(0, 240, 0, 0.5)';
+
+                function handlePoint(landmark, label){
+                    const scaled_x = (landmark.x * ctx.canvas.width).toFixed(0) | 0;
+                    const scaled_y = (landmark.y * ctx.canvas.height).toFixed(0) | 0;
+                    const scaled_z = (landmark.z * ctx.canvas.width).toFixed(0) | 0;
+
+                    const point = {x: scaled_x, y: scaled_y, z: scaled_z}
+                    coordSpan.innerText += `${label}:   x:${point.x} y:${point.y} z:${point.z}\n`;
+
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 1, 0, 2 * Math.PI);
+                    ctx.fill();
+                    return point
+                }
+
+
+                const center = handlePoint(landmarks[6], "center");
+                const top = handlePoint(landmarks[10], "top");
+                const bottom = handlePoint(landmarks[152], "bottom");
+                const right = handlePoint(landmarks[234], "right");
+                const left = handlePoint(landmarks[454], "left");
+
+                const rightEar = handlePoint(landmarks[127], "rightEar");
+                const leftEar = handlePoint(landmarks[356], "leftEar");
+
+
+                const dist = Math.hypot(top.x-bottom.x, bottom.y-top.y).toFixed(0);
+                maxFaceHeight = dist > maxFaceHeight ? dist: maxFaceHeight;
+                coordSpan.innerText += `Current face height: ${dist}  Max face height: ${maxFaceHeight}\n`;
+
+                // Status
+                // ToDo: make these a %?
+                zLevel = Math.abs(top.z) <= 1 && Math.abs(bottom.z) <= 1;
+                xyLevel = Math.abs(top.x-bottom.x) <= 2;
+
+                // from center
+                const centPct = (center.x - w/2)/w;
+                if(Math.abs(centPct) < 0.02)
+                    fromCenter = "centered";
+                else if (centPct < 0)
+                    fromCenter = "⬅";
+                else if (centPct > 0)
+                    fromCenter = "➡";
+
+                // from eyeLine
+                const eyeLinePct = (center.y - h/3)/h;
+                if(Math.abs(eyeLinePct) < 0.02)
+                    fromEyeLine = "good";
+                else if (eyeLinePct < 0)
+                    fromEyeLine = "⬇";
+                else if (eyeLinePct > 0)
+                    fromEyeLine = "⬆";
+
+                // Figure out how to calc yaw
+
+                statusSpan.innerText += `Pitch is ${zLevel ? '': 'not '}level\n`;
+                statusSpan.innerText += `Roll is ${xyLevel ? '': 'not '}level\n`;
+                statusSpan.innerText += `fromCenter: ${fromCenter}\n`;
+                statusSpan.innerText += `fromEyeLine: ${fromEyeLine}\n`;
+
+
+                // guidelines
+
+                // top to bottom
+                ctx.strokeStyle = 'rgba(0, 240, 0, 0.5)';
+                ctx.beginPath();
+                ctx.moveTo(top.x, top.y);
+                ctx.lineTo(bottom.x, bottom.y);
+                ctx.stroke();
+
+                // left to right
+                ctx.beginPath();
+                ctx.moveTo(right.x, right.y);
+                ctx.lineTo(left.x, left.y);
+                ctx.stroke();
+
+                // left ear to right ear
+                ctx.strokeStyle = 'rgba(0, 0, 240, 0.5)';
+                ctx.beginPath();
+                ctx.moveTo(leftEar.x, leftEar.y);
+                ctx.lineTo(rightEar.x, rightEar.y);
+                ctx.stroke();
+
+                // drawConnectors(ctx, landmarks, FACEMESH_TESSELATION, {color: '#C0C0C070', lineWidth: 1});
+                // drawConnectors(ctx, landmarks, FACEMESH_RIGHT_EYE, {color: '#FF3030'});
+                // drawConnectors(ctx, landmarks, FACEMESH_RIGHT_EYEBROW, {color: '#FF3030'});
+                // drawConnectors(ctx, landmarks, FACEMESH_RIGHT_IRIS, {color: '#FF3030'});
+                // drawConnectors(ctx, landmarks, FACEMESH_LEFT_EYE, {color: '#30FF30'});
+                // drawConnectors(ctx, landmarks, FACEMESH_LEFT_EYEBROW, {color: '#30FF30'});
+                // drawConnectors(ctx, landmarks, FACEMESH_LEFT_IRIS, {color: '#30FF30'});
+                // drawConnectors(ctx, landmarks, FACEMESH_FACE_OVAL, {color: '#E0E0E0'});
+                // drawConnectors(ctx, landmarks, FACEMESH_LIPS, {color: '#E0E0E0'});
+
+                drawConnectors(ctx, landmarks, FACEMESH_FACE_OVAL, {color: '#FFFDDD', lineWidth: 1});
+
+                /*
+                const [midwayBetweenEyes] = results.multiFaceLandmarks.annotations.midwayBetweenEyes
+                const x = midwayBetweenEyes[0];
+                const y = midwayBetweenEyes[1];
+                ctx.strokeStyle = 'rgba(200, 0, 0, 0.5)';
+                ctx.setLineDash([1, 1]);
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(x, y , 10, 0, 2*Math.PI)
+                ctx.stroke();
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+                 */
+
+                /*
+                for(const points in landmarks){
+                    console.log(landmarks[points]);
+                    const {x,y} = landmarks[points];
+                    drawPoint(x,y);
+                }
+
+                drawPoint(0.5, 0.5);
+
+                 */
+
+                // crosshair
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(200, 0, 0, 0.5)';
+                ctx.setLineDash([1, 1]);
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, 0);
+                ctx.lineTo(canvas.width / 2, canvas.height);
+                ctx.stroke();
+                ctx.moveTo(0, canvas.height / 3);
+                ctx.lineTo(canvas.width, canvas.height / 3);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+            }
+        }
+        else{
+            console.log("no face landmarks", results);
+        }
+        // ctx.restore();
+    });
+
+
+    const camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await faceMesh.send({image: videoElement});
+        },
+        width: 1280,
+        height: 720
+    });
+    camera.start();
+
+
+</script>
+</body>
+</html>

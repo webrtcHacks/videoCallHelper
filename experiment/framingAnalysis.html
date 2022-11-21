@@ -4,26 +4,38 @@
     <meta charset="UTF-8">
     <title>WebCam Framing Analysis Experiment</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+            crossorigin="anonymous"></script>
     <style>
-        div#one_to_three{
+        div#four_to_three {
             height: 480px;
+            width: 640px;
         }
-        div#sixteen_to_nine{
+
+        div#sixteen_to_nine {
             height: 720px;
+            width: 1280px;
         }
+
+        div#other_ratio {
+            height: 300px;
+            width: 300px;
+        }
+
         img {
             position: absolute;
             opacity: 0.2;
+            object-fit: contain;
         }
-        img.temp{
+
+        img.temp {
             position: relative;
         }
-        canvas{
+
+        canvas {
             position: absolute;
-            height: 480px;
-            width: 640px;
             z-index: 100;
+            background-color: black;
         }
 
     </style>
@@ -36,16 +48,19 @@
 
 <h2>Images</h2>
 <div id="images">
-    <h3>1:3 Aspect Ratio</h3>
-    <div id="one_to_three" class="overlap">
-        <canvas></canvas>
+    <p>Images processed: <span id="count">0</span></p>
+    <h3>4:3 Aspect Ratio</h3>
+    <div id="four_to_three" class="overlap">
+        <canvas width="640" height="480"></canvas>
 
     </div>
     <h3>16:9 Aspect Ratio</h3>
     <div id="sixteen_to_nine" class="overlap">
+        <canvas width="1280" height="720"></canvas>
     </div>
     <h3>Other Aspect Ratios</h3>
     <div id="other_ratio" class="overlap">
+        <canvas height="300"></canvas>
     </div>
 </div>
 <div id="results">
@@ -62,20 +77,28 @@
     const stopBtn = document.querySelector('button#stop');
 
     const results = document.querySelector('div#results');
-    // const rowDiv = document.querySelector('div#images');
-    const oneThreeDiv = document.querySelector('div#one_to_three');
+    const countSpan = document.querySelector('span#count');
+
+    const oneThreeDiv = document.querySelector('div#four_to_three');
     const sixteenNineDiv = document.querySelector('div#sixteen_to_nine');
     const otherRatioDiv = document.querySelector('div#other_ratio');
-    const canvasElem = document.querySelector('canvas');
-    const ctx = canvasElem.getContext("2d");
+
+    /*
+    const canvasOneThree = document.querySelector('div#four_to_three>canvas');
+    const canvasSixteenNine = document.querySelector('div#sixteen_to_nine>canvas');
+    const canvasOther = document.querySelector('div#other_ratio>canvas');
+     */
+
+
+    // const ctx = canvasElem.getContext("2d");
 
 
     const tmpImg = document.querySelector('img#temp_img');
     let stop = false;
 
-    function drawPoint(x,y){
-        const scaled_x = (x*canvasElem.width);
-        const scaled_y = (y*canvasElem.height);
+    function drawPoint(ctx, x, y) {
+        const scaled_x = (x * ctx.canvas.width);
+        const scaled_y = (y * ctx.canvas.height);
 
         // console.log(scaled_x, scaled_y);
 
@@ -87,24 +110,31 @@
         ctx.fill();
     }
 
-    canvasElem.width = 640;
-    canvasElem.height = 480;
-    // console.log(`canvas size: ${canvasElem.width}x${canvasElem.height}`);
-    // drawPoints(0.5, 0.5);
+    // setup canvases, return context
+    function setupCanvas(canvasSelector) {
+        const canvasElem = document.querySelector(canvasSelector);
+        const ctx = canvasElem.getContext("2d");
 
-    // crosshair
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(200, 0, 0, 0.5)';
-    ctx.setLineDash([1, 1]);
-    ctx.beginPath();
-    ctx.moveTo(canvasElem.width/2, 0);
-    ctx.lineTo(canvasElem.width/2, canvasElem.height);
-    ctx.stroke();
-    ctx.moveTo(0, canvasElem.height/3);
-    ctx.lineTo(canvasElem.width, canvasElem.height/3);
-    ctx.stroke();
-    ctx.setLineDash([]);
+        // console.log(`canvas size: ${canvasElem.width}x${canvasElem.height}`);
 
+        // crosshair
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(200, 0, 0, 0.5)';
+        ctx.setLineDash([1, 1]);
+        ctx.beginPath();
+        ctx.moveTo(canvasElem.width / 2, 0);
+        ctx.lineTo(canvasElem.width / 2, canvasElem.height);
+        ctx.stroke();
+        ctx.moveTo(0, canvasElem.height / 3);
+        ctx.lineTo(canvasElem.width, canvasElem.height / 3);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        return ctx
+    }
+
+    const fourThreeCtx = setupCanvas('div#four_to_three>canvas');
+    const sixteenNine = setupCanvas('div#sixteen_to_nine>canvas');
 
 
     const faceMesh = new FaceMesh({
@@ -123,12 +153,25 @@
 
     faceMesh.setOptions({
         maxNumFaces: 1,
-        refineLandmarks: false,
+        refineLandmarks: true,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
     });
+
     faceMesh.onResults(results => {
         // console.log("faceMesh result:", results)
+
+        const aspectRatio = (results.image.width / results.image.height).toFixed(1);
+        let ctx;
+        if (aspectRatio === "1.3")
+            ctx = fourThreeCtx;
+        else if (aspectRatio === "1.8")
+            ctx = sixteenNine;
+        else {
+            console.log("Not a handled aspect ratio");
+            return
+        }
+
         ctx.save();
 
         // canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -137,10 +180,10 @@
             for (const landmarks of results.multiFaceLandmarks) {
 
                 // console.log(landmarks[168]);
-                const {x,y,z} = landmarks[6];
+                const {x, y, z} = landmarks[6];
                 ctx.lineWidth = 1;
                 ctx.fillStyle = 'rgba(0, 240, 0, 1)';
-                drawPoint(x,y);
+                drawPoint(ctx, x, y);
                 // console.log(x*640,y*480,z*640);
 
 
@@ -181,14 +224,15 @@
 
                  */
 
-
-
             }
+        }
+        else{
+            console.log("no face landmarks", results);
         }
         ctx.restore();
     });
 
-    stopBtn.onclick = ()=> {
+    stopBtn.onclick = () => {
         console.log("stopping");
         startBtn.enabled = false;
         stopBtn.enabled = false;
@@ -225,6 +269,7 @@
             const reader = new FileReader();
             reader.addEventListener('load', async (event) => {
                 count++;
+                countSpan.innerText = count;
 
                 const imgData = event.target.result;
                 // tmpImg.src = imgData;
@@ -233,34 +278,38 @@
                 const img = new Image();
                 img.src = imgData;
 
-                try{
+                try {
                     await img.decode();
                     const aspectRatio = (img.naturalWidth / img.naturalHeight).toFixed(1);
-                    console.log(`${img.naturalWidth}wx${img.naturalHeight}h; ${aspectRatio}`)
+                    // console.log(`${img.naturalWidth}wx${img.naturalHeight}h; ${aspectRatio}`)
 
-                    if (aspectRatio === "1.3"){
-                        oneThreeDiv.appendChild(img);
+                    if (aspectRatio === "1.3") {
+                        // oneThreeDiv.appendChild(img);
                         await new Promise(resolve => setTimeout(resolve, 10));
                         await faceMesh.send({image: img});
+                    } else if (aspectRatio === "1.8") {
+                        // sixteenNineDiv.appendChild(img);
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                        await faceMesh.send({image: img});
+                    } else {
+                        const logText = `file ${name} is size ${img.naturalWidth}wx${img.naturalHeight}h with unhandled aspect ratio: ${aspectRatio}`
+                        console.log(logText);
+                        otherRatioDiv.innerHTML = `<span>${otherRatioDiv.innerHTML}</span><br>`;
                     }
-                    /*else if (aspectRatio === "1.8")
-                        sixteenNineDiv.appendChild(img);
-                    else
-                        otherRatioDiv.appendChild(img);
+                    // otherRatioDiv.appendChild(img);
 
-                     */
-                }
-                catch(err){
-                    console.error(err);
-                    stop = true;
-                }
 
+                } catch (err) {
+                    console.error(`error on: ${name}`, err);
+                    // stop = true;
+                }
 
             });
             await reader.readAsDataURL(file);
-            if(stop) break;
+            if (stop) break;
 
         }
+        console.log("finished reading all files");
     }
 
 
