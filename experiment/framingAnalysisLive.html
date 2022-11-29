@@ -3,31 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <title>WebCam Framing Analysis Experiment</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <!--script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script-->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
             crossorigin="anonymous"></script>
     <style>
         div{
-            margin-left: 15%;   /* ToDo: figure out how to center this */
-            align-items: center;
-            display: block;
+
+        }
+        select {
+            align-self: center;
             justify-content: center;
+            margin: 0 auto;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+        }
+        .center{
+            text-align: center;
         }
         video {
             position: absolute;
-            display: flex;
+            /*display: flex;*/
             opacity: 50%;
             transform: scaleX(-1);
         }
 
         canvas {
-            position: absolute;
-            display: flex;
+            /*position: absolute;
+            /*display: flex;*/
             z-index: 100;
-            /*background-color: black;*/
+            /*background-color: black;
             width: 1280px;
-            height: 720px;
+            height: 720px;*/
             transform: scaleX(-1);
         }
 
@@ -35,8 +44,13 @@
 </head>
 <body>
 <div>
+    <div ><!--class="center"-->
+    <label for="devices">Choose your camera</label>
+    <select name="devices" id="devices"></select>
+    </div>
+    <br>
     <!-- TODO: replace with a grid -->
-    <table>
+    <table > <!--class = "stats"-->
         <tr>
             <td>
                 <span id="coords">Coordinates go here</span>
@@ -47,7 +61,7 @@
         </tr>
     </table>
 </div>
-<div>
+<div class="center">
     <video autoplay playsinline muted></video>
     <canvas></canvas>
 </div>
@@ -56,17 +70,89 @@
 <script type="module">
     const coordSpan = document.querySelector('span#coords');
     const statusSpan = document.querySelector('span#status');
+    const deviceSelect = document.querySelector('select#devices');
+
 
     const videoElement = document.querySelector('video');
     const canvas = document.querySelector('canvas');
     const ctx = canvas.getContext("2d");
+
+    const VIDEO_HEIGHT = 720;
+    const VIDEO_WIDTH = 1280;
+    const VIDEO_FPS = 10;
+
+    canvas.height = VIDEO_HEIGHT
+    canvas.width = VIDEO_WIDTH
     const w = canvas.width;
     const h = canvas.height;
 
+    const sensitivity = 0.02;
+
+    // for increasing canvas line widths
+    const screen_multiplier = parseInt((screen.height / VIDEO_HEIGHT).toFixed(0) );
     // const ctx = canvasElem.getContext("2d");
 
+    let videoDevices = [];
 
-    let stop = false;
+    async function getDevices() {
+        let devices = await navigator.mediaDevices.enumerateDevices();
+        videoDevices = devices.filter(device => device.kind === 'videoinput');
+        console.log("video devices:", videoDevices);
+        videoDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.text = device.label;
+            deviceSelect.appendChild(option);
+        });
+    }
+
+    async function getVideo() {
+
+        // clean up resources if switching sources
+        if (window.stream)
+            window.stream.getTracks().forEach(track => track.stop());
+
+        let videoSource = videoDevices[deviceSelect.selectedIndex || 3]?.deviceId; // ToDo: save the selected device
+
+        const constraints = {
+            video:
+                {
+                    height: {ideal: VIDEO_HEIGHT},
+                    width: {ideal: VIDEO_WIDTH},
+                    frameRate: {ideal: VIDEO_FPS},
+                    deviceId: videoSource ? {exact: videoSource} : undefined
+                }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoElement.srcObject = stream;
+
+        const settings = stream.getVideoTracks()[0].getSettings();
+        console.log(`Capture camera with device ${stream.getVideoTracks()[0].label} at ${settings.width}x${settings.height}`);
+
+        // Insertable streams
+        const [track] = stream.getVideoTracks();
+        const processor = new MediaStreamTrackProcessor({track});
+        const reader = await processor.readable.getReader();
+
+        // const generator = new MediaStreamTrackGenerator({kind: 'video'});
+        // outputVideo.srcObject  = new MediaStream([generator]);
+
+        async function readFrame() {
+            const {value: frame, done} = await reader.read();
+            // value = frame
+            if (frame) {
+                await faceMesh.send({image: videoElement});
+                frame.close();
+            }
+            if(!done)
+                await readFrame();
+        }
+        await readFrame();
+
+
+        window.stream = stream;
+
+    }
 
     const faceMesh = new FaceMesh({
         locateFile: (file) => {
@@ -74,11 +160,9 @@
         }
     });
 
-    await faceMesh.initialize();
-
     faceMesh.setOptions({
         maxNumFaces: 1,
-        refineLandmarks: true,
+        refineLandmarks: false, // not using these
         minDetectionConfidence: 0.8,
         minTrackingConfidence: 0.5
     });
@@ -86,8 +170,7 @@
     let maxFaceHeight = 0;
 
     // Status
-    let zLevel = false;
-    let xyLevel = false;
+
     let fromCenter = "unknown";
     let fromEyeLine = "unknown";
 
@@ -104,10 +187,6 @@
         if (results.multiFaceLandmarks) {
             for (const landmarks of results.multiFaceLandmarks) {
 
-                ctx.lineWidth = 1;
-                ctx.fillStyle = 'rgba(0, 0, 240, 1)';
-                ctx.strokeStyle = 'rgba(0, 240, 0, 0.5)';
-
                 function handlePoint(landmark, label){
                     const scaled_x = (landmark.x * ctx.canvas.width).toFixed(0) | 0;
                     const scaled_y = (landmark.y * ctx.canvas.height).toFixed(0) | 0;
@@ -116,8 +195,10 @@
                     const point = {x: scaled_x, y: scaled_y, z: scaled_z}
                     coordSpan.innerText += `${label}:   x:${point.x} y:${point.y} z:${point.z}\n`;
 
+                    ctx.fillStyle = 'rgba(0, 0, 240, 1)';
+                    ctx.strokeStyle = 'rgba(0, 0, 240, 1)';
                     ctx.beginPath();
-                    ctx.arc(point.x, point.y, 1, 0, 2 * Math.PI);
+                    ctx.arc(point.x, point.y, screen_multiplier*2, 0, 2 * Math.PI);
                     ctx.fill();
                     return point
                 }
@@ -126,8 +207,8 @@
                 const center = handlePoint(landmarks[6], "center");
                 const top = handlePoint(landmarks[10], "top");
                 const bottom = handlePoint(landmarks[152], "bottom");
-                const right = handlePoint(landmarks[234], "right");
-                const left = handlePoint(landmarks[454], "left");
+                // const right = handlePoint(landmarks[234], "right");
+                // const left = handlePoint(landmarks[454], "left");
 
                 const rightEar = handlePoint(landmarks[127], "rightEar");
                 const leftEar = handlePoint(landmarks[356], "leftEar");
@@ -139,12 +220,19 @@
 
                 // Status
                 // ToDo: make these a %?
-                zLevel = Math.abs(top.z) <= 1 && Math.abs(bottom.z) <= 1;
-                xyLevel = Math.abs(top.x-bottom.x) <= 2;
+                // zLevel = Math.abs(top.z) <= 1 && Math.abs(bottom.z) <= 1;
+                // xyLevel = Math.abs(top.x-bottom.x) <= 2;
+                const pitchPct = Math.abs(top.z-bottom.z)/w <= sensitivity;
+                const rollPct = Math.abs(top.x-bottom.x)/w <= sensitivity;
+
+                // yaw calcs
+                const centerToRightEar = Math.hypot(center.x-rightEar.x, center.y-rightEar.y);
+                const centerToLeftEar =  Math.hypot(center.x-leftEar.x, center.y-leftEar.y);
+                const yawPct = Math.abs(centerToRightEar-centerToLeftEar)/w <= sensitivity;
 
                 // from center
                 const centPct = (center.x - w/2)/w;
-                if(Math.abs(centPct) < 0.02)
+                if(Math.abs(centPct) < sensitivity)
                     fromCenter = "centered";
                 else if (centPct < 0)
                     fromCenter = "⬅";
@@ -153,7 +241,7 @@
 
                 // from eyeLine
                 const eyeLinePct = (center.y - h/3)/h;
-                if(Math.abs(eyeLinePct) < 0.02)
+                if(Math.abs(eyeLinePct) < sensitivity)
                     fromEyeLine = "good";
                 else if (eyeLinePct < 0)
                     fromEyeLine = "⬇";
@@ -162,13 +250,21 @@
 
                 // Figure out how to calc yaw
 
-                statusSpan.innerText += `Pitch is ${zLevel ? '': 'not '}level\n`;
-                statusSpan.innerText += `Roll is ${xyLevel ? '': 'not '}level\n`;
+                statusSpan.innerText += `Pitch is ${pitchPct ? '': 'not '}level\n`;
+                statusSpan.innerText += `Roll is ${rollPct ? '': 'not '}level\n`;
+                statusSpan.innerText += `Yaw is ${yawPct ? '': 'not '}level\n`;
                 statusSpan.innerText += `fromCenter: ${fromCenter}\n`;
                 statusSpan.innerText += `fromEyeLine: ${fromEyeLine}\n`;
 
+                /*
+                statusSpan.innerText += `-------------------------------\n`;
+                statusSpan.innerText += `center to rightEar: ${Math.hypot(center.x-rightEar.x, center.y-rightEar.y).toFixed(0)}\n`;
+                statusSpan.innerText += `center to leftEar: ${Math.hypot(center.x-leftEar.x, center.y-leftEar.y).toFixed(0)}\n`;
+                */
 
                 // guidelines
+
+                ctx.lineWidth = 3 * screen_multiplier;
 
                 // top to bottom
                 ctx.strokeStyle = 'rgba(0, 240, 0, 0.5)';
@@ -178,13 +274,18 @@
                 ctx.stroke();
 
                 // left to right
+                /*
+                ctx.lineWidth = 1 * screen_multiplier;
+                ctx.setLineDash([screen_multiplier, 1]);
+                ctx.strokeStyle = 'rgba(0, 0, 240, 0.5)';
                 ctx.beginPath();
                 ctx.moveTo(right.x, right.y);
                 ctx.lineTo(left.x, left.y);
                 ctx.stroke();
+                 */
 
                 // left ear to right ear
-                ctx.strokeStyle = 'rgba(0, 0, 240, 0.5)';
+                ctx.strokeStyle = 'rgba(0, 240, 0, 0.5)';
                 ctx.beginPath();
                 ctx.moveTo(leftEar.x, leftEar.y);
                 ctx.lineTo(rightEar.x, rightEar.y);
@@ -228,9 +329,9 @@
                  */
 
                 // crosshair
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 2*screen_multiplier;
                 ctx.strokeStyle = 'rgba(200, 0, 0, 0.5)';
-                ctx.setLineDash([1, 1]);
+                ctx.setLineDash([screen_multiplier, screen_multiplier]);
                 ctx.beginPath();
                 ctx.moveTo(canvas.width / 2, 0);
                 ctx.lineTo(canvas.width / 2, canvas.height);
@@ -249,15 +350,18 @@
     });
 
 
-    const camera = new Camera(videoElement, {
-        onFrame: async () => {
-            await faceMesh.send({image: videoElement});
-        },
-        width: 1280,
-        height: 720
-    });
-    camera.start();
+    async function start() {
 
+        await getDevices();
+
+        // Note: list of devices may change after first camera permission approval
+        await getVideo();
+    }
+
+    deviceSelect.onchange = getVideo;
+
+    await faceMesh.initialize();
+    await start();
 
 </script>
 </body>
