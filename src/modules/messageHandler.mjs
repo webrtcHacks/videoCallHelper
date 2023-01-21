@@ -122,17 +122,17 @@ export class MessageHandler {
     #documentListener() {
         document.addEventListener('vch', async e => {
             const {to, from, message, data} = e.detail;
-            this.debug(`documentListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, e.detail);
 
             // if (from !== 'inject')
             // ignore messages to self
             if (from === this.context) // && (to === this.context || to !== 'all'))
                 return
-
             // relay the message to background
             else if ( to === 'all' || to === 'background') {
                 await this.sendMessage(to, message, JSON.parse(data));
             }
+
+            this.debug(`documentListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, e.detail);
 
             this.#listeners.forEach(listener => {
                 // this.debug("trying this listener", listener);
@@ -147,6 +147,33 @@ export class MessageHandler {
 
     addListener = (message = "", callback = null, tabId = null) => {
         this.#listeners.push({message, callback, tabId});
-        this.debug(`added listener "${message}" from "${this.context}` + `${tabId ? " for " + tabId : ""}`);
+        this.debug(`added listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
     }
+}
+
+export const MESSAGE = {
+    // used in inject.js
+    STREAM_TRANSFER_COMPLETE: 'stream_transfer_complete',
+    GUM_STREAM_START: 'gum_stream_start',
+    AUDIO_TRACK_ADDED: 'audio_track_added',
+    VIDEO_TRACK_ADDED: 'video_track_added',
+    LOCAL_AUDIO_LEVEL: 'local_audio_level',
+    REMOTE_AUDIO_LEVEL: 'remote_audio_level',
+    PEER_CONNECTION_OPEN: 'peer_connection_open',
+    PEER_CONNECTION_CLOSED: 'peer_connection_closed',
+
+    // background.js
+    DASH_INIT: 'dash_init',
+    FRAME_CAPTURE: 'frame_cap',
+    // GUM_STREAM_START: 'gum_stream_start',
+    GUM_STREAM_STOP: 'gum_stream_stop',
+    UNLOAD: 'unload',
+
+    // content.js
+    TOGGLE_DASH: 'toggle_dash',
+    // GUM_STREAM_START: 'gum_stream_start',
+    // UNLOAD: 'unload',
+
+    // dash.js
+    DASH_INIT_DATA: 'dash_init_data',
 }

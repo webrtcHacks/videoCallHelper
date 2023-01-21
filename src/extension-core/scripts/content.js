@@ -1,4 +1,4 @@
-import {MessageHandler} from "../../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 
 const streams = [];
@@ -62,7 +62,7 @@ async function toggleDash() {
         }
     }
 }
-mh.addListener("toggle_dash", toggleDash);
+mh.addListener(m.TOGGLE_DASH, toggleDash);
 
 // Monitor and share track changes
 // useful for replicating the stream in another tab
@@ -182,6 +182,14 @@ async function gumStreamStart(data){
     debug(`new stream ${stream.id} video settings: `, stream.getVideoTracks()[0].getSettings());
     debug("current streams", streams);
 
+    // ToDo: should really ignore streams and just monitor tracks
+    stream.addEventListener('removetrack', async (event) => {
+        debug(`${event.track.kind} track removed`);
+        if(stream.getTracks().length === 0){
+        await sendMessage('all', m.GUM_STREAM_STOP);
+        }
+    });
+
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', 'stream_transfer_complete', {id});
 
@@ -190,7 +198,7 @@ async function gumStreamStart(data){
 
 }
 
-mh.addListener("gum_stream_start", gumStreamStart);
+mh.addListener(m.GUM_STREAM_START, gumStreamStart);
 
 // For timing testing
 /*
@@ -203,7 +211,7 @@ document.addEventListener('readystatechange', async (event) => {
 
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
-    await sendMessage('all', 'unload')
+    await sendMessage('all', m.UNLOAD)
 });
 
 // inject inject script

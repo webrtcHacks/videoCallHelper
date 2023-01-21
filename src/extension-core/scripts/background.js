@@ -1,5 +1,5 @@
 import {get, set, update} from "idb-keyval";
-import {MessageHandler} from "../../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 // import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
 // import '../../modules/lovefield';
 
@@ -138,7 +138,7 @@ async function dashInit(data){
 
         const messageToSend = {
             from: 'background',
-            to: 'context',
+            to: 'content',
             message: 'dash_init_data',
             data: responseData
         }
@@ -168,17 +168,17 @@ async function frameCap(data){
 }
 
 
-mh.addListener('dash_init', dashInit);
-mh.addListener('frame_cap', frameCap);
+mh.addListener(m.DASH_INIT, dashInit);
+mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 // Keep sync with tabs that have a gUM stream
-mh.addListener('gum_stream_start', data=>
+mh.addListener(m.GUM_STREAM_START, data=>
     data?.tabId ? addTab(data.tabId): debug("gum_stream_start missing tabId", data));
 
-mh.addListener('gum_stream_stop', data=>
+mh.addListener(m.GUM_STREAM_STOP, data=>
     data?.tabId ? removeTab(data.tabId): debug("gum_stream_stop missing tabId", data));
 
-mh.addListener('unload', async data=>{
+mh.addListener(m.UNLOAD, async data=>{
     debug(`tab ${data.tabId} unloaded`);
     await removeTab(data.tabId);
 });

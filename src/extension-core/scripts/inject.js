@@ -1,5 +1,5 @@
 'use strict';
-import {MessageHandler} from "../../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -29,7 +29,7 @@ function streamTransferComplete(data){
     // ToDo: testing
     debug(`removed video element ${data.id}`);
 }
-addListener("stream_transfer_complete", streamTransferComplete);
+addListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
 
 // Put the stream in a temp DOM element for transfer to content.js context
 function transferStream(stream){
@@ -48,11 +48,13 @@ function transferStream(stream){
     video.hidden = true;
     video.muted = true;
     document.body.appendChild(video);
-    video.oncanplay = () => sendMessage('all', "gum_stream_start", {id: video.id});
+    video.oncanplay = () => sendMessage('all', m.GUM_STREAM_START, {id: video.id});
 
 }
 
 // extract and send track event data
+// ToDo: should this be in content.js?
+
 async function processTrack(track, sourceLabel = ""){
 
     if(!processTrackSwitch)
@@ -80,6 +82,7 @@ async function processTrack(track, sourceLabel = ""){
 
 // monitor local audio track audio levels
 // ToDo: need to stop / pause this
+// ToDo: should this be in content.js?
 function monitorAudio(peerConnection){
     //[...await pc1.getStats()].filter(report=>/RTCAudioSource_1/.test(report))[0][1].audioLevel
     const audioLevels = new Array(LOCAL_AUDIO_SAMPLES_PER_SECOND);
@@ -95,16 +98,18 @@ function monitorAudio(peerConnection){
             const avg = audioLevels.reduce((p, c) => p + c, 0) / audioLevels.length;
             // debug("audioLevel", avg);
             // ToDo: stop this when it is null or the PC is closed
-            sendMessage('all', 'local_audio_level', {audioLevel: avg, totalAudioEnergy});
+            sendMessage('all', m.LOCAL_AUDIO_LEVEL, {audioLevel: avg, totalAudioEnergy});
             audioLevels.length = 0;
             counter = 0
         }
     }, 1000 / LOCAL_AUDIO_SAMPLES_PER_SECOND)
 
-    peerConnection.onconnectionstatechange = () => {
+    // ToDo: use eventListenter to prevent onconnectionstatechange from being overwritten by the app
+    // peerConnection.onconnectionstatechange = () => {
+    peerConnection.addEventListener('connectionstatechange', () => {
         if(peerConnection.connectionState !== 'connected')
             clearInterval(interval);
-    }
+    });
 }
 
 if (!window.videoCallHelper) {
@@ -190,7 +195,7 @@ if (!window.videoCallHelper) {
     RTCPeerConnection.prototype.setRemoteDescription = function () {
 
         // ToDo: do this as part of onconnectionstatechange
-        sendMessage('all', 'peerconnection_open', {});
+        sendMessage('all', m.PEER_CONNECTION_OPEN, {});
 
         // ToDo: average this locally before sending?
         let interval = setInterval(()=>
@@ -207,7 +212,7 @@ if (!window.videoCallHelper) {
                     const sources = receiver.getSynchronizationSources();
                     sources.forEach(syncSource=>{
                        const {audioLevel, source} = syncSource;
-                        sendMessage('all', 'remote_audio_level', {audioLevel, source, id, kind, label});
+                        sendMessage('all', m.REMOTE_AUDIO_LEVEL, {audioLevel, source, id, kind, label});
                         // debug(`${source} audioLevel: ${audioLevel}`)
                     })
                 }
@@ -225,7 +230,7 @@ if (!window.videoCallHelper) {
     const origPeerConnClose = RTCPeerConnection.prototype.close;
     RTCPeerConnection.prototype.close = function() {
         debug("closing PeerConnection ", this);
-        sendMessage('all', "peerconnection_closed", this);
+        sendMessage('all', m.PEER_CONNECTION_CLOSED, this);
         return origPeerConnClose.apply(this, arguments)
     };
 
