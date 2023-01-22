@@ -8,6 +8,7 @@ export class MessageHandler {
 
     #listeners = [];
     // context;
+    tabId;
 
     constructor(context, debug = console.debug, listen = true) {
         this.context = context;
@@ -19,6 +20,8 @@ export class MessageHandler {
             }
             else if(context === 'inject')
                 this.#documentListener('inject', this.#listeners);
+            else if(context === 'dash')
+                this.#runtimeListener('dash', this.#listeners);
             else if(context === 'background')
                 this.#runtimeListener('background', this.#listeners);
             else
@@ -47,8 +50,8 @@ export class MessageHandler {
 
             if(this.context === 'background'){
                 // const tabId = data.tabId; // ToDo: error checking
-                // this.debug(data.tabId);
-                chrome.tabs.sendMessage(data.tabId, {...messageToSend})
+                this.debug(`target tabId: ${this.tabId}`); // was data.tabId
+                chrome.tabs.sendMessage(this.tabId, {...messageToSend})
             }
             else if(this.context === 'content' && to==='inject'){
                 const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
@@ -59,10 +62,14 @@ export class MessageHandler {
                 const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
                 document.dispatchEvent(toContentEvent);
             }
+            else if(this.context === 'dash' && to !== 'background'){
+                const dashEvent = new CustomEvent('vch', {detail: messageToSend});
+                document.dispatchEvent(dashEvent);
+            }
             else{
                 // this should only handle content -> background
                 // ToDo: debug
-                this.debug(`content -> background: ${this.context}`);
+                this.debug(`${this.context} -> background`, messageToSend);
                 chrome.runtime.sendMessage(messageToSend, {});
             }
 
@@ -90,8 +97,10 @@ export class MessageHandler {
                 // We need it in cases when background is responding to a request from content
                 // so it is appended as `data.tabId` there
                 const tabId = sender?.tab?.id || data?.tabId;
-                if(tabId)
+                if(tabId){
                     data.tabId = tabId;
+                    this.tabId = tabId;
+                }
 
                 this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 

@@ -1,16 +1,20 @@
-import {MessageHandler} from "../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m} from "../modules/messageHandler.mjs";
+// ToDo: this isn't working - doesn't save
 import '../modules/imageCaptureSettings.mjs';
 
+
+// const debug = (args)=> {
 const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
-}
+}();
 
 let currentTabId;
 const remoteAudioLevels = [];
 const localAudioLevel = [];
 let audioLevelInterval = false;
 
-const EventSpanElem = document.querySelector('span.vch');
+const eventSpanElem = document.querySelector('span#events');
+const statusSpanElem = document.querySelector('span#status');
 const remoteAudioLevelSpan = document.querySelector('span.remote_audio_level');
 const localAudioLevelSpan = document.querySelector('span.local_audio_level');
 
@@ -18,18 +22,39 @@ const localAudioLevelSpan = document.querySelector('span.local_audio_level');
 // for chart testing
 window.events = [];
 
-const mh = new MessageHandler('content', debug);
+// ToDo: should this be `dash` ???
+const mh = new MessageHandler('dash', debug);
 const sendMessage = mh.sendMessage;
 
 
-function handleMessage(message){
-    EventSpanElem.innerText += `${new Date(message.timestamp).toLocaleTimeString()}: ${message} with data ${JSON.stringify(data)}\n`;
-    debug('dash_init_data');
+function handleInitMessage(message){
+    eventSpanElem.innerText += `${new Date(message?.timestamp).toLocaleTimeString()}: ${message.message} with data ${JSON.stringify(message.data)}\n`;
+    debug('dash_init_data', message);
 }
 
-// ToDo: I don't think this is working
-mh.addListener("dash_init_data", handleMessage);
+mh.addListener(m.DASH_INIT_DATA, handleInitMessage);
 
+// Status message updates
+Object.keys(m).forEach(key => {
+    const message = m[key];
+
+    if([
+        m.GUM_STREAM_START,
+        m.GUM_STREAM_STOP,
+        m.AUDIO_TRACK_ADDED,
+        m.VIDEO_TRACK_ADDED,
+        m.PEER_CONNECTION_OPEN,
+        m.PEER_CONNECTION_CLOSED].includes(message)){
+        mh.addListener(message, (e)=>{
+            statusSpanElem.innerText = message;
+            debug(e);
+            debug(`status message should be ${message}`);
+        });
+
+        // debug(message);
+
+    }
+});
 
 /*
 chrome.runtime.onMessage.addListener(
@@ -107,6 +132,7 @@ document.querySelector("button#open_sampling").onclick = async ()=> {
 
 async function main(){
     await sendMessage('background', 'dash_init');
+    statusSpanElem.innerText = 'Waiting for data...';
 }
 
 main().catch(err=>debug(err));

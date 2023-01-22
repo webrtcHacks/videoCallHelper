@@ -124,6 +124,9 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 async function dashInit(data){
+
+    // not sure what this was all about. Maybe tab specific settings?
+
     const tabId = data.tabId;
     const tabDataObj = await chrome.storage.local.get(['tabData']);
         if(!tabDataObj.tabData){
@@ -133,19 +136,23 @@ async function dashInit(data){
 
         debug("loaded data", tabDataObj.tabData);
 
-        let responseData = tabDataObj.tabData.filter(data=>data.sourceId===tabId);
+        let responseData = tabDataObj.tabData.filter(data=>data?.sourceId===tabId);
         responseData.tabId = tabId;
+
 
         const messageToSend = {
             from: 'background',
-            to: 'content',
+            to: 'dash', // was content
             message: 'dash_init_data',
             data: responseData
         }
-        mh.sendMessage('to', messageToSend, data);
+
+
+        // ToDo: populate this
+        mh.sendMessage('dash', m.DASH_INIT_DATA, messageToSend);
         // await chrome.tabs.sendMessage(tabId, {...messageToSend})
 
-        debug("sent data", data);
+        debug("sent dash init data", data);
 }
 
 async function frameCap(data){
