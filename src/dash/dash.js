@@ -15,6 +15,8 @@ let audioLevelInterval = false;
 
 const eventSpanElem = document.querySelector('span#events');
 const statusSpanElem = document.querySelector('span#status');
+
+// Remote Audio
 const remoteAudioLevelSpan = document.querySelector('span.remote_audio_level');
 const localAudioLevelSpan = document.querySelector('span.local_audio_level');
 
@@ -125,8 +127,15 @@ chrome.storage.local.get(['tabData'], messageObj => {
 
 // await sendMessage('background', 'dash', 'dash_init', (response)=>{debug(response)});
 
+// Image capture button
 document.querySelector("button#open_sampling").onclick = async ()=> {
     const url = chrome.runtime.getURL("pages/imageCapture.html");
+    await chrome.tabs.create({url});
+}
+
+// Presence setup
+document.querySelector("button#presence_setup").onclick = async ()=> {
+    const url = chrome.runtime.getURL("pages/presence.html");
     await chrome.tabs.create({url});
 }
 

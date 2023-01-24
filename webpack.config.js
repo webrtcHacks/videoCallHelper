@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
     mode: 'development',
@@ -14,7 +15,8 @@ module.exports = {
         dash: './src/dash/dash.js',
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCapture.js',
-        framing: './src/framing/scripts/framingAnalysis.js'
+        framing: './src/framing/scripts/framingAnalysis.js',
+        presence: './src/presence/scripts/presence.js'
     },
     plugins: [
         new HtmlWebpackPlugin({
@@ -50,7 +52,19 @@ module.exports = {
             template: "src/framing/pages/framingAnalysis.html",
             filename: "../pages/framingAnalysis.html",
             inject: "body"
-        })
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Presence webhook',
+            chunks: ['presence'],
+            template: "src/presence/pages/presence.html",
+            filename: "../pages/presence.html",
+            inject: "body"
+        }),
+        new CopyPlugin({
+            patterns: [
+                { from: "src/static/icons", to: "../icons" },
+            ],
+        }),
     ],
     output: {
         filename: '[name].js',

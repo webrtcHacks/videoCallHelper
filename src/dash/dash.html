@@ -46,7 +46,7 @@
 <body>
 <div class="vch">
     <div class="eventBox">
-        <h3>Settings:</h3>
+        <h3>Frame Capture</h3>
         <label for="start_on_pc_check">Start on peerConnection? </label>
         <input type="checkbox" id="start_on_pc_check" disabled>
         <br>
@@ -59,15 +59,18 @@
         <button id="open_sampling">Open Sampling</button>
     </div>
     <div class="eventBox">
-        <h3>Status:</h3>
-        <span id="status"></span>
+        <h3>Status</h3>
+        <p>
+            <span id="status"></span>
+        </p>
+        <button id="presence_setup">Presence Setup</button>
     </div>
     <div class="eventBox">
-        <h3>Message log:</h3>
+        <h3>Message log</h3>
         <span id="events"></span>
     </div>
     <div class="eventBox">
-        <p>Remote audio levels:</p>
+        <p>Remote audio levels</p>
         <span class="remote_audio_level"></span>
         <p>Local audio levels:</p>
         <span class="local_audio_level"></span>

@@ -179,8 +179,10 @@ mh.addListener(m.DASH_INIT, dashInit);
 mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 // Keep sync with tabs that have a gUM stream
-mh.addListener(m.GUM_STREAM_START, data=>
-    data?.tabId ? addTab(data.tabId): debug("gum_stream_start missing tabId", data));
+mh.addListener(m.GUM_STREAM_START, async data=> {
+    data?.tabId ? addTab(data.tabId): debug("gum_stream_start missing tabId", data);
+    await chrome.action.setIcon({path: "../icons/v_rec.png"});
+});
 
 mh.addListener(m.GUM_STREAM_STOP, data=>
     data?.tabId ? removeTab(data.tabId): debug("gum_stream_stop missing tabId", data));
