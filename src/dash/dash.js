@@ -46,7 +46,9 @@ Object.keys(m).forEach(key => {
         m.AUDIO_TRACK_ADDED,
         m.VIDEO_TRACK_ADDED,
         m.PEER_CONNECTION_OPEN,
-        m.PEER_CONNECTION_CLOSED].includes(message)){
+        m.PEER_CONNECTION_CLOSED,
+        m.UNLOAD
+    ].includes(message)){
         mh.addListener(message, (e)=>{
             statusSpanElem.innerText = message;
             debug(e);

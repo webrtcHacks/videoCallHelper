@@ -15,10 +15,10 @@
     </div>
     <div class="row">
         <h2>Manual controls</h2>
-        <button type="button" class="btn btn-danger busy hidden" id="busyBtn">Busy</button>
-        <button type="button" class="btn btn-primary busy" id="notBusyBtn">Not busy</button>
+        <button type="button" class="btn btn-danger busy hidden" id="busy">Busy</button>
+        <button type="button" class="btn btn-primary busy" id="not_busy">Not busy</button>
     </div>
-    <div id="settings">
+    <div id="settings_div">
         <h2>Settings</h2>
         <input id="embrava" type="checkbox">
         <label for="embrava">Embrava BlyncLight</label><br>
@@ -26,41 +26,51 @@
         <h3>Webhook settings</h3>
         <div class="tab-content">
             <h4>Busy Indicator</h4>
-            <form id="onSettingsForm" class="settingsForm">
+            <form id="on" class="settingsForm">
                 <div class="form-group">
                     <label>Call a URL for status change to on</label><br>
                     <label for="onUrl">On URL</label>
-                    <textarea id="onUrl" name="onUrl" type="text" wrap="soft"></textarea><br>
+                    <input type="text" id="onUrl" name="onUrl" wrap="soft"
+                              pattern="/(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/gi">
+                    </input>
+                    <br>
                     <label for="onHeaders">Headers</label>
-                    <textarea id="onHeaders" name="onHeaders" type="text" wrap="soft"></textarea><br>
-                    <input id="onGetSwitch" type="checkbox" class="getSwitch">
+                    <textarea id="onHeaders" name="onHeaders" wrap="soft"></textarea>
+                    <br>
+                    <input type="hidden" name="onMethod" value="false">
+                    <input id="onGetSwitch" type="checkbox" class="getSwitch" name="onMethod" value="GET">
                     <label for="onGetSwitch">Use a GET</label><br>
                     <label for="onPostBody" class="onPostBody">POST Body</label>
                     <textarea id="onPostBody" class="form-control onPostBody" name="onPostBody"
                               rows="3"></textarea><br>
                 </div>
+                <button class="btn" type="submit">Save</button>
             </form>
         </div>
 
         <div>
             <h4>Not busy indicator</h4>
-            <form id="offSettingsForm" class="settingsForm">
+            <form id="off" class="settingsForm">
                 <div class="form-group">
                     <label>Call a URL for status change to off</label><br>
                     <label for="offUrl">Off URL</label>
-                    <textarea id="offUrl" type="text" name="offUrl" wrap="soft"></textarea><br>
+                    <input type="text" id="offUrl" name="offUrl" wrap="soft"
+                              pattern="/(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/gi">
+                    <br>
                     <label for="offHeaders">Headers</label>
-                    <textarea id="offHeaders" name="offHeaders" type="text" wrap="soft"></textarea><br>
-                    <input id="offGetSwitch" type="checkbox" class="getSwitch">
+                    <textarea id="offHeaders" name="offHeaders" wrap="soft"></textarea>
+                    <br>
+                    <input type="hidden" name="offMethod" value="POST">
+                    <input id="offGetSwitch" type="checkbox" name="offMethod" class="getSwitch" value="GET">
                     <label for="offGetSwitch">Use a GET</label><br>
                     <label for="offPostBody" class="offPostBody">POST Body</label>
                     <textarea id="offPostBody" class="form-control offPostBody" name="offPostBody"
                               rows="3"></textarea><br>
                 </div>
+                <button class="btn" type="submit">Save</button>
             </form>
         </div>
     </div>
-    <button id="saveButton" class="btn btn-primary">Save</button>
 </div>
 </body>
 </html>

@@ -59,11 +59,13 @@
         <button id="open_sampling">Open Sampling</button>
     </div>
     <div class="eventBox">
-        <h3>Status</h3>
-        <p>
-            <span id="status"></span>
-        </p>
-        <button id="presence_setup">Presence Setup</button>
+        <h3>Status: <span id="status"></span></h3>
+        <div class="row">
+            <b>Manual presence controls</b><br>
+            <button type="button" class="btn btn-danger busy hidden" id="busy">Busy</button>
+            <button type="button" class="btn btn-primary busy" id="not_busy">Not busy</button>
+        </div>
+        <button id="presence_setup">Presence Settings</button>
     </div>
     <div class="eventBox">
         <h3>Message log</h3>

@@ -16,7 +16,7 @@ module.exports = {
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCapture.js',
         framing: './src/framing/scripts/framingAnalysis.js',
-        presence: './src/presence/scripts/presence.js'
+        presence: './src/presence/scripts/presenceSettings.mjs'
     },
     plugins: [
         new HtmlWebpackPlugin({
