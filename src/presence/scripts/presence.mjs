@@ -21,7 +21,6 @@ export function webhook(state, settings, log = console.log) {
     let postBody = state === "on" ? settings.on.onPostBody : settings.off.offPostBody;
     let headers = state === "on" ? settings.on.onHeaders : settings.off.offHeaders;
 
-
     if (url === "") {
         console.log("No " + state + " url set");
         return
@@ -37,16 +36,12 @@ export function webhook(state, settings, log = console.log) {
             }
         };
 
-        if (postBody !== "") {
+        if (postBody !== "")
             fetchParams.body = postBody;    // JSON.stringify(postBody);    // ToDo: not sure why I need the parse all of the sudden
-        }
     }
-
-    console.log(headers);
 
     if (headers !== "")
         fetchParams.headers = JSON.parse(headers);
-
 
     //console.log(url, fetchParams);
 

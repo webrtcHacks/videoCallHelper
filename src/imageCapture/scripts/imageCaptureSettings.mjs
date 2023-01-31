@@ -8,8 +8,12 @@ const samplingStopBtn = document.querySelector('button#sampling_stop');
 const startOnPcCheck = document.querySelector('input#start_on_pc_check');
 const captureIntervalInput  = document.querySelector('input#interval');
 
-export let {settings} = await chrome.storage.local.get('settings');
-console.log("starting settings:", settings);
+const debug = function () {
+    return Function.prototype.bind.call(console.debug, console, `vch 🕵️ imageCaptureSettings: `);
+}();
+
+export let settings = (await chrome.storage.local.get('imageCapture'))?.imageCapture;
+debug("starting settings:", settings);
 let ignoreStorageChange = true;
 
 // Save to chrome storage local
@@ -19,8 +23,8 @@ async function saveSettings() {
     settings.samplingActive = samplingStartBtn.disabled;
 
     ignoreStorageChange = true;
-    await chrome.storage.local.set({settings});
-    console.log("Settings updated:", settings);
+    await chrome.storage.local.set({imageCapture: settings});
+    debug("Settings updated:", settings);
     ignoreStorageChange = false;
 
 }
@@ -32,7 +36,7 @@ async function initSettings(){
     settings.startOnPc = startOnPc || false;
     settings.captureIntervalMs = captureIntervalMs || (30 * 1000);
     settings.samplingActive = samplingActive || false;
-    console.log("initial settings:",  settings);
+    debug("initial settings:",  settings);
 
     startOnPcCheck.checked = settings.startOnPc;
     captureIntervalInput.value = settings.captureIntervalMs / 1000;
@@ -43,9 +47,9 @@ async function initSettings(){
 
 // Sync changes from other tabs
 chrome.storage.onChanged.addListener( async (changes, area)=>{
-    if(changes.settings && !ignoreStorageChange){
-        console.log(`storage area "${area}" changes: `, changes.settings);
-        settings = changes.settings.newValue;
+    if(changes['imageCapture'] && !ignoreStorageChange){
+        debug(`storage area "${area}" changes: `, changes['imageCapture']);
+        settings = changes['imageCapture'].newValue;
         await initSettings();
     }
 });

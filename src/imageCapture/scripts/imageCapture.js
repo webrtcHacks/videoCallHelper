@@ -1,5 +1,5 @@
 import {entries, clear, delMany, get, set} from 'idb-keyval';
-import '../../modules/imageCaptureSettings.mjs';
+import './imageCaptureSettings.mjs';
 
 const showDbBtn = document.querySelector('button#db_show');
 const clearDbBtn = document.querySelector('button#db_clear');

@@ -1,9 +1,16 @@
 import {get, set, update} from "idb-keyval";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {settingsPrototype, webhook} from "../../presence/scripts/presence.mjs";
+import {glow} from "../../presence/scripts/embrava.mjs";
 // import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
 // import '../../modules/lovefield';
 
 let streamTabs;
+let storage = await chrome.storage.local.get(null);
+
+// added for presence
+let trackData = [];
+let presenceActive = false;
 
 const debug = function() {
     return Function.prototype.bind.call(console.log, console, `👷`);
@@ -74,19 +81,25 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.runtime.onInstalled.addListener(async () => {
 
-    await chrome.storage.local.clear();     // ToDo: Reconsider this for some data
+    // await chrome.storage.local.clear();     // ToDo: Reconsider this for some data
 
+    storage = await chrome.storage.local.get(null);
     await chrome.storage.local.set({streamTabs: []});
+    if(!storage['presence'])
+        await chrome.storage.local.set({presence: settingsPrototype});
 
-    const settings = {
-        startOnPc: false,
-        captureIntervalMs: (30 * 1000),
-        samplingActive: false,
+    // ToDo: rename
+    if(!storage['imageCapture']){
+        // Image capture
+        const imageCapture = {
+            startOnPc: false,
+            captureIntervalMs: (30 * 1000),
+            samplingActive: false,
+        }
+        await chrome.storage.local.set({imageCapture});
     }
-    await chrome.storage.local.set({settings});
 
-    const allSettings = await chrome.storage.local.get(null);
-    debug("onInstalled local storage: ", allSettings);
+    debug("onInstalled local storage: ", await chrome.storage.local.get(null));
 
     // Testing
 
@@ -178,18 +191,72 @@ async function frameCap(data){
 mh.addListener(m.DASH_INIT, dashInit);
 mh.addListener(m.FRAME_CAPTURE, frameCap);
 
+// Presence handling
+// ToDo: doesn't handle multiple streams per tab - try to send streams or sync track info
+/*
 // Keep sync with tabs that have a gUM stream
 mh.addListener(m.GUM_STREAM_START, async data=> {
-    data?.tabId ? addTab(data.tabId): debug("gum_stream_start missing tabId", data);
+    data?.tabId ? await addTab(data.tabId): debug("gum_stream_start missing tabId", data);
     await chrome.action.setIcon({path: "../icons/v_rec.png"});
 });
 
-mh.addListener(m.GUM_STREAM_STOP, data=>
-    data?.tabId ? removeTab(data.tabId): debug("gum_stream_stop missing tabId", data));
+mh.addListener(m.GUM_STREAM_STOP, async data=> {
+    data?.tabId ? await removeTab(data.tabId) : debug("gum_stream_stop missing tabId", data);
+    await chrome.action.setIcon({path: "../icons/v_128.png"});
+});
+
+*/
+
+async function presenceOff(){
+    if(!trackData.some(td => td.state === 'live')){
+        chrome.action.setIcon({path: "../icons/v_128.png"});
+        webhook('off', storage['presence'], debug);
+        if(storage['presence'].hid === true)
+            await glow([0,0,0]);
+        presenceActive = false;
+        debug("turn presence off here");
+    }
+    else debug("presenceOff: some tracks still live", trackData);
+}
 
 mh.addListener(m.UNLOAD, async data=>{
     debug(`tab ${data.tabId} unloaded`);
     await removeTab(data.tabId);
+    // unload can happen without a track event?
+    await presenceOff();
+
+});
+
+
+mh.addListener(m.NEW_TRACK, async data=>{
+    debug("new track", data);
+    const {id, kind, label, state, streamId} = data;
+    // check if track is already in memory
+    if(trackData.some(td => td.id === id)){
+        debug(`track ${id} already in trackData array`);
+    } else {
+        if(!trackData.some(td => td.state === 'live')){
+            if(!presenceActive){
+                presenceActive = true;
+                debug("turn presence on here");
+                webhook('on', storage['presence'], debug);
+                if(storage['presence'].hid === true)
+                    await glow([255,0,0]);
+                await chrome.action.setIcon({path: "../icons/v_rec.png"});
+            } else debug("presence already active");
+        }
+
+        trackData.push(data);
+        debug(`added ${id} to trackData array`, trackData);
+    }
+});
+
+mh.addListener(m.TRACK_ENDED, async data=>{
+    trackData = trackData.filter(td => td.id !== data.id);
+
+    // wait 2 seconds to see if another track is started
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    await presenceOff();
 });
 
 
@@ -237,3 +304,17 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 debug("background.js loaded");
 
+// ToDo: set this up; put in a storage module?
+chrome.storage.onChanged.addListener(async function(changes, namespace) {
+    if(namespace !== 'local')
+        return;
+
+    for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
+        storage[key] = newValue;
+        debug(
+            `Storage key "${key}" in namespace "${namespace}" changed.`,
+            `\n> Old value was`, oldValue, `\n> New value is`,  newValue);
+    }
+
+    // storage = await chrome.storage.local.get(null);
+});

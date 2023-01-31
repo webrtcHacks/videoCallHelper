@@ -11,7 +11,7 @@ const sendMessage = new MessageHandler('content', debug, false).sendMessage;
 let captureInterval;
 let currentStream = null;
 
-let {settings} = await chrome.storage.local.get('settings');
+let settings = await chrome.storage.local.get('imageCapture');
 debug("Image Capture settings:", settings);
 
 // Set default values if storage is blank
@@ -25,21 +25,21 @@ if (!settings) {
 
 // check for settings changes
 chrome.storage.onChanged.addListener(async (changes, area) => {
-    if (changes.settings) {
-        console.log(`storage area "${area}" changes: `, changes.settings);
-        settings = changes.settings.newValue;
+    if (changes['imageCapture']) {
+        debug(`storage area "${area}" changes: `, changes['imageCapture']);
+        settings = changes['imageCapture'].newValue;
 
         // Stop sampling
-        if (changes.settings.oldValue.samplingActive === true && changes.settings.newValue.samplingActive === false) {
+        if (changes['imageCapture'].oldValue?.samplingActive === true && changes['imageCapture'].newValue?.samplingActive === false) {
             clearInterval(captureInterval);
 
         }
         // Start sampling
-        else if (!changes.settings.oldValue.samplingActive && changes.settings.newValue.samplingActive) {
+        else if (!changes['imageCapture'].oldValue?.samplingActive && changes['imageCapture'].newValue?.samplingActive) {
             grabFrames();
         }
         // Change the sampling interval
-        else if (changes.settings.oldValue.captureIntervalMs !== changes.settings.newValue.captureIntervalMs) {
+        else if (changes['imageCapture'].oldValue?.captureIntervalMs !== changes['imageCapture'].newValue?.captureIntervalMs) {
             clearInterval(captureInterval);
             grabFrames();
         }
