@@ -256,18 +256,6 @@ document.addEventListener('readystatechange', async (event) => {
 });
  */
 
-
-/*
-// https://developer.chrome.com/blog/page-lifecycle-api/ says don't do this
-//this didn't get to background.js - page closes before the message is sent
-
-// Tell background to remove unneeded tabs
-window.addEventListener('beforeunload', async () => {
-    await sendMessage('all', m.UNLOAD);
-    debug("unloading");
-});
- */
-
 // inject inject script
 function addScript(path) {
     const script = document.createElement('script');
@@ -278,8 +266,3 @@ function addScript(path) {
 
 addScript('/scripts/inject.js');
 debug("inject injected");
-
-
-// testing
-// sendMessage('background', 'new_tab', {url: window.location.href});
-// mh.addListener("background_response", (data)=>debug("background response:", data));
