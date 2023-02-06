@@ -192,59 +192,45 @@ mh.addListener(m.DASH_INIT, dashInit);
 mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 // Presence handling
-// ToDo: doesn't handle multiple streams per tab - try to send streams or sync track info
-/*
-// Keep sync with tabs that have a gUM stream
-mh.addListener(m.GUM_STREAM_START, async data=> {
-    data?.tabId ? await addTab(data.tabId): debug("gum_stream_start missing tabId", data);
-    await chrome.action.setIcon({path: "../icons/v_rec.png"});
-});
-
-mh.addListener(m.GUM_STREAM_STOP, async data=> {
-    data?.tabId ? await removeTab(data.tabId) : debug("gum_stream_stop missing tabId", data);
-    await chrome.action.setIcon({path: "../icons/v_128.png"});
-});
-
-*/
+// Note: switched from tracking streams to tracks
 
 async function presenceOff(){
 
-    // ToDo: add a delay for presenceOff?
-    if(!trackData.some(td => td.state === 'live')){
-        chrome.action.setIcon({path: "../icons/v_128.png"});
-        webhook('off', storage['presence'], debug);
-
-        // ToDo: check HID permissions
-        if(storage['presence'].hid === true)
-            await glow([0,0,0]);
-        presenceActive = false;
-        debug("turn presence off here");
+    if(trackData.some(td => td.state === 'live')){
+        debug("presenceOff check: some tracks still live", trackData);
     }
     else {
-        debug("presenceOff: some tracks still live", trackData);
+        // Wait to see if another track is enabled within 2 seconds as can happen with device changes
+        debug("presenceOff: waiting 2 seconds for changes");
+        setTimeout(async ()=>{
+            if(!trackData.some(td => td.state === 'live')){
+                chrome.action.setIcon({path: "../icons/v_128.png"});
+                webhook('off', storage['presence'], debug);
+
+                // ToDo: check HID permissions
+                if(storage['presence'].hid === true)
+                    await glow([0,0,0]);
+                presenceActive = false;
+                debug("turn presence off here");
+            }
+        }, 2000);
     }
 }
 
-// https://developer.chrome.com/blog/page-lifecycle-api/ says don't do this
-/*
-mh.addListener(m.UNLOAD, async data=>{
-    debug(`tab ${data.tabId} unloaded`);
-    await removeTab(data.tabId);
-    // ToDo: remove tracks from trackData - test this
-    // unload can happen without a track event - track events are just based on user actions
-    trackData = trackData.filter(td => td.tabId !== data.tabId);
-    await presenceOff();
-});
- */
+// Note: https://developer.chrome.com/blog/page-lifecycle-api/ says don't do `beforeunload`
 
-chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
-    debug(`tab ${tabId} removed`, removeInfo);
+async function handleTabRemoved(tabId){
+    debug(`tab ${tabId} closed`);
     trackData = trackData.filter(td => td.tabId !== tabId);
     await presenceOff();
     // await removeTab(tabId);  // if addTab is used again
+}
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
+    await handleTabRemoved(tabId);
 });
-
-// ToDo: add chrome.tabs.onReplaced.addListener
+chrome.tabs.onReplaced.addListener(async (tabId, removeInfo)=>{
+    await handleTabRemoved(tabId);
+});
 
 mh.addListener(m.NEW_TRACK, async data=>{
     debug("new track", data);
@@ -275,19 +261,6 @@ mh.addListener(m.TRACK_ENDED, async data=>{
     await new Promise(resolve => setTimeout(resolve, 2000));
     await presenceOff();
 });
-
-
-/*
-// testing
-function testTabResponse(data){
-    const tabId = data.tabId;     // ToDo - see if I can get mh to do this
-    const responseData = {tabId: tabId, statement: "hello there"};
-    mh.sendMessage('context', 'background_response', responseData);
-    log("testTabResponse data", responseData);
-}
-
-mh.addListener('new_tab', testTabResponse);
- */
 
 
 /*
