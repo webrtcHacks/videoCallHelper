@@ -16,7 +16,7 @@ const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
 // await sendMessage('all', 'hello there', {foo: 'bar'});
 
-const storage = await chrome.storage.local.get(null);
+const storage = await chrome.storage.local.get();
 await debug("storage contents:", storage);
 
 const dashHeight = 100;
@@ -174,24 +174,71 @@ async function syncTrackInfo() {
 // function showDebug(d) {console.debug(JSON.stringify(arguments))}
 // mh.addListener("toggle_dash", showDebug);
 
+// Added for presence
+async function monitorTrack(track, streamId){
+    debug(`new track ${streamId} video settings: `, track);
+    const {id, kind, label, readyState} = track;
+    const trackData = {
+        id,
+        kind,
+        label,
+        state: readyState,
+        streamId
+    }
+
+    if(track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
+        await sendMessage('background', m.NEW_TRACK, trackData);
+
+    // Note: this only fires if the browser forces the track to stop; not for most user actions
+    track.addEventListener('ended', async (e) => {
+        trackData.state = 'ended';
+        await sendMessage('background', m.TRACK_ENDED, trackData);
+    });
+
+    // use an interval to check if the track has ended
+    const monitor = setInterval(async () => {
+        if(track.readyState === 'ended'){
+            trackData.state = 'ended';
+            await sendMessage('background', m.TRACK_ENDED, trackData);
+            clearInterval(monitor);
+        }
+    }, 2000);
+
+
+    // OBS making this go on and off
+    /*
+    track.addEventListener('mute', async (e) => {
+        trackData.state = 'muted';
+        await sendMessage('background', m.TRACK_MUTE, trackData);
+    });
+
+    track.addEventListener('unmute', async (e) => {
+        trackData.state = 'unmuted';
+        await sendMessage('background', m.TRACK_UNMUTE, trackData);
+    });
+     */
+}
+
 async function gumStreamStart(data){
     const id = data.id;
     const video = document.querySelector(`video#${id}`);
     const stream = video.srcObject;
     streams.push(stream);
-    debug(`new stream ${stream.id} video settings: `, stream.getVideoTracks()[0].getSettings());
     debug("current streams", streams);
+
+    // Added for presence
+    stream.getTracks().forEach(track => monitorTrack(track, stream.id));
 
     // ToDo: should really ignore streams and just monitor tracks
     stream.addEventListener('removetrack', async (event) => {
         debug(`${event.track.kind} track removed`);
         if(stream.getTracks().length === 0){
-        await sendMessage('all', m.GUM_STREAM_STOP);
+            await sendMessage('all', m.GUM_STREAM_STOP);
         }
     });
 
     // send a message back to inject to remove the temp video element
-    await sendMessage('inject', 'stream_transfer_complete', {id});
+    await sendMessage('inject', m.TRACK_TRANSFER_COMPLETE, {id});
 
     // Todo: do I need a registry of applet functions to run here?
     grabFrames(stream);
@@ -209,10 +256,17 @@ document.addEventListener('readystatechange', async (event) => {
 });
  */
 
+
+/*
+// https://developer.chrome.com/blog/page-lifecycle-api/ says don't do this
+//this didn't get to background.js - page closes before the message is sent
+
 // Tell background to remove unneeded tabs
 window.addEventListener('beforeunload', async () => {
-    await sendMessage('all', m.UNLOAD)
+    await sendMessage('all', m.UNLOAD);
+    debug("unloading");
 });
+ */
 
 // inject inject script
 function addScript(path) {

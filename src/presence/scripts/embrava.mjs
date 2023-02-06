@@ -19,10 +19,12 @@ export async function openDevice() {
     // ToDo: handle device permissions
     let device_list;
     try{
+        // ToDo: figure out how to trigger this from the worker - fire from content?
         device_list = await navigator.hid.getDevices();
     }
     catch (error) {
         console.log("embrava error", error);
+        return null;
     }
     let device = device_list.find(d => d.vendorId === vendorId && d.productId === productId);
 
@@ -42,7 +44,7 @@ export async function openDevice() {
 }
 
 
-export async function handleDisconnectClick() {
+export async function disconnect() {
     let device = await openDevice();
     if( !device ) return;
     const color = [ 0, 0, 0 ]; // off
@@ -58,3 +60,22 @@ document.addEventListener('disconnect', async (e)=> {
     await handleDisconnectClick();
 });
  */
+
+chrome.storage.onChanged.addListener(async function(changes, namespace) {
+    if(namespace !== 'local')
+        return;
+
+    if(changes['presence']){
+        const presence = changes['presence'].newValue;
+        if(presence.hid){
+            if(presence.on.busy)
+                await glow([255, 0, 0]);
+            else
+                await glow([0, 0, 0]);
+        }
+        else
+            await disconnect();
+    }
+
+    // storage = await chrome.storage.local.get(null);
+});

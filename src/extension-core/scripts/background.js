@@ -5,8 +5,8 @@ import {glow} from "../../presence/scripts/embrava.mjs";
 // import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
 // import '../../modules/lovefield';
 
-let streamTabs;
-let storage = await chrome.storage.local.get(null);
+let streamTabs; // Not currently used
+let storage = await chrome.storage.local.get();
 
 // added for presence
 let trackData = [];
@@ -208,29 +208,47 @@ mh.addListener(m.GUM_STREAM_STOP, async data=> {
 */
 
 async function presenceOff(){
+
+    // ToDo: add a delay for presenceOff?
     if(!trackData.some(td => td.state === 'live')){
         chrome.action.setIcon({path: "../icons/v_128.png"});
         webhook('off', storage['presence'], debug);
+
+        // ToDo: check HID permissions
         if(storage['presence'].hid === true)
             await glow([0,0,0]);
         presenceActive = false;
         debug("turn presence off here");
     }
-    else debug("presenceOff: some tracks still live", trackData);
+    else {
+        debug("presenceOff: some tracks still live", trackData);
+    }
 }
 
+// https://developer.chrome.com/blog/page-lifecycle-api/ says don't do this
+/*
 mh.addListener(m.UNLOAD, async data=>{
     debug(`tab ${data.tabId} unloaded`);
     await removeTab(data.tabId);
-    // unload can happen without a track event?
+    // ToDo: remove tracks from trackData - test this
+    // unload can happen without a track event - track events are just based on user actions
+    trackData = trackData.filter(td => td.tabId !== data.tabId);
     await presenceOff();
+});
+ */
 
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
+    debug(`tab ${tabId} removed`, removeInfo);
+    trackData = trackData.filter(td => td.tabId !== tabId);
+    await presenceOff();
+    // await removeTab(tabId);  // if addTab is used again
 });
 
+// ToDo: add chrome.tabs.onReplaced.addListener
 
 mh.addListener(m.NEW_TRACK, async data=>{
     debug("new track", data);
-    const {id, kind, label, state, streamId} = data;
+    const {id, kind, label, state, streamId, tabId} = data;
     // check if track is already in memory
     if(trackData.some(td => td.id === id)){
         debug(`track ${id} already in trackData array`);
@@ -245,7 +263,6 @@ mh.addListener(m.NEW_TRACK, async data=>{
                 await chrome.action.setIcon({path: "../icons/v_rec.png"});
             } else debug("presence already active");
         }
-
         trackData.push(data);
         debug(`added ${id} to trackData array`, trackData);
     }
@@ -271,6 +288,7 @@ function testTabResponse(data){
 
 mh.addListener('new_tab', testTabResponse);
  */
+
 
 /*
  *  Extension icon control

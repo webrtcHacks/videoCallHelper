@@ -177,12 +177,24 @@ export const MESSAGE = {
     // GUM_STREAM_START: 'gum_stream_start',
     GUM_STREAM_STOP: 'gum_stream_stop',
     UNLOAD: 'unload',
+    // NEW_TRACK: 'new_track',
+    // TRACK_ENDED: 'track_ended',
+    // TRACK_MUTE: 'track_mute',
+    // TRACK_UNMUTE: 'track_unmute',
 
     // content.js
     TOGGLE_DASH: 'toggle_dash',
     // GUM_STREAM_START: 'gum_stream_start',
     // UNLOAD: 'unload',
+    TRACK_TRANSFER_COMPLETE: 'track_transfer_complete',
+
+    NEW_TRACK: 'new_track',
+    TRACK_ENDED: 'track_ended',
+    TRACK_MUTE: 'track_mute',
+    TRACK_UNMUTE: 'track_unmute',
 
     // dash.js
     DASH_INIT_DATA: 'dash_init_data',
+
+
 }

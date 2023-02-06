@@ -28,6 +28,7 @@ export function webhook(state, settings, log = console.log) {
 
     let fetchParams = {};
 
+    // ToDo: is method a boolean or a string?
     if (method) {  //=== 'POST') {
         fetchParams = {
             method: 'POST',

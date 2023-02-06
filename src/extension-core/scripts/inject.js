@@ -202,7 +202,8 @@ if (!window.videoCallHelper) {
             this.getReceivers().forEach(receiver=>{
                 const {track:  {id, kind, label}, transport} = receiver;
                 // const {id, kind, label} = track;
-                if(transport.state !=='connected'){
+                // ToDo: Uncaught TypeError: Cannot read properties of null (reading 'state') - added a `?` to fix, did it work?
+                if(transport?.state !=='connected'){
                     // debug("not connected", transport.state);
                     clearInterval(interval);
                     return

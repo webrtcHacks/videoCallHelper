@@ -1,7 +1,7 @@
 import {MessageHandler, MESSAGE as m} from "../modules/messageHandler.mjs";
 // ToDo: this isn't working - doesn't save
 import '../imageCapture/scripts/imageCaptureSettings.mjs';
-import '../presence/scripts/presenceSettings.mjs';
+// import '../presence/scripts/presenceSettings.mjs';
 
 
 // const debug = (args)=> {
