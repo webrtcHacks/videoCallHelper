@@ -243,9 +243,73 @@ async function gumStreamStart(data){
     // Todo: do I need a registry of applet functions to run here?
     grabFrames(stream);
 
+    // ToDo: selfview replacement: switches to torn this off / on
+    // Check against all known gUM deviceIds
+    const selfViewVideo = videoElements.find(ve => {
+        if(!ve.srcObject.active)
+            return false;
+
+        if(ve.srcObject.id === stream.id)
+            return true
+        else if(ve.srcObject?.getVideoTracks()[0].id === stream.getVideoTracks()[0].id)
+            return true;
+        else
+            return false;
+    });
+    if(selfViewVideo){
+        debug(`found matching deviceId; flipping video: ${selfViewVideo.id}`);
+        // selfViewVideo.style.transform = 'rotate(180deg)';
+        selfViewVideo.style.filter = 'blur(10px);grayscale(50%)';
+    }
+    // If no matching guM deviceId, check to see if it is a generated video
+    // ToDo: need to make sure this isn't just some random video playing
+    else {
+        // It looks like videos from the canvas or a videoTrackGenerator don't have a
+        // groupId and the length of the deviceId is not 64
+        // Find the first active video object that doesn't have a groupId
+        // will this pick up peerConnection videos? I could check against those
+        const generatedVideo = videoElements.find(ve =>
+            ve.srcObject.active &&
+            !ve.srcObject?.getVideoTracks()[0]?.getSettings().groupId);
+        if(generatedVideo){
+            debug(`found generated video: ${generatedVideo.id}`);
+            generatedVideo.style.filter = 'blur(10px);grayscale(50%)';
+        }
+    }
 }
 
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
+
+
+/* Self-view replacement
+ */
+// get all teh current video elements
+let videoElements = Array.from(document.querySelectorAll('video'));
+window.videoElems = videoElements;
+
+// add any new elements to the list
+const observer = new MutationObserver((mutationsList, observer)=>{
+    for(const mutation of mutationsList) {
+        if (mutation.type === 'childList') {
+            for(const node of mutation.addedNodes) {
+                if (node.nodeName === 'VIDEO') {
+                    videoElements.push(node);
+                    debug(`A video element with id ${node.id} has been added to the page!`);
+                }
+            }
+        }
+    }
+});
+
+// ToDo: this runs too fast - add a delay or trigger of a document loaded event
+window.onload = () => {
+    if(!document.body){
+        debug("no body - can't look for video elements");
+        return;
+    }
+    observer.observe(document.body, {childList: true, subtree: true});
+    debug("mutation observer for video loaded. Videos: ", videoElements);
+}
 
 // For timing testing
 /*

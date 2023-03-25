@@ -57,17 +57,23 @@ function transferStream(stream){
 
 async function processTrack(track, sourceLabel = ""){
 
+    // ToDo: selfView handler
+    const settings = await track.getSettings();
+    if(track.kind==='video')
+        debug('video track settings', settings);
+
     if(!processTrackSwitch)
         return;
 
-    const {id, kind, label, readyState} = track;
-    const trackData = {id, kind, label, readyState};
+    // ToDo: do I really need to enumerate the object here?
+    const {id, kind, label, readyState, deviceId} = track;
+    const trackData = {id, kind, label, readyState, deviceId};
     sendMessage('all', `${sourceLabel}_track_added`, {trackData});
 
     async function trackEventHandler(event){
         const type = event.type;
-        const {id, kind, label, readyState, enabled, contentHint, muted} = event.target;
-        const trackData = {id, kind, label, readyState, enabled, contentHint, muted};
+        const {id, kind, label, readyState, enabled, contentHint, muted, deviceId} = event.target;
+        const trackData = {id, kind, label, readyState, enabled, contentHint, muted, deviceId};
         debug(`${sourceLabel}_${type}`, trackData);
         sendMessage('all', `${sourceLabel}_track_${type}`, {trackData});
     }
