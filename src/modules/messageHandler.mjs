@@ -196,5 +196,4 @@ export const MESSAGE = {
     // dash.js
     DASH_INIT_DATA: 'dash_init_data',
 
-
 }

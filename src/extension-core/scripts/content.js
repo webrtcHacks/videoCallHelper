@@ -1,5 +1,8 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
+// import {obscureSelfViewFunc, selfViewObscureSet} from "../../selfView/scripts/content-selfView.mjs";
+import {selfViewModifier} from "../../selfView/scripts/content-selfView.mjs";
+
 
 const streams = [];
 let trackInfos = [];
@@ -219,71 +222,6 @@ async function monitorTrack(track, streamId){
      */
 }
 
-// ToDo: move to a module
-/* Self-view replacement */
-function selfViewBlur(stream){
-    // ToDo: selfview replacement: switches to torn this off / on
-
-    const videoElements = Array.from(document.querySelectorAll('video:not([id^="vch-"])'))     // all except vch-
-        // videoElements = videoElements.filter(ve => !ve.id.match(/^vch-[0-9]+$/));
-        .filter(ve =>
-            ve.srcObject &&                                 // not a src
-            // ve.srcObject !== "null" &&                      // not set to null
-            ve.srcObject.active === true &&                // still active
-            ve.srcObject.getVideoTracks().length !== 0);    // not just audio
-    debug('current videoElements', videoElements);
-    // Check if we can match the stream ID or track ID to the gUM call
-
-    // make sure there is a valid source
-    const selfViewVideoElem =
-        // Look for matching streams
-        videoElements.find(ve => ve.srcObject?.id === stream.id
-            // or tracks
-            || ve.srcObject.getVideoTracks()[0].id === stream.getVideoTracks()[0].id)
-        // or look for generated videos
-        // ToDo: this could pick up peerConnection videos - check for that
-        || videoElements.find(ve => ve.srcObject.active && !ve.srcObject?.getVideoTracks()[0]?.getSettings().groupId);
-
-    if(selfViewVideoElem){
-        debug(`Found self-view video: ${selfViewVideoElem.id}`, selfViewVideoElem);
-        selfViewVideoElem.style.filter = 'blur(10px) opacity(80%) grayscale(50%)';
-
-        // watch for when the video is removed
-        // The below didn't work
-        /*
-        const observer = new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                if (mutation.removedNodes && mutation.removedNodes.length > 0) {
-                    for (let i = 0; i < mutation.removedNodes.length; i++) {
-                        if (mutation.removedNodes[i] === selfViewVideoElem) {
-                            setTimeout(()=>selfViewBlur(stream), 3000)
-                        }
-                    }
-                }
-            });
-        });
-
-        // observer.observe(selfViewVideoElem.parentElement, { childList: true });
-        observer.observe(document.body, { childList: true, subtree: true });
-
-         */
-
-        const selfViewCheckInterval = setInterval(() => {
-            if(!document.body.contains(selfViewVideoElem)){
-                debug('self-view video removed');
-                clearInterval(selfViewCheckInterval);
-                setTimeout(()=>selfViewBlur(stream), 3000);
-            } else if(!selfViewVideoElem?.srcObject?.active){
-                debug('self-view video ended');
-                clearInterval(selfViewCheckInterval);
-                setTimeout(()=>selfViewBlur(stream), 3000);
-            }
-        }, 2000);
-    }
-    else
-        debug('No self-view video found in these video elements', videoElements);
-
-}
 
 async function gumStreamStart(data){
     const id = data.id;
@@ -309,13 +247,12 @@ async function gumStreamStart(data){
     // Todo: do I need a registry of applet functions to run here?
     grabFrames(stream);
 
-    // Wait to give time for any video processing that might happen on the stream
-    setTimeout(()=>selfViewBlur(stream), 5000);
+    // self-view
+    await new selfViewModifier(stream);
 
 }
 
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
-
 
 // For timing testing
 /*

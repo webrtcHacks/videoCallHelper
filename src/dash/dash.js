@@ -1,6 +1,7 @@
 import {MessageHandler, MESSAGE as m} from "../modules/messageHandler.mjs";
 // ToDo: this isn't working - doesn't save
 import '../imageCapture/scripts/imageCaptureSettings.mjs';
+import {settings} from "../imageCapture/scripts/imageCaptureSettings.mjs";
 // import '../presence/scripts/presenceSettings.mjs';
 
 
@@ -142,8 +143,21 @@ document.querySelector("button#presence_setup").onclick = async ()=> {
     await chrome.tabs.create({url});
 }
 
+// Hide self view
+// ToDo: move this into a module?
+const selfViewCheckbox = document.querySelector("input#hide_self_view_check");
+let selfViewSettings = (await chrome.storage.local.get('selfView'))?.selfView || false;
+debug("self-view is set to:", selfViewSettings);
+selfViewCheckbox.checked = selfViewSettings;
+
+selfViewCheckbox.onclick = async (e)=> {
+    debug(`hide self-view is ${e.target.checked}`);
+    selfViewSettings = e.target.checked;
+    await chrome.storage.local.set({selfView: e.target.checked});
+}
+
 async function main(){
-    await sendMessage('background', 'dash_init');
+    await sendMessage('background', m.DASH_INIT);
     statusSpanElem.innerText = 'Waiting for data...';
 }
 

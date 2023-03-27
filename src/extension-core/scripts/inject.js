@@ -57,7 +57,7 @@ function transferStream(stream){
 
 async function processTrack(track, sourceLabel = ""){
 
-    // ToDo: selfView handler
+    // ToDo: contentSelfView handler
     const settings = await track.getSettings();
     if(track.kind==='video')
         debug('video track settings', settings);

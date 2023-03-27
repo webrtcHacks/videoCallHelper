@@ -68,10 +68,15 @@
         <button id="presence_setup">Presence Settings</button>
     </div>
     <div class="eventBox">
+        <h3>Hide Self-view</h3>
+        <label for="hide_self_view_check">Hide self-view: </label>
+        <input type="checkbox" id="hide_self_view_check">
+    </div>
+    <div class="eventBox">
         <h3>Message log</h3>
         <span id="events"></span>
     </div>
-    <div class="eventBox">
+    <div class="eventBox" hidden="hidden">
         <p>Remote audio levels</p>
         <span class="remote_audio_level"></span>
         <p>Local audio levels:</p>
