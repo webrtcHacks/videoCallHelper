@@ -174,9 +174,6 @@ async function syncTrackInfo() {
      */
 }
 
-// function showDebug(d) {console.debug(JSON.stringify(arguments))}
-// mh.addListener("toggle_dash", showDebug);
-
 // Added for presence
 async function monitorTrack(track, streamId){
     debug(`new track ${streamId} video settings: `, track);
@@ -253,6 +250,8 @@ async function gumStreamStart(data){
 }
 
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
+
+
 
 // For timing testing
 /*

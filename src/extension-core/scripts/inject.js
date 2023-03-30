@@ -6,7 +6,7 @@ import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 const appEnabled = true;
 const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
 let monitorAudioSwitch = false; // ToDo: make this a switch
-let processTrackSwitch = false;  // ToDo: find a better way to do this
+let processTrackSwitch = true;  // ToDo: find a better way to do this
 
 const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 💉  `);
@@ -80,7 +80,7 @@ async function processTrack(track, sourceLabel = ""){
 
     track.addEventListener('ended', trackEventHandler);
 
-    // ToDo: these were firing too often
+    // these were firing too often
     // track.addEventListener('mute', trackEventHandler);
     // track.addEventListener('unmute', trackEventHandler);
 

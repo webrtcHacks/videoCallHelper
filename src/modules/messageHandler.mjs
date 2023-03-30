@@ -10,7 +10,8 @@ export class MessageHandler {
     // context;
     tabId;
 
-    constructor(context, debug = console.debug, listen = true) {
+    // ToDo: default debug to no logqing
+    constructor(context, debug = ()=>{}, listen = true) {
         this.context = context;
         this.debug = debug; // debug function
         if(listen){
