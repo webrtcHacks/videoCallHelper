@@ -88,6 +88,7 @@ export class selfViewModifier {
             // ToDo: handle if any of these filters were applied before obscuring
             // ToDo: does this mess with any existing filters?
             findElement.style.filter = 'blur(10px) opacity(80%) grayscale(50%)';
+            // this.drawCrosshair(findElement);
             this.selfViewElement = findElement;
 
             this.#monitorElement();
@@ -106,6 +107,47 @@ export class selfViewModifier {
                 await this.obscure();
             }
         }, 3000);
+    }
+
+    // Draw crosshairs on the self-view video element
+    // ToDo: positioning is off in many cases - samples, jitsi; needs to handle resizing
+    drawCrosshair(video) {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", video.offsetWidth);
+        svg.setAttribute("height", video.offsetHeight);
+        svg.style.position = "absolute";
+        svg.style.top = "0";
+        svg.style.left = "0";
+        video.parentNode.insertBefore(svg, video);
+
+
+        function draw(){
+            let rectHeight = (video.offsetHeight * 0.05).toFixed(0);
+            let rectWidth = rectHeight;
+
+            const vertRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            vertRect.setAttribute("x", (video.offsetWidth / 2 - rectWidth / 2).toFixed(0));
+            vertRect.setAttribute("y", "0");
+            vertRect.setAttribute("width", rectWidth);
+            vertRect.setAttribute("height", video.offsetHeight);
+            vertRect.setAttribute("fill", "red");
+            vertRect.setAttribute("fill-opacity", "0.5");
+
+            const horzRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            horzRect.setAttribute("x", "0");
+            horzRect.setAttribute("y", (video.offsetHeight / 3 - rectHeight / 2).toFixed(0));
+            horzRect.setAttribute("width", video.offsetWidth);
+            horzRect.setAttribute("height", rectHeight);
+            horzRect.setAttribute("fill", "red");
+            horzRect.setAttribute("fill-opacity", "0.5");
+
+            svg.appendChild(vertRect);
+            svg.appendChild(horzRect);
+        }
+
+        draw();
+        window.addEventListener('resize', draw);
+
     }
 
     // turn off the obscuring filters
