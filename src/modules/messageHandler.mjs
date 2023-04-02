@@ -102,6 +102,9 @@ export class MessageHandler {
                     data.tabId = tabId;
                     this.tabId = tabId;
                 }
+                // ToDO: this error when clicking on the icon after reloading the extension on a page that has not been refreshed
+                //  Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+                //  the below is what shows up normally
 
                 this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 
@@ -196,5 +199,8 @@ export const MESSAGE = {
 
     // dash.js
     DASH_INIT_DATA: 'dash_init_data',
+
+    // self-view
+    SELF_VIEW: 'self_view',
 
 }

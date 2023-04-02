@@ -146,15 +146,37 @@ document.querySelector("button#presence_setup").onclick = async ()=> {
 // Hide self view
 // ToDo: move this into a module?
 const selfViewCheckbox = document.querySelector("input#hide_self_view_check");
+const selfViewStatus = document.querySelector("span#self_view_status");
+
 let selfViewSettings = (await chrome.storage.local.get('selfView'))?.selfView || false;
 debug("self-view is set to:", selfViewSettings);
 selfViewCheckbox.checked = selfViewSettings;
 
+if(selfViewCheckbox.checked )
+    selfViewStatus.innerText = "Looking for self-view";
+else
+    selfViewStatus.innerText = "Click above to enable";
+
+
 selfViewCheckbox.onclick = async (e)=> {
-    debug(`hide self-view is ${e.target.checked}`);
-    selfViewSettings = e.target.checked;
-    await chrome.storage.local.set({selfView: e.target.checked});
+    const enabled = e.target.checked;
+    debug(`hide self-view is ${enabled}`);
+    selfViewSettings = enabled;
+    await chrome.storage.local.set({selfView: enabled});
+    if(enabled)
+        selfViewStatus.innerText = "Looking for self-view";
+    else
+        selfViewStatus.innerText = "Click above to enable";
 }
+
+// ToDo: some kind of message registry to add messages from modules?
+//  should the messageHandler use local storage for context->dash?
+mh.addListener(m.SELF_VIEW, (e)=>{
+    if(e.enabled)
+        selfViewStatus.innerText = "Active";
+    else
+        selfViewStatus.innerText = "Looking for self-view";
+});
 
 async function main(){
     await sendMessage('background', m.DASH_INIT);

@@ -1,8 +1,6 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
-// import {obscureSelfViewFunc, selfViewObscureSet} from "../../selfView/scripts/content-selfView.mjs";
 import {selfViewModifier} from "../../selfView/scripts/content-selfView.mjs";
-
 
 const streams = [];
 let trackInfos = [];
