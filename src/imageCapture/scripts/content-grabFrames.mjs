@@ -11,7 +11,7 @@ const sendMessage = new MessageHandler('content', debug, false).sendMessage;
 let captureInterval;
 let currentStream = null;
 
-let settings = await chrome.storage.local.get('imageCapture');
+let settings = (await chrome.storage.local.get('imageCapture'))?.imageCapture
 debug("Image Capture settings:", settings);
 
 // Set default values if storage is blank
@@ -127,7 +127,7 @@ export function grabFrames(newStream) {
             const newStreamPixels = newStreamSettings.height * newStreamSettings.width;
 
             if (currentStreamPixels >= newStreamPixels) {
-                debug(`New stream ${currentStreamPixels} pixles are fewer than current stream ${currentStreamPixels}`);
+                debug(`New stream ${currentStreamPixels} pixels are fewer than current stream ${currentStreamPixels}`);
                 return
             }
         }
