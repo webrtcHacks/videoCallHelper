@@ -1,0 +1,34 @@
+@import "~bootstrap/scss/bootstrap";
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+
+.container-fluid{
+  background-color: black;
+  border-color: black;
+}
+.dashBox {
+  overflow-y: hidden;
+  font-size: smaller;
+}
+input[type=range] {
+  -webkit-appearance: slider-vertical;
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
+div.range-slider {
+  margin: 0;
+}
+
+input#slider {
+  width: 50px;
+}
+
+h5 {
+  font-size: $font-size-base * 0.875;
+  font-weight: $font-weight-bolder;
+  border-bottom: 1px solid $gray-800;
+  padding-bottom: 5px;
+  color: $gray-500;
+  text-transform: uppercase;
+}

@@ -18,6 +18,34 @@ module.exports = {
         framing: './src/framing/scripts/framingAnalysis.js',
         presence: './src/presence/scripts/presenceSettings.mjs'
     },
+    module: {
+        rules: [
+            {
+                test: /\.(scss)$/,
+                use: [
+                    {
+                        loader: 'style-loader'
+                    },
+                    {
+                        loader: 'css-loader'
+                    },
+                    {
+                        loader: 'postcss-loader',
+                        options: {
+                            postcssOptions: {
+                                plugins: () => [
+                                    require('autoprefixer')
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        loader: 'sass-loader'
+                    }
+                ]
+            }
+        ]
+    },
     plugins: [
         new HtmlWebpackPlugin({
             title: 'Options page',
@@ -62,13 +90,14 @@ module.exports = {
         }),
         new CopyPlugin({
             patterns: [
-                { from: "src/static/icons", to: "../icons" },
+                {from: "src/static/icons", to: "../icons"},
             ],
         }),
     ],
     output: {
-        filename: '[name].js',
-        path: path.resolve(__dirname, 'dist/scripts'),
+    filename: '[name].js',
+        path:
+    path.resolve(__dirname, 'dist/scripts'),
         clean: true
     },
 };

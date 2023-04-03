@@ -3,88 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <title>VCH Panel</title>
-    <style>
-        div.vch {
-            position: fixed;
-            display: flex;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100px;
-            background-color: lightgrey;
-            /*
-            color: red;
-            text-align: center;
-            */
-        }
-        div.eventBox{
-            margin-top: 2px;
-            padding: 0;
-        }
-        p {
-            /*height: 100%;*/
-            vertical-align: top;
-            margin: 0;
-        }
-        span {
-            margin: 0 10px
-        }
-        .eventBox{
-            position: relative;
-            overflow-y: scroll;
-            width: 33.3%;
-            /* height: 100%;*/
-            /* background-color: lightslategrey; */
-        }
-        h3{
-            margin: 0
-        }
-
-
-    </style>
 </head>
 <body>
-<div class="vch">
-    <div class="eventBox">
-        <h3>Frame Capture</h3>
-        <label for="start_on_pc_check">Start on peerConnection? </label>
-        <input type="checkbox" id="start_on_pc_check" disabled>
-        <br>
-        <label for="interval">Time between images in sec: </label>
-        <input id="interval" type="text" value="30" size="8" required pattern="^[0-9]{1,9}$"/>
-        <button id="apply_settings">Apply</button>
-        <br>
-        <button id="sampling_start">Start</button>
-        <button id="sampling_stop">Stop</button>
-        <button id="open_sampling">Open Sampling</button>
-    </div>
-    <div class="eventBox">
-        <h3>Status: <span id="status"></span></h3>
-        <div class="row">
-            <b>Manual presence controls</b><br>
-            <button id="busy">Busy</button>
-            <button id="not_busy">Not busy</button>
+<div class="vch container-fluid m-0 p-0 overflow-hidden h-100" data-bs-theme="dark">
+    <div class="row">
+        <div class="dashBox card col-3 ps-3">
+            <h5>Frame Capture</h5>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="start_on_pc_check" disabled>
+                <label class="form-check-label" for="start_on_pc_check">Start on peerConnection?</label>
+            </div>
+            <div class="mb-2">
+                <label for="interval" class="form-label">Time between images in sec:</label>
+                <input id="interval" type="text" value="30" size="8" required pattern="^[0-9]{1,9}$"
+                       class="form-control w-auto d-inline-block"/>
+            </div>
+            <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
+                <button id="apply_settings" class="btn btn-outline-primary btn-sm">Apply</button>
+                <button id="sampling_start" class="btn btn-outline-success btn-sm">Start</button>
+                <button id="sampling_stop" class="btn btn-outline-danger btn-sm">Stop</button>
+                <button id="open_sampling" class="btn btn-outline-secondary btn-small">Open Sampling</button>
+            </div>
         </div>
-        <button id="presence_setup">Presence Settings</button>
+        <div class="dashBox card col-3">
+            <h5>Hide Self-view</h5>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="hide_self_view_check">
+                <label class="form-check-label" for="hide_self_view_check">Hide self-view:</label>
+            </div>
+            <p>Status: <span id="self_view_status">Click above to enable</span></p>
+        </div>
+        <div class="dashBox card col-3">
+            <h5>Bad Connection Simulator</h5>
+            <table class="table table-sm align-middle lh-1">
+                <tr>
+                    <td class="text-end"><span id="active">None</span></td>
+                    <td rowspan=3 style="width:50px">
+                        <div class="range-slider">
+                            <input type="range" id="slider" min="1" max="3" value="3" step="1" list="tick_marks"
+                                   class="align-middle">
+                            <datalist id="tick_marks">
+                                <option value="none"></option>
+                                <option value="moderate"></option>
+                                <option value="severe"></option>
+                            </datalist>
+                        </div>
+                    </td>
+                    <td><span id="active_desc"
+                              class="small fw-light">Normal connection - select an option below to start
+                    </span></td>
+                </tr>
+                <tr>
+                    <td class="text-end"><span>Moderate</span></td>
+                    <td class="small fw-light">Bad connection – noticeable video issues and audio clipping</td>
+                </tr>
+                <tr>
+                    <td class="text-end"><span>Severe</span></td>
+                    <td class="small fw-light">Unusable connection – unintelligible audio and video</td>
+                </tr>
+            </table>
+        </div>
+        <div class="dashBox card col-3">
+            <h5>Presence </h5>
+                <h6>status: <span id="status" class=""></span></h6>
+                <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
+                    <span class="form-label">Manual controls: </span>
+                    <button id="busy" class="btn btn-sm btn-outline-danger">Busy</button>
+                    <button id="not_busy" class="btn btn-sm btn-outline-success">Not busy</button>
+            </div>
+            <button id="presence_setup" class="btn btn-sm btn-link text-start">Presence Settings</button>
+        </div>
+        <!--div class="dashBox card col-3 mb-3 p-3">
+            <h3>Message log</h3>
+            <span id="events"></span>
+        </div-->
+        <!--div class="dashBox card col-3 mb-3 p-3">
+            <p>Remote audio levels</p>
+            <span class="remote_audio_level"></span>
+            <p>Local audio levels:</p>
+            <span class="local_audio_level"></span>
+        </div-->
     </div>
-    <div class="eventBox">
-        <h3>Hide Self-view</h3>
-        <label for="hide_self_view_check">Hide self-view: </label>
-        <input type="checkbox" id="hide_self_view_check">
-        <p>Status: <span id="self_view_status">Click above to enable</span></p>
-    </div>
-    <div class="eventBox">
-        <h3>Message log</h3>
-        <span id="events"></span>
-    </div>
-    <div class="eventBox" hidden="hidden">
-        <p>Remote audio levels</p>
-        <span class="remote_audio_level"></span>
-        <p>Local audio levels:</p>
-        <span class="local_audio_level"></span>
-    </div>
-
 </div>
-<!--script defer src="../scripts/dash.js" type="module"></script-->
 </body>
 </html>

@@ -1,3 +1,6 @@
+import './style.scss';
+import { Tooltip, Toast, Popover } from 'bootstrap'
+
 import {MessageHandler, MESSAGE as m} from "../modules/messageHandler.mjs";
 // ToDo: this isn't working - doesn't save
 import '../imageCapture/scripts/imageCaptureSettings.mjs';
