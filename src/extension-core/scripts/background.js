@@ -262,6 +262,14 @@ mh.addListener(m.TRACK_ENDED, async data=>{
     await presenceOff();
 });
 
+// ToDo: remove
+/* Bad connection experiments */
+mh.addListener('alter_stream', async data=>{
+    debug('alter_stream', data);
+    // This didn't work - never responds
+    debug("alter_stream video read: ", await data.streams.videoReader.getReader().read());
+});
+
 
 /*
  *  Extension icon control

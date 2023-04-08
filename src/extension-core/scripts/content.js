@@ -1,9 +1,12 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
-import {selfViewModifier} from "../../selfView/scripts/content-selfView.mjs";
+import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
+// import { CorsWorker as Worker } from '../../modules/cors-worker';
+import workerScript from '../../badConnection/scripts/impairment.worker.js';
 
 const streams = [];
 let trackInfos = [];
+
 
 window.vchStreams = streams;
 
@@ -12,6 +15,7 @@ const debug = function() {
 }();
 
 debug(`content.js loaded on ${window.location.href}`);
+// debug('content.js URL: ', chrome.runtime.getURL('content.js'));
 
 const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
@@ -217,7 +221,112 @@ async function monitorTrack(track, streamId){
      */
 }
 
+// Won't load - origin policy issues
+// background.js needs to be the worker????
+// const workerJsPath = chrome.runtime.getURL('/scripts/impairment.worker.js');
+// const worker = new Worker(workerJsPath, {name: 'Stream worker'});
 
+// Webpack 5 method didn't work
+//const worker = new Worker(new URL('impairment.worker.js', import.meta.url));
+
+// Either getting publicPath issues or is trying to load the file from the host server
+// aliasing CorsWorker to Worker makes it statically analyzable
+// const corsWorker = new Worker(new URL('src_extension-core_scripts_content-impairmentWorker_js.js', import.meta.url));
+// const worker = corsWorker.getWorker();
+
+// Define the worker code as a string
+const workerCode = `
+    self.onmessage = function(e) {
+        // Do something with the data received from the main thread
+        const data = e.data;
+        console.debug('Worker received data:', data);
+
+        // Send a message back to the main thread
+        self.postMessage('Hello from worker!');
+    }
+`;
+
+// This works
+/*
+// Create a blob from the worker code string
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+// Create a URL for the blob
+const blobURL = URL.createObjectURL(blob);
+const worker = new Worker(blobURL);
+worker.postMessage('Hello from main thread!');
+ */
+
+const workerBlobURL = URL.createObjectURL(new Blob([workerScript], { type: 'application/javascript' }));
+const worker = new Worker(workerBlobURL);
+// worker.postMessage('hello');
+// workerBlobURL.revokeObjectURL();
+
+async function alterStream(stream){
+
+    let videoGenerator, audioGenerator;
+    // let videoTrackProcessor, audioTrackProcessor;
+    // let videoReader, audioReader;
+    let streams = {};
+
+    // Insertable Stream
+    const [videoTrack] = stream.getVideoTracks();
+    const [audioTrack] = stream.getAudioTracks();   // ToDo: handle multiple audio tracks?
+
+    // Tracks for modified audio and video
+    if(videoTrack){
+        videoGenerator = new MediaStreamTrackGenerator({kind: 'video'});
+        const videoWriter = videoGenerator.writable;
+        const videoTrackProcessor = new MediaStreamTrackProcessor(videoTrack);
+        const videoReader = videoTrackProcessor.readable;
+
+        // streams.videoWriter = videoWriter;
+        // streams.videoReader = videoReader;
+
+
+        worker.postMessage({
+            operation: 'video',
+            videoReader,
+            videoWriter,
+        }, [videoReader, videoWriter]);
+    }
+
+    if(audioTrack){
+        audioGenerator = new MediaStreamTrackGenerator({kind: 'audio'});
+        const audioWriter = audioGenerator.writable;
+        const audioTrackProcessor = new MediaStreamTrackProcessor(audioTrack);
+        const audioReader = audioTrackProcessor.readable;
+
+        // streams.audioWriter = audioWriter;
+        // streams.audioReader = audioReader;
+
+        // Audio
+        worker.postMessage({
+            operation: 'audio',
+            audioReader,
+            audioWriter,
+        }, [audioReader, audioWriter]);
+    }
+
+    /*
+    debug("alterStream data: ", streams);
+    mh.sendMessage('background', 'alter_stream', {streams} );
+    debug("alterStream video read: ", await streams.videoReader.getReader().read());
+     */
+
+    if(videoTrack && audioTrack){
+        return new MediaStream([videoGenerator, audioGenerator]);
+    }
+    else if(videoTrack){
+        return new MediaStream([videoGenerator]);
+    }
+    else if(audioTrack){
+        return new MediaStream([audioGenerator]);
+    }
+
+    // const moddedStream = new MediaStream([videoGenerator, audioGenerator]);
+
+}
+// bad connection simulator
 async function gumStreamStart(data){
     const id = data.id;
     const video = document.querySelector(`video#${id}`);
@@ -240,10 +349,14 @@ async function gumStreamStart(data){
     await sendMessage('inject', m.TRACK_TRANSFER_COMPLETE, {id});
 
     // Todo: do I need a registry of applet functions to run here?
+    // image capture
     grabFrames(stream);
 
     // self-view
-    await new selfViewModifier(stream);
+    await new selfViewElementModifier(stream);
+
+    const moddedStream = await alterStream(stream);
+    window.moddedStream = moddedStream;
 
 }
 

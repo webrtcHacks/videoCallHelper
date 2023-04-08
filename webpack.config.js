@@ -16,7 +16,7 @@ module.exports = {
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCapture.js',
         framing: './src/framing/scripts/framingAnalysis.js',
-        presence: './src/presence/scripts/presenceSettings.mjs'
+        presence: './src/presence/scripts/presenceSettings.mjs',
     },
     module: {
         rules: [
@@ -43,7 +43,15 @@ module.exports = {
                         loader: 'sass-loader'
                     }
                 ]
-            }
+            },
+            {
+                test: /.*impairment\.worker.*\.(js)$/i,
+                type: 'asset/source',
+            },
+            {
+                test: /.*impairment*\.(mjs)$/i,
+                type: 'asset/source',
+            },
         ]
     },
     plugins: [
@@ -95,9 +103,12 @@ module.exports = {
         }),
     ],
     output: {
-    filename: '[name].js',
-        path:
-    path.resolve(__dirname, 'dist/scripts'),
+        filename: '[name].js',
+        path: path.resolve(__dirname, 'dist/scripts'),
         clean: true
     },
 };
+
+//         publicPath: "chrome-extension://bkgcnlekjkklcdodfkhfpgknjeplgnmn/"
+
+//         badConnection: './src/badConnection/scripts/impairment.worker.js',
