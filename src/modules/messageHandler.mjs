@@ -162,6 +162,14 @@ export class MessageHandler {
         this.#listeners.push({message, callback, tabId});
         this.debug(`added listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
     }
+
+    // ToDo: test this - all copilot
+    removeListener = (message = "", callback = null, tabId = null) => {
+        this.#listeners = this.#listeners.filter(listener => {
+            return listener.message !== message || listener.callback !== callback || listener.tabId !== tabId;
+        });
+        this.debug(`removed listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
+    }
 }
 
 export const MESSAGE = {
@@ -190,7 +198,7 @@ export const MESSAGE = {
     TOGGLE_DASH: 'toggle_dash',
     // GUM_STREAM_START: 'gum_stream_start',
     // UNLOAD: 'unload',
-    TRACK_TRANSFER_COMPLETE: 'track_transfer_complete',
+    // TRACK_TRANSFER_COMPLETE: 'track_transfer_complete',  // should have been STREAM_TRANSFER_COMPLETE
 
     NEW_TRACK: 'new_track',
     TRACK_ENDED: 'track_ended',

@@ -330,33 +330,40 @@ async function alterStream(stream){
 async function gumStreamStart(data){
     const id = data.id;
     const video = document.querySelector(`video#${id}`);
-    const stream = video.srcObject;
-    streams.push(stream);
+    const origStream = video.srcObject;
+    streams.push(origStream);
     debug("current streams", streams);
 
     // Added for presence
-    stream.getTracks().forEach(track => monitorTrack(track, stream.id));
+    origStream.getTracks().forEach(track => monitorTrack(track, origStream.id));
 
     // ToDo: should really ignore streams and just monitor tracks
-    stream.addEventListener('removetrack', async (event) => {
+    origStream.addEventListener('removetrack', async (event) => {
         debug(`${event.track.kind} track removed`);
-        if(stream.getTracks().length === 0){
+        if(origStream.getTracks().length === 0){
             await sendMessage('all', m.GUM_STREAM_STOP);
         }
     });
 
+    // swap in a new stream for testing
+    // const moddedStream = await alterStream(stream);
+    // window.moddedStream = moddedStream;
+    const modifiedStream = new MediaStream(video.srcObject.getTracks());
+    if(video.srcObject.getVideoTracks().length > 0)
+        video.srcObject = modifiedStream;
+    else
+        debug("modifiedStream has no video tracks", video.srcObject, modifiedStream);
+
     // send a message back to inject to remove the temp video element
-    await sendMessage('inject', m.TRACK_TRANSFER_COMPLETE, {id});
+    await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
 
     // Todo: do I need a registry of applet functions to run here?
     // image capture
-    grabFrames(stream);
+    grabFrames(origStream);
 
     // self-view
-    await new selfViewElementModifier(stream);
+    await new selfViewElementModifier(origStream);
 
-    const moddedStream = await alterStream(stream);
-    window.moddedStream = moddedStream;
 
 }
 

@@ -43,7 +43,7 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' ; object-src 'self'; style-src 'self' 'unsafe-inline'",
+    "extension_pages": "script-src 'self' ; object-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'",
     "isolated_world": "script-src 'self' 'unsafe-inline'"
   },
   "options_page": "pages/options.html",

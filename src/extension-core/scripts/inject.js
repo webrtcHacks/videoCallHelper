@@ -3,10 +3,13 @@ import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 
 // Todo: make this an anonymous function for prod
 
-const appEnabled = true;
 const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
-let monitorAudioSwitch = false; // ToDo: make this a switch
-let processTrackSwitch = true;  // ToDo: find a better way to do this
+
+// ToDo: find a better way to do these
+const appEnabled = true;
+let monitorAudioSwitch = false;
+let processTrackSwitch = true;
+let enableWriter = true;
 
 const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 💉  `);
@@ -21,39 +24,70 @@ const addListener = listen;
 const mh = new MessageHandler('inject', debug);
 const sendMessage = mh.sendMessage;
 const addListener = mh.addListener;
+const removeListener = mh.removeListener;
 
-function streamTransferComplete(data){
-    const video = document.querySelector(`video#${data.id}`);
-    video.srcObject = null;
-    document.body.removeChild(video);
-    // ToDo: testing
-    debug(`removed video element ${data.id}`);
-}
-addListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
 
 // Put the stream in a temp DOM element for transfer to content.js context
-function transferStream(stream){
+// content.js will swap with a replacement stream
+async function transferStream(stream){
     // debug("Video track info: ", stream.getVideoTracks()[0].getSettings());
     // window.vchStreams.push(stream); // for testing
 
-    // only handle video for now
+    // only handle streams with video for now
     if(stream.getVideoTracks().length === 0)
         return;
 
-    // ToDo: shadow dom?
-    const video = document.createElement('video');
-    // video.id = stream.id;
-    video.id = `vch-${Math.random().toString().substring(10)}`;
-    video.srcObject = stream;
-    video.hidden = true;
-    video.muted = true;
-    document.body.appendChild(video);
-    video.oncanplay = () => sendMessage('all', m.GUM_STREAM_START, {id: video.id});
+    return new Promise((resolve, reject) => {
+        const timeOut = 1000;                               // 1 second timeout
+        const startTime = new Date().getTime();             // measure time to return new stream
+
+        // ToDo: shadow dom?
+        const video = document.createElement('video');
+        // video.id = stream.id;
+        video.id = `vch-${Math.random().toString().substring(10)}`;
+        video.srcObject = stream;
+        video.hidden = true;
+        video.muted = true;
+        document.body.appendChild(video);
+        video.oncanplay = () => {
+            video.oncanplay = null;
+            sendMessage('all', m.GUM_STREAM_START, {id: video.id});
+        }
+
+        // Cancel if nothing happens before the timeout
+        const timer = setTimeout(() => {
+            debug(`transfer stream failed to return a new stream within ${timeOut} ms`)
+            reject(new Error(`transfer stream failed to return a new stream within ${timeOut} ms`) );
+        }, timeOut);   // 1 second timeout
+
+        function streamTransferComplete(data) {
+            clearTimeout(timer);
+            removeListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
+
+            try{
+                const video = document.querySelector(`video#${data.id}`);
+                const modifiedStream = video.srcObject;         // ToDo: srcObject coming back as null on Jitsi on change cam preview
+
+                // video.srcObject = null;
+                document.body.removeChild(video);           // Clean-up the DOM
+                debug(`removed video element ${data.id}; new modified stream ${modifiedStream.id} returned within ${new Date().getTime() - startTime} ms`);
+                resolve(modifiedStream);
+
+            }
+            catch (e){
+                debug(`Error in streamTransferComplete: `, e);
+                reject(e);
+            }
+        }
+
+        addListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
+
+    });
 
 }
 
 // extract and send track event data
-// ToDo: should this be in content.js?
+// ToDo: merge this into monitorTrack in content.js?
 
 async function processTrack(track, sourceLabel = ""){
 
@@ -110,7 +144,7 @@ function monitorAudio(peerConnection){
         }
     }, 1000 / LOCAL_AUDIO_SAMPLES_PER_SECOND)
 
-    // ToDo: use eventListenter to prevent onconnectionstatechange from being overwritten by the app
+    // ToDo: use eventListener to prevent onconnectionstatechange from being overwritten by the app
     // peerConnection.onconnectionstatechange = () => {
     peerConnection.addEventListener('connectionstatechange', () => {
         if(peerConnection.connectionState !== 'connected')
@@ -138,11 +172,22 @@ if (!window.videoCallHelper) {
     const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     async function shimGetUserMedia(constraints) {
         const stream = await origGetUserMedia(constraints);
-        transferStream(stream);
-        const tracks = stream.getTracks();
-        tracks.forEach(track=>processTrack(track, "gum"))
-        debug("got stream", stream);
-        return stream
+        try{
+            // Handles track events of the original stream
+            const tracks = stream.getTracks();
+
+            // ToDo: move this into content.js
+            // tracks.forEach(track=>processTrack(track, "gum"))
+            debug("got stream", stream);
+
+            const newStream = await transferStream(stream);         // transfer the stream to the content script
+            return newStream                                        // return the altered stream
+        }
+        catch (err) {
+            debug("getUserMedia error!:", err);
+            return stream
+        }
+
     }
 
     navigator.mediaDevices.getUserMedia = async (constraints) => {
@@ -179,7 +224,7 @@ if (!window.videoCallHelper) {
     const origAddTrack = RTCPeerConnection.prototype.addTrack;
     RTCPeerConnection.prototype.addTrack = function (track, stream) {
         debug(`addTrack shimmed on peerConnection`, this, track, stream);
-        processTrack(track, "local");
+        processTrack(track, "local").catch(err=>debug("processTrack error", err));
 
         // ToDo: handle if the switch is changed
         // ToDo: no check to see if this is an audio track?
@@ -227,7 +272,7 @@ if (!window.videoCallHelper) {
 
         this.addEventListener('track', (e) => {
             const track = e.track;
-            processTrack(track, "remote")
+            processTrack(track, "remote").catch(err=>debug("processTrack error", err));
             debug(`setRemoteDescription track event on peerConnection`, this, track)
         });
         return origPeerConnSRD.apply(this, arguments)
