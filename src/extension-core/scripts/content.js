@@ -3,6 +3,7 @@ import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 // import { CorsWorker as Worker } from '../../modules/cors-worker';
 import workerScript from '../../badConnection/scripts/impairment.worker.js';
+import {Impairment} from "../../badConnection/scripts/impairment.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -221,47 +222,64 @@ async function monitorTrack(track, streamId){
      */
 }
 
-// Won't load - origin policy issues
-// background.js needs to be the worker????
-// const workerJsPath = chrome.runtime.getURL('/scripts/impairment.worker.js');
-// const worker = new Worker(workerJsPath, {name: 'Stream worker'});
-
-// Webpack 5 method didn't work
-//const worker = new Worker(new URL('impairment.worker.js', import.meta.url));
-
-// Either getting publicPath issues or is trying to load the file from the host server
-// aliasing CorsWorker to Worker makes it statically analyzable
-// const corsWorker = new Worker(new URL('src_extension-core_scripts_content-impairmentWorker_js.js', import.meta.url));
-// const worker = corsWorker.getWorker();
-
-// Define the worker code as a string
-const workerCode = `
-    self.onmessage = function(e) {
-        // Do something with the data received from the main thread
-        const data = e.data;
-        console.debug('Worker received data:', data);
-
-        // Send a message back to the main thread
-        self.postMessage('Hello from worker!');
-    }
-`;
-
-// This works
-/*
-// Create a blob from the worker code string
-const blob = new Blob([workerCode], { type: 'application/javascript' });
-// Create a URL for the blob
-const blobURL = URL.createObjectURL(blob);
-const worker = new Worker(blobURL);
-worker.postMessage('Hello from main thread!');
- */
-
-const workerBlobURL = URL.createObjectURL(new Blob([workerScript], { type: 'application/javascript' }));
-const worker = new Worker(workerBlobURL);
-// worker.postMessage('hello');
-// workerBlobURL.revokeObjectURL();
-
 async function alterStream(stream){
+
+    const newStream = new MediaStream();
+
+    try {
+
+        stream.getTracks().forEach(track => {
+
+            // ToDo: manage multiple streams
+            // ToDo: read & manage starting state
+            let impairmentConfig = Impairment.severeImpairmentConfig;
+            const impairment = new Impairment(track, impairmentConfig);
+
+            const processor = new MediaStreamTrackProcessor(track);
+            const reader = processor.readable;
+
+            const generator = new MediaStreamTrackGenerator({kind: track.kind});
+            const writer = generator.writable;
+            newStream.addTrack(generator);
+
+            // ToDo: need to move this into the worker and remove track references
+            const impairmentTransform = impairment.transformStream;
+
+            const workerBlobURL = URL.createObjectURL(new Blob([workerScript], {type: 'application/javascript'}));
+            const worker = new Worker(workerBlobURL);
+
+            worker.postMessage({
+                operation: "new_stream",
+                reader,
+                writer,
+                impairmentTransform
+            }, [reader, writer, impairmentTransform]);
+
+
+            setTimeout(() => {
+                impairmentConfig = Impairment.severeImpairmentConfig;
+                impairment.start();
+                debug("started impairment");
+                // worker.postMessage({operation: "delay"});
+
+
+            }, 10*1000);
+
+
+
+
+        });
+
+        return newStream;
+    }
+    catch (e) {
+        debug("alterStream error, returning original stream. Error: ", e);
+        return stream;
+    }
+
+}
+
+async function alterStream1(stream){
 
     let videoGenerator, audioGenerator;
     // let videoTrackProcessor, audioTrackProcessor;
@@ -348,11 +366,15 @@ async function gumStreamStart(data){
     // swap in a new stream for testing
     // const moddedStream = await alterStream(stream);
     // window.moddedStream = moddedStream;
-    const modifiedStream = new MediaStream(video.srcObject.getTracks());
-    if(video.srcObject.getVideoTracks().length > 0)
+
+    //const modifiedStream = new MediaStream(video.srcObject.getTracks());
+    if(video.srcObject.getTracks().length > 0){
+        const modifiedStream = await alterStream(video.srcObject);
+        debug(`new modifiedStream: `, modifiedStream);
         video.srcObject = modifiedStream;
+    }
     else
-        debug("modifiedStream has no video tracks", video.srcObject, modifiedStream);
+        debug("modifiedStream has no video tracks", video.srcObject);
 
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
@@ -363,7 +385,6 @@ async function gumStreamStart(data){
 
     // self-view
     await new selfViewElementModifier(origStream);
-
 
 }
 

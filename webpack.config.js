@@ -48,10 +48,6 @@ module.exports = {
                 test: /.*impairment\.worker.*\.(js)$/i,
                 type: 'asset/source',
             },
-            {
-                test: /.*impairment*\.(mjs)$/i,
-                type: 'asset/source',
-            },
         ]
     },
     plugins: [
