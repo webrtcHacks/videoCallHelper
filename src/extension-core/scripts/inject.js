@@ -38,7 +38,7 @@ async function transferStream(stream){
         return;
 
     return new Promise((resolve, reject) => {
-        const timeOut = 1000;                               // 1 second timeout
+        const timeOut = 1500;                               // 1.5 second timeout
         const startTime = new Date().getTime();             // measure time to return new stream
 
         // ToDo: shadow dom?
