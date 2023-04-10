@@ -3,7 +3,6 @@ import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 // import { CorsWorker as Worker } from '../../modules/cors-worker';
 import workerScript from '../../badConnection/scripts/impairment.worker.js';
-import {Impairment} from "../../badConnection/scripts/impairment.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -222,6 +221,7 @@ async function monitorTrack(track, streamId){
      */
 }
 
+// bad connection simulator
 async function alterStream(stream){
 
     const newStream = new MediaStream();
@@ -229,12 +229,6 @@ async function alterStream(stream){
     try {
 
         stream.getTracks().forEach(track => {
-
-            // ToDo: manage multiple streams
-            // ToDo: read & manage starting state
-            let impairmentConfig = Impairment.severeImpairmentConfig;
-            const impairment = new Impairment(track, impairmentConfig);
-
             const processor = new MediaStreamTrackProcessor(track);
             const reader = processor.readable;
 
@@ -242,30 +236,25 @@ async function alterStream(stream){
             const writer = generator.writable;
             newStream.addTrack(generator);
 
-            // ToDo: need to move this into the worker and remove track references
-            const impairmentTransform = impairment.transformStream;
-
             const workerBlobURL = URL.createObjectURL(new Blob([workerScript], {type: 'application/javascript'}));
             const worker = new Worker(workerBlobURL);
 
             worker.postMessage({
-                operation: "new_stream",
+                command: "setup",
                 reader,
                 writer,
-                impairmentTransform
-            }, [reader, writer, impairmentTransform]);
+                id: track.id,
+                kind: track.kind,
+                settings: track.getSettings(),
+                impairmentState: "passthrough"
+            }, [reader, writer]);
 
 
+            /*
             setTimeout(() => {
-                impairmentConfig = Impairment.severeImpairmentConfig;
-                impairment.start();
-                debug("started impairment");
-                // worker.postMessage({operation: "delay"});
-
-
-            }, 10*1000);
-
-
+                worker.postMessage({command: "severe"});
+            }, 4*1000);
+             */
 
 
         });
@@ -279,72 +268,7 @@ async function alterStream(stream){
 
 }
 
-async function alterStream1(stream){
 
-    let videoGenerator, audioGenerator;
-    // let videoTrackProcessor, audioTrackProcessor;
-    // let videoReader, audioReader;
-    let streams = {};
-
-    // Insertable Stream
-    const [videoTrack] = stream.getVideoTracks();
-    const [audioTrack] = stream.getAudioTracks();   // ToDo: handle multiple audio tracks?
-
-    // Tracks for modified audio and video
-    if(videoTrack){
-        videoGenerator = new MediaStreamTrackGenerator({kind: 'video'});
-        const videoWriter = videoGenerator.writable;
-        const videoTrackProcessor = new MediaStreamTrackProcessor(videoTrack);
-        const videoReader = videoTrackProcessor.readable;
-
-        // streams.videoWriter = videoWriter;
-        // streams.videoReader = videoReader;
-
-
-        worker.postMessage({
-            operation: 'video',
-            videoReader,
-            videoWriter,
-        }, [videoReader, videoWriter]);
-    }
-
-    if(audioTrack){
-        audioGenerator = new MediaStreamTrackGenerator({kind: 'audio'});
-        const audioWriter = audioGenerator.writable;
-        const audioTrackProcessor = new MediaStreamTrackProcessor(audioTrack);
-        const audioReader = audioTrackProcessor.readable;
-
-        // streams.audioWriter = audioWriter;
-        // streams.audioReader = audioReader;
-
-        // Audio
-        worker.postMessage({
-            operation: 'audio',
-            audioReader,
-            audioWriter,
-        }, [audioReader, audioWriter]);
-    }
-
-    /*
-    debug("alterStream data: ", streams);
-    mh.sendMessage('background', 'alter_stream', {streams} );
-    debug("alterStream video read: ", await streams.videoReader.getReader().read());
-     */
-
-    if(videoTrack && audioTrack){
-        return new MediaStream([videoGenerator, audioGenerator]);
-    }
-    else if(videoTrack){
-        return new MediaStream([videoGenerator]);
-    }
-    else if(audioTrack){
-        return new MediaStream([audioGenerator]);
-    }
-
-    // const moddedStream = new MediaStream([videoGenerator, audioGenerator]);
-
-}
-// bad connection simulator
 async function gumStreamStart(data){
     const id = data.id;
     const video = document.querySelector(`video#${id}`);
