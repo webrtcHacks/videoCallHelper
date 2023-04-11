@@ -3,11 +3,9 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
-    mode: 'development',
     experiments: {
         topLevelAwait: true,
     },
-    devtool: 'inline-source-map',
     entry: {
         background: './src/extension-core/scripts/background.js',
         content: './src/extension-core/scripts/content.js',
@@ -90,14 +88,9 @@ module.exports = {
         }),
         new CopyPlugin({
             patterns: [
+                { from: 'src/manifest.json', to: '../manifest.json' },
                 {from: "src/static/icons", to: "../icons"},
             ],
         }),
     ],
-    output: {
-    filename: '[name].js',
-        path:
-    path.resolve(__dirname, 'dist/scripts'),
-        clean: true
-    },
 };
