@@ -11,7 +11,7 @@ const sendMessage = new MessageHandler('content', debug, false).sendMessage;
 let captureInterval;
 let currentStream = null;
 
-let settings = (await chrome.storage.local.get('imageCapture'))?.imageCapture;
+let settings = (await chrome.storage.local.get('imageCapture'))?.imageCapture
 debug("Image Capture settings:", settings);
 
 // Set default values if storage is blank
