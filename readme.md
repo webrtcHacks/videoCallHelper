@@ -24,7 +24,7 @@ TODO: Do I handle track additions and removals?
 
 ## presence
 
-Send send a webhook request whenever `getUserMedia` is active.
+Send a webhook request whenever `getUserMedia` is active.
 
 `monitorTrack` function in content script
 * sends a `NEW_TRACK` message to the background script if live

@@ -33,7 +33,7 @@ window.events = [];
 const mh = new MessageHandler('dash', debug);
 const sendMessage = mh.sendMessage;
 
-
+// TODO: move all dashboard state to storage
 function handleInitMessage(message){
     eventSpanElem.innerText += `${new Date(message?.timestamp).toLocaleTimeString()}: ${message.message} with data ${JSON.stringify(message.data)}\n`;
     debug('dash_init_data', message);

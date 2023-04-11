@@ -11,7 +11,7 @@ const remoteTrackIds = new Set();
 // ToDo: remove - for debugging
 window.remoteTrackIds = remoteTrackIds;
 
-export class selfViewModifier {
+export class selfViewElementModifier {
 
     selfViewElement = null;
     selfViewCheckInterval = null;
@@ -38,13 +38,13 @@ export class selfViewModifier {
     async #storageCheck() {
         // get the current setting
         this.enabled = (await chrome.storage.local.get('selfView'))?.selfView;
-        selfViewModifier.debug("Self View Obscure settings:", this.enabled);
+        selfViewElementModifier.debug("Self View Obscure settings:", this.enabled);
 
         // initialize storage if value is not there (like on 1st load)
         if (this.enabled === undefined) {
             await chrome.storage.local.set({selfView: false});
             this.enabled = false;
-            selfViewModifier.debug("self-view settings not found in storage; set to false");
+            selfViewElementModifier.debug("self-view settings not found in storage; set to false");
         }
 
         // obscure if active
@@ -54,7 +54,7 @@ export class selfViewModifier {
         // watch for settings changes & respond
         chrome.storage.onChanged.addListener(async (changes, area) => {
             if (changes['selfView']) {
-                selfViewModifier.debug(`storage area "${area}" changes: `, changes['selfView']);
+                selfViewElementModifier.debug(`storage area "${area}" changes: `, changes['selfView']);
                 this.enabled = changes['selfView'].newValue;
                 if (this.enabled) {
                     await this.obscure();
@@ -75,7 +75,7 @@ export class selfViewModifier {
                 ve.srcObject.getVideoTracks().length !== 0 &&               // not just audio
                 !remoteTrackIds.has(ve.srcObject.getVideoTracks()[0].id)    // not a remote track
             );
-        selfViewModifier.debug('current local videoElements', videoElements);
+        selfViewElementModifier.debug('current local videoElements', videoElements);
 
         // make sure there is a valid source
         const findElement =
@@ -87,7 +87,7 @@ export class selfViewModifier {
             || videoElements.find(ve => ve.srcObject.active && !ve.srcObject?.getVideoTracks()[0]?.getSettings().groupId);
 
         if (findElement) {
-            selfViewModifier.debug(`Found self-view video: ${findElement.id}`, findElement);
+            selfViewElementModifier.debug(`Found self-view video: ${findElement.id}`, findElement);
             // ToDo: handle if any of these filters were applied before obscuring
             // ToDo: does this mess with any existing filters?
             findElement.style.filter = 'blur(10px) opacity(80%) grayscale(50%)';
@@ -97,7 +97,7 @@ export class selfViewModifier {
 
             this.#monitorElement();
         } else {
-            selfViewModifier.debug(`No self-view video found in these video elements: `, videoElements,
+            selfViewElementModifier.debug(`No self-view video found in these video elements: `, videoElements,
                 `\nTrying again in ${this.OBSCURE_DELAY/1000} seconds`);
             await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
             if(this.enabled)
@@ -113,7 +113,7 @@ export class selfViewModifier {
                 clearInterval(this.selfViewCheckInterval);
             else{
                 if (!document.body.contains(this.selfViewElement) || !this.selfViewElement?.srcObject?.active){
-                    selfViewModifier.debug('self-view video removed or ended. ', 'Element: ', this.selfViewElement,'srcObject: ', this.selfViewElement?.srcObject);
+                    selfViewElementModifier.debug('self-view video removed or ended. ', 'Element: ', this.selfViewElement,'srcObject: ', this.selfViewElement?.srcObject);
                     clearInterval(this.selfViewCheckInterval);
                     await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
                     setTimeout(async () => await this.obscure(), this.OBSCURE_DELAY);
@@ -176,12 +176,12 @@ const mh = new MessageHandler('content', ()=>{});
 
 // for self-view replacement
 mh.addListener('remote_track_added', data=>{
-    selfViewModifier.debug("remote track added", data.trackData);
+    selfViewElementModifier.debug("remote track added", data.trackData);
     if(data.trackData.kind === 'video')
         remoteTrackIds.add(data.trackData.id);
 });
 mh.addListener('remote_track_removed', data=>{
-    selfViewModifier.debug("remote track removed", data.trackData);
+    selfViewElementModifier.debug("remote track removed", data.trackData);
     if(data.trackData.kind === 'video')
         remoteTrackIds.remove(data.trackData.id);
 });

@@ -1,6 +1,6 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
-import {selfViewModifier} from "../../selfView/scripts/content-selfView.mjs";
+import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -243,7 +243,7 @@ async function gumStreamStart(data){
     grabFrames(stream);
 
     // self-view
-    await new selfViewModifier(stream);
+    await new selfViewElementModifier(stream);
 
 }
 
