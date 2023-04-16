@@ -181,7 +181,7 @@ class Impairment {
                 if (decoderSupport.supported){
                     this.#decoder = new VideoDecoder({output: handleDecodedFrame, error: debug});
                     this.#decoder.configure(this.codecConfig);
-                    debug(`${this.kind} decoder config supported`, this.codecConfig)
+                    // debug(`${this.kind} decoder config supported`, this.codecConfig)
                 }
                 else
                     debug(`${this.kind} decoder config not supported`, this.codecConfig);
@@ -192,7 +192,7 @@ class Impairment {
                 if (encoderSupport.supported){
                     this.#encoder = new VideoEncoder({output: handleEncodedFrame, error: debug});
                     this.#encoder.configure(this.codecConfig);
-                    debug(`${this.kind} encoder config supported`, this.codecConfig);
+                    // debug(`${this.kind} encoder config supported`, this.codecConfig);
                 }
                 else
                     debug(`${this.kind} decoder config not supported`, this.codecConfig);
@@ -380,7 +380,8 @@ class Impairment {
     }
 }
 
-const debug = Function.prototype.bind.call(console.debug, console, `vch 😈👷 `);
+const debug = Function.prototype.bind.call(console.debug, console, `vch 😈${this.name}👷 `);
+// Impairment.#debug = debug;   // ToDo: pass a debug function to the class
 debug("I am a worker");
 let impairment;
 
@@ -429,8 +430,6 @@ onmessage = async (event) => {
         debug(`processing new stream video`);
         // self.postMessage({response: "before reader"});
 
-        let frameCount = 0;
-
         // Learning: not easy to pipe streams - could be worth a post
         // Attempt:
         //         const counterTransfer = new TransformStream({
@@ -454,8 +453,9 @@ onmessage = async (event) => {
         // Conclusion: pipeThrough locks the writer so you can send it again; would need to clone
 
         // first frame response (or maybe 0) causing issues in some services
-        impairment.onFrameNumber(2, () => {
-            debug(`frame ${impairment.frameCounter} is past 2, sending "started"`);
+        const minFrameNumberToStart = 2;
+        impairment.onFrameNumber(minFrameNumberToStart, () => {
+            // debug(`frame ${impairment.frameCounter} is >= ${minFrameNumberToStart}, sending "started"`);
             self.postMessage({response: "started"});
         });
 
@@ -463,7 +463,7 @@ onmessage = async (event) => {
                 .pipeThrough(impairment.transformStream)
                 .pipeTo(writer)
                 .catch(async err => {
-                    // ToDo: don't throw error on muted
+                    // ToDo: don't throw error on muted - backpressure?
                     debug(`Insertable stream error`, err);
                     self.postMessage({response: "error", error: err});
                 });
@@ -480,6 +480,14 @@ onmessage = async (event) => {
         impairment.config = Impairment.severeImpairmentConfig;
         impairment.operation = "impair";
         debug("impairing stream severely");
+    }
+    else if(command === 'passthrough') {
+        impairment.operation = "passthrough";
+        debug("passthrough stream");
+    }
+    else if (command === 'pause') {
+        impairment.operation = "skip";
+        debug("pausing stream");
     }
     else if (command === 'stop') {
         await impairment.stop();

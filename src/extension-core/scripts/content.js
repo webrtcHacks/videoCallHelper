@@ -259,6 +259,7 @@ async function alterStream(stream) {
             this._label = track.label;
             this._contentHint = track.contentHint;
             this._enabled = track.enabled || true;
+            this._muted = track.muted;
         }
 
         get label() {
@@ -270,6 +271,12 @@ async function alterStream(stream) {
         }
 
         get enabled() {
+            return this._enabled;
+        }
+
+        set enabled(enabled) {
+            this._enabled = enabled;
+            this._muted = enabled;  // ToDo: check the spec for function here
             return this._enabled;
         }
 
@@ -318,24 +325,35 @@ async function alterStream(stream) {
         const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
         const writer = generator.writable;
 
-        track.addEventListener('mute', () => {
-            generator.enabled = false;
-        });
-
-        track.addEventListener('unmute', () => {
-            generator.enabled = true;
-        });
-
-        track.addEventListener('ended', () => {
-            generator.stop()
-        });
-
         newStream.addTrack(generator);
 
         debug(`generator track state before worker ${generator.readyState}`, generator);
 
         const workerBlobURL = URL.createObjectURL(new Blob([workerScript], {type: 'application/javascript'}));
-        const worker = new Worker(workerBlobURL, {name: `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`});
+        const workerName = `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`;
+        const worker = new Worker(workerBlobURL, {name: workerName});
+        worker.name = workerName;
+
+        track.addEventListener('mute', () => {
+            debug(`track ${track.id} muted, pausing worker ${worker.name}`)
+            generator.enabled = false;
+            worker.postMessage({command: "pause"});
+        });
+
+        track.addEventListener('unmute', () => {
+            debug(`track ${track.id} unmuted, unpausing worker ${worker.name}`)
+            // ToDo: state management
+            worker.postMessage({command: "passthrough"});
+            generator.enabled = true;
+        });
+
+        track.addEventListener('ended', () => {
+            debug(`track ${track.id} ended, stopping worker ${worker.name}`);
+            worker.postMessage({command: "stop"});  // clean-up resources?
+            generator.stop();
+            worker.terminate();
+        });
+
 
         // wait for the streams pipeline to be setup -
         //  this is a hack to wait for the first frame to be written to the track
@@ -343,12 +361,18 @@ async function alterStream(stream) {
         await new Promise((resolve, reject) => {
 
             worker.onmessage = (e) => {
-                debug("worker message: ", e.data);
+                // debug("worker message: ", e.data);
                 if (e.data?.response === "started") {
                     resolve();
                 } else if (e.data?.response === "error") {
-                    worker.terminate()
-                    reject(e.data.error);
+                    if(track.muted && track.readyState === "live")
+                        debug(`track ${track.id} is muted, ignoring worker ${worker.name} error: `, e.data.error)
+                    else{
+                        worker.postMessage({command: "stop"});  // clean-up resources?
+                        worker.terminate()
+                        debug(`terminating worker ${worker.name}. worker error: `, e.data.error);
+                        reject(e.data.error);
+                    }
                 } else {
                     // reject("Unknown error");
                     debug("Unknown message", e.data)
@@ -365,8 +389,8 @@ async function alterStream(stream) {
                 impairmentState: "passthrough"
             }, [reader, writer]);
 
-
         });
+
 
         // ToDo: handlers for UI changes
         //  - Severe
