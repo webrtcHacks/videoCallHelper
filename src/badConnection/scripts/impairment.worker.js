@@ -21,7 +21,7 @@ class Impairment {
     operation = 'passthrough';
     #encoder;
     #decoder;
-    #frameCounter = 0;
+    frameCounter = 0;
     #forceKeyFrame = false;
 
     kind;
@@ -171,7 +171,7 @@ class Impairment {
             try {
                 this.#decoder.decode(chunk);        //(modifiedChunk)
             } catch (err) {
-                Impairment.#debug(`ERROR: frame ${this.#frameCounter}`, err)
+                Impairment.#debug(`ERROR: frame ${this.frameCounter}`, err)
             }
         }
 
@@ -241,10 +241,12 @@ class Impairment {
                 avc: {format: "annexb"},
                 hardwareAcceleration: "prefer-hardware",
                 pt: 1,
+                keyInterval: keyFrameInterval,
+
+                // codec: 'vp8',
                 width: (width / (widthFactor || 1)).toFixed(0),
                 height: (height / (heightFactor || 1)).toFixed(0),
-                framerate: (frameRate / (framerateFactor || 1)).toFixed(0),
-                keyInterval: keyFrameInterval
+                framerate: (frameRate / (framerateFactor || 1)).toFixed(0)
             }
 
             // Set up the impairment
@@ -290,13 +292,12 @@ class Impairment {
                 } else {
                     // Start webcodecs for impairment
                     if (this.operation === 'impair') {
-                        const keyFrame = this.#frameCounter % this.keyFrameInterval === 0 || this.#forceKeyFrame;
+                        const keyFrame = this.frameCounter % this.keyFrameInterval === 0 || this.#forceKeyFrame;
                         if (this.#forceKeyFrame) {
-                            Impairment.#debug(`set ${this.#frameCounter} to keyframe`);
+                            Impairment.#debug(`set ${this.frameCounter} to keyframe`);
                             this.#forceKeyFrame = false;
                         }
-                        this.#frameCounter++;
-                        await this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
+                        this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
 
                         // part of update
                         if(this.#forceKeyFrame)
@@ -305,8 +306,8 @@ class Impairment {
                     }
                     // Do nothing and re-enqueue the frame
                     else if (this.operation === 'passthrough') {
-                        if(Math.random() >= this.frameDrop )
-                            await this.#controller.enqueue(frame);
+                        // if(Math.random() >= this.frameDrop ) // ToDo: put this back
+                        await this.#controller.enqueue(frame);
                     }
                     // Drop the frame
                     else if (this.operation === 'skip') {
@@ -317,7 +318,9 @@ class Impairment {
                     else {
                         Impairment.#debug(`invalid operation: ${this.operation}`);
                     }
-                    frame.close();
+
+                    this.frameCounter++;
+                    // frame.close();
                 }
             },
             flush: (controller) => {
@@ -338,7 +341,7 @@ class Impairment {
             this.#decoder.configure(this.codecConfig);
             this.#forceKeyFrame = true;
             this.#decoder.flush();
-        }).catch(err => Impairment.#debug(`codec config error at frame ${this.#frameCounter}`, err))
+        }).catch(err => Impairment.#debug(`codec config error at frame ${this.frameCounter}`, err))
 
         Impairment.#debug(`New configuration. Operation state: ${this.operation}. Config: `, config)
     }
@@ -354,6 +357,22 @@ class Impairment {
         Impairment.#debug(`passthrough: removing impairment on ${this.kind} ${this.id}`);
     }
 
+    onFrameNumber(frameNumber, callback) {
+        if(this.frameCounter >= frameNumber) {
+            Impairment.#debug(`frameNumber ${frameNumber} already higher than current frame count ${this.frameCounter}`);
+            return
+        }
+
+        const watcherInterval = setInterval(() => {
+            // Impairment.#debug(`frame: ${this.frameCounter}`);
+
+            if(this.frameCounter >= frameNumber) {
+                clearInterval(watcherInterval);
+                callback();
+            }
+        }, 100);
+    }
+
     async stop() {
         this.operation = "kill";
         await this.#sleep(100); // give some time to finalize the last frames
@@ -363,7 +382,6 @@ class Impairment {
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 😈👷 `);
 debug("I am a worker");
-let frameCounter = 0;
 let impairment;
 
 /*
@@ -409,12 +427,49 @@ onmessage = async (event) => {
         impairment.start();
 
         debug(`processing new stream video`);
+        // self.postMessage({response: "before reader"});
+
+        let frameCount = 0;
+
+        // Learning: not easy to pipe streams - could be worth a post
+        // Attempt:
+        //         const counterTransfer = new TransformStream({
+        //             transform: async (frame, controller) => {
+        //                 frameCount++;
+        //                 // first frame response causing issues in some services
+        //                 if(frameCount === ){
+        //                     debug("second frame");
+        //                     self.postMessage({response: "started"});
+        //                 }
+        //                 controller.enqueue(frame);
+        //             }
+        //         });
+        //     await reader
+        //                 .pipeThrough(counterTransfer)
+        //                 .pipeThrough(counterTransfer)
+        //                 .pipeTo(writer)
+        // Result
+        //  50df2885-db3f-468d-b0d5-4be0cf7e92c1:436 Uncaught (in promise) TypeError: Failed to execute 'pipeThrough' on 'ReadableStream': parameter 1's 'writable' is locked
+        //     at onmessage (50df2885-db3f-468d-b0d5-4be0cf7e92c1:436:18)
+        // Conclusion: pipeThrough locks the writer so you can send it again; would need to clone
+
+        // first frame response (or maybe 0) causing issues in some services
+        impairment.onFrameNumber(2, () => {
+            debug(`frame ${impairment.frameCounter} is past 2, sending "started"`);
+            self.postMessage({response: "started"});
+        });
+
         await reader
                 .pipeThrough(impairment.transformStream)
                 .pipeTo(writer)
                 .catch(async err => {
+                    // ToDo: don't throw error on muted
                     debug(`Insertable stream error`, err);
+                    self.postMessage({response: "error", error: err});
                 });
+
+        // self.postMessage({response: "ready"});
+
     }
     else if (command === 'moderate') {
         impairment.config = Impairment.moderateImpairmentConfig;
@@ -435,4 +490,3 @@ onmessage = async (event) => {
         debug(`Unhandled message: `, event);
     }
 };
-

@@ -41,7 +41,11 @@ module.exports = {
                         loader: 'sass-loader'
                     }
                 ]
-            }
+            },
+            {
+                test: /.*impairment\.worker.*\.(js)$/i,
+                type: 'asset/source',
+            },
         ]
     },
     plugins: [

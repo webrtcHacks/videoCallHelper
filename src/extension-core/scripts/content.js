@@ -10,7 +10,7 @@ let trackInfos = [];
 
 window.vchStreams = streams;
 
-const debug = function() {
+const debug = function () {
     return Function.prototype.bind.call(console.debug, console, `vch 🕵️‍ `);
 }();
 
@@ -67,6 +67,7 @@ async function toggleDash() {
         }
     }
 }
+
 mh.addListener(m.TOGGLE_DASH, toggleDash);
 
 // Monitor and share track changes
@@ -77,7 +78,7 @@ async function syncTrackInfo() {
     debug("getting current video devices:", videoDevices);
 
     // video.js can ask for syncTrackInfo at any time, so see if there are still streams
-    if(streams.length === 0){
+    if (streams.length === 0) {
         debug("No streams to syncTrackInfo");
         return
     }
@@ -177,7 +178,7 @@ async function syncTrackInfo() {
 }
 
 // Added for presence
-async function monitorTrack(track, streamId){
+async function monitorTrack(track, streamId) {
     debug(`new track ${streamId} video settings: `, track);
     const {id, kind, label, readyState} = track;
     const trackData = {
@@ -188,7 +189,7 @@ async function monitorTrack(track, streamId){
         streamId
     }
 
-    if(track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
+    if (track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
         await sendMessage('background', m.NEW_TRACK, trackData);
 
     // Note: this only fires if the browser forces the track to stop; not for most user actions
@@ -199,7 +200,7 @@ async function monitorTrack(track, streamId){
 
     // use an interval to check if the track has ended
     const monitor = setInterval(async () => {
-        if(track.readyState === 'ended'){
+        if (track.readyState === 'ended') {
             trackData.state = 'ended';
             await sendMessage('background', m.TRACK_ENDED, trackData);
             clearInterval(monitor);
@@ -221,23 +222,138 @@ async function monitorTrack(track, streamId){
      */
 }
 
+window.newStreams = [];
+
 // bad connection simulator
-async function alterStream(stream){
+async function alterStream(stream) {
+
+    class FrameCountWritableStream extends WritableStream {
+        constructor(writer) {
+            super({
+                write: chunk => {
+                    writer.frameCount++;
+                    return writer.write(chunk);
+                },
+                abort: () => writer.abort(),
+                close: () => writer.close(),
+            });
+            this._writer = writer;
+            this._writer.frameCount = 0;
+        }
+
+        get frameCount() {
+            return this._writer.frameCount;
+        }
+    }
+
+    // Learning: I was not able to transfer a modified writer to the worker
+    // My goal is to wait until something is written to the track before returning the new stream
+    // it seems there is some typechecking and Chrome doesn't allow an extended object
+    // I always get the error:
+    //  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
+    // ToDo: see if I can extend the writer in the worker and have that message back here
+
+    class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
+        constructor(options, track) {
+            super(options);
+            this._label = track.label;
+            this._contentHint = track.contentHint;
+            this._enabled = track.enabled || true;
+        }
+
+        get label() {
+            return this._label;
+        }
+
+        get contentHint() {
+            return this._contentHint;
+        }
+
+        get enabled() {
+            return this._enabled;
+        }
+
+        /*
+        get writable() {
+            const writer = super.writable;
+            const frameCount = { count: 0 };
+            const writableStream = new WritableStream({
+                write: (chunk) => {
+                    frameCount.count++;
+                    return writer.write(chunk);
+                },
+                abort: (reason) => writer.abort(reason),
+                close: () => writer.close(),
+            });
+            const transferable = [writableStream];
+            Object.defineProperty(transferable, 'frameCount', {
+                get: () => frameCount.count,
+                enumerable: true,
+            });
+            return transferable;
+        }
+
+        async waitForFrame() {
+            if(this.frameCount > 0)
+                return;
+
+            while (this.frameCount === 0) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        }
+
+         */
+    }
 
     const newStream = new MediaStream();
+    const tracks = stream.getTracks();
 
-    try {
+    // ToDo: need to close the worker when the stream is closed
 
-        stream.getTracks().forEach(track => {
-            const processor = new MediaStreamTrackProcessor(track);
-            const reader = processor.readable;
+    await Promise.all(tracks.map(async (track) => {
 
-            const generator = new MediaStreamTrackGenerator({kind: track.kind});
-            const writer = generator.writable;
-            newStream.addTrack(generator);
+        const processor = new MediaStreamTrackProcessor(track);
+        const reader = processor.readable;
 
-            const workerBlobURL = URL.createObjectURL(new Blob([workerScript], {type: 'application/javascript'}));
-            const worker = new Worker(workerBlobURL, {name: `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`});
+        const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
+        const writer = generator.writable;
+
+        track.addEventListener('mute', () => {
+            generator.enabled = false;
+        });
+
+        track.addEventListener('unmute', () => {
+            generator.enabled = true;
+        });
+
+        track.addEventListener('ended', () => {
+            generator.stop()
+        });
+
+        newStream.addTrack(generator);
+
+        debug(`generator track state before worker ${generator.readyState}`, generator);
+
+        const workerBlobURL = URL.createObjectURL(new Blob([workerScript], {type: 'application/javascript'}));
+        const worker = new Worker(workerBlobURL, {name: `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`});
+
+        // wait for the streams pipeline to be setup -
+        //  this is a hack to wait for the first frame to be written to the track
+        //  this caused problems in some services
+        await new Promise((resolve, reject) => {
+
+            worker.onmessage = (e) => {
+                debug("worker message: ", e.data);
+                if (e.data?.response === "started") {
+                    resolve();
+                } else if (e.data?.response === "error") {
+                    worker.terminate()
+                    reject(e.data.error);
+                } else {
+                    // reject("Unknown error");
+                    debug("Unknown message", e.data)
+                }
+            };
 
             worker.postMessage({
                 command: "setup",
@@ -250,26 +366,34 @@ async function alterStream(stream){
             }, [reader, writer]);
 
 
-            /*
-            setTimeout(() => {
-                worker.postMessage({command: "severe"});
-            }, 4*1000);
-             */
-
-
         });
 
+        // ToDo: handlers for UI changes
+        //  - Severe
+        //  - Moderate
+        //  - PassThrough
+
+    }))
+        .catch(err => {
+            debug("alterStream error, returning original stream. Error: ", err);
+            return stream;
+        });
+
+    window.newStreams.push(newStream);
+
+    // Do I need to make sure these work?
+    if (newStream.getTracks().filter(track => track.readyState === 'live').length > 0)
         return newStream;
-    }
-    catch (e) {
-        debug("alterStream error, returning original stream. Error: ", e);
+    else {
+        debug("alterStream error, returning original stream. No active tracks", newStream, newStream.getTracks());
         return stream;
     }
 
 }
 
+// ToDo: count errors back from the worker - cancel modification attempts if too many
 
-async function gumStreamStart(data){
+async function gumStreamStart(data) {
     const id = data.id;
     const video = document.querySelector(`video#${id}`);
     const origStream = video.srcObject;
@@ -282,7 +406,7 @@ async function gumStreamStart(data){
     // ToDo: should really ignore streams and just monitor tracks
     origStream.addEventListener('removetrack', async (event) => {
         debug(`${event.track.kind} track removed`);
-        if(origStream.getTracks().length === 0){
+        if (origStream.getTracks().length === 0) {
             await sendMessage('all', m.GUM_STREAM_STOP);
         }
     });
@@ -292,12 +416,12 @@ async function gumStreamStart(data){
     // window.moddedStream = moddedStream;
 
     //const modifiedStream = new MediaStream(video.srcObject.getTracks());
-    if(video.srcObject.getTracks().length > 0){
+    if (video.srcObject.getTracks().length > 0) {
         const modifiedStream = await alterStream(video.srcObject);
         debug(`new modifiedStream: `, modifiedStream);
+        debug(`new modifiedStream tracks: `, modifiedStream.getTracks());
         video.srcObject = modifiedStream;
-    }
-    else
+    } else
         debug("modifiedStream has no video tracks", video.srcObject);
 
     // send a message back to inject to remove the temp video element
@@ -313,7 +437,6 @@ async function gumStreamStart(data){
 }
 
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
-
 
 
 // For timing testing
@@ -334,4 +457,4 @@ function addScript(path) {
 }
 
 addScript('/scripts/inject.js');
-debug("inject injected");
+// debug("inject injected");
