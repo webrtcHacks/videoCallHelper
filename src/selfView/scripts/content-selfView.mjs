@@ -21,7 +21,7 @@ export class selfViewElementModifier {
     OBSCURE_DELAY = 4 * 1000;               // wait in ms before obscuring to give time for the video to load
 
     constructor(stream) {
-        // selfViewModifier.debug("selfViewModifier constructor");
+        // selfViewModifier.debug("selfViewElementModifier constructor");
         this.stream = stream;
 
         // bad pattern to handle async class construction?
@@ -32,7 +32,7 @@ export class selfViewElementModifier {
     }
 
     // standard debug function for content context
-    static debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️ selfViewModifier: `);
+    static debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️ selfViewElementModifier: `);
 
     // handles initial settings from storage and looks for changes
     async #storageCheck() {
@@ -75,7 +75,13 @@ export class selfViewElementModifier {
                 ve.srcObject.getVideoTracks().length !== 0 &&               // not just audio
                 !remoteTrackIds.has(ve.srcObject.getVideoTracks()[0].id)    // not a remote track
             );
-        selfViewElementModifier.debug('current local videoElements', videoElements);
+
+        if(videoElements.length === 0){
+            selfViewElementModifier.debug(`No video elements found for stream ${stream.id}`);
+        }
+        else
+            selfViewElementModifier.debug('current local videoElements', videoElements);
+
 
         // make sure there is a valid source
         const findElement =
@@ -97,9 +103,11 @@ export class selfViewElementModifier {
 
             this.#monitorElement();
         } else {
+            // ToDo: doesn't work on my local gum page
+            // ToDo: needs to stop looking if there are no tracks
             selfViewElementModifier.debug(`No self-view video found in these video elements: `, videoElements,
                 `\nTrying again in ${this.OBSCURE_DELAY/1000} seconds`);
-            await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
+            // await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
             if(this.enabled)
                 setTimeout(async () => await this.obscure(), this.OBSCURE_DELAY);
         }
