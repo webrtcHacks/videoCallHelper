@@ -1,10 +1,8 @@
 import './style.scss';
-import { Tooltip, Toast, Popover } from 'bootstrap'
 
-import {MessageHandler, MESSAGE as m} from "../modules/messageHandler.mjs";
+// import {MessageHandler, MESSAGE as m} from "../modules/messageHandler.mjs";
 // ToDo: this isn't working - doesn't save
 import '../imageCapture/scripts/imageCaptureSettings.mjs';
-import {settings} from "../imageCapture/scripts/imageCaptureSettings.mjs";
 // import '../presence/scripts/presenceSettings.mjs';
 
 
@@ -19,7 +17,6 @@ const localAudioLevel = [];
 let audioLevelInterval = false;
 
 const eventSpanElem = document.querySelector('span#events');
-const statusSpanElem = document.querySelector('span#status');
 
 // Remote Audio
 const remoteAudioLevelSpan = document.querySelector('span.remote_audio_level');
@@ -30,8 +27,8 @@ const localAudioLevelSpan = document.querySelector('span.local_audio_level');
 window.events = [];
 
 // ToDo: should this be `dash` ???
-const mh = new MessageHandler('dash', debug);
-const sendMessage = mh.sendMessage;
+// const mh = new MessageHandler('dash', debug);
+// const sendMessage = mh.sendMessage;
 
 // TODO: move all dashboard state to storage
 function handleInitMessage(message){
@@ -39,9 +36,10 @@ function handleInitMessage(message){
     debug('dash_init_data', message);
 }
 
-mh.addListener(m.DASH_INIT_DATA, handleInitMessage);
+// mh.addListener(m.DASH_OPEN, handleInitMessage);
 
 // Status message updates
+/*
 Object.keys(m).forEach(key => {
     const message = m[key];
 
@@ -64,6 +62,8 @@ Object.keys(m).forEach(key => {
 
     }
 });
+
+ */
 
 /*
 chrome.runtime.onMessage.addListener(
@@ -140,11 +140,27 @@ document.querySelector("button#open_sampling").onclick = async ()=> {
     await chrome.tabs.create({url});
 }
 
-// Presence setup
+/* Presence */
+const statusSpanElem = document.querySelector('span#presence_status');
+
 document.querySelector("button#presence_setup").onclick = async ()=> {
     const url = chrome.runtime.getURL("pages/presence.html");
     await chrome.tabs.create({url});
 }
+
+const {presence} =  await chrome.storage.local.get("presence");
+if(presence?.active){
+    debug("presence state", presence);
+    statusSpanElem.innerText = `${presence.active ? "active" : "inactive"}`;
+}
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if(changes['presence']){
+        debug("presence changed", changes['presence'].newValue);
+        statusSpanElem.innerText = changes['presence'].newValue.active ? "active" : "inactive";
+    }
+});
+
 
 // Hide self view
 // ToDo: move this into a module?
@@ -174,6 +190,8 @@ selfViewCheckbox.onclick = async (e)=> {
 
 // ToDo: some kind of message registry to add messages from modules?
 //  should the messageHandler use local storage for context->dash?
+
+/*
 mh.addListener(m.SELF_VIEW, (e)=>{
     if(e.enabled)
         selfViewStatus.innerText = "Active";
@@ -181,9 +199,11 @@ mh.addListener(m.SELF_VIEW, (e)=>{
         selfViewStatus.innerText = "Looking for self-view";
 });
 
+ */
+
 async function main(){
-    await sendMessage('background', m.DASH_INIT);
-    statusSpanElem.innerText = 'Waiting for data...';
+    // await sendMessage('background', m.DASH_INIT);
+    // statusSpanElem.innerText = 'Waiting for data...';
 }
 
 main().catch(err=>debug(err));

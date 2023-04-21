@@ -12,10 +12,13 @@ export const settingsPrototype = {
         offHeaders: "",
     },
     hid: false,
+    active: false,
 }
 
+// ToDo: error checking on these entered values
 export function webhook(state, settings, log = console.log) {
 
+    // ToDo: error handling if these fields aren't set
     let url = state === "on" ? settings.on.onUrl : settings.off.offUrl;
     let method = state === "on" ? settings.on.onMethod : settings.off.offMethod;
     let postBody = state === "on" ? settings.on.onPostBody : settings.off.offPostBody;

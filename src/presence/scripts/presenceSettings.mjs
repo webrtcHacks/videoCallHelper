@@ -115,7 +115,7 @@ btnNotBusy.onclick = notBusyHandler;
 
         if (form === "on"){
             settings.on = formDataObj;
-            // formOff.submit(); // didn't work
+            formOff.submit(); // didn't work
 
         }
         else if (form === "off"){

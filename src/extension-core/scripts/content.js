@@ -25,6 +25,7 @@ const storage = await chrome.storage.local.get();
 await debug("storage contents:", storage);
 
 const dashHeight = 180;
+// ToDo: inline CSS with webpack
 const dashStyle = `position:fixed;top:0;left:0;width:100%;height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 
 async function toggleDash() {

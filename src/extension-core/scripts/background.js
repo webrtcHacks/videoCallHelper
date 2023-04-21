@@ -1,20 +1,21 @@
 import {get, set, update} from "idb-keyval";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {StorageHandler} from "../../modules/storageHandler.mjs";
 import {settingsPrototype, webhook} from "../../presence/scripts/presence.mjs";
 import {glow} from "../../presence/scripts/embrava.mjs";
 // import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
 // import '../../modules/lovefield';
 
+const debug = Function.prototype.bind.call(console.log, console, `👷`);
+
+
 let streamTabs; // Not currently used
 let storage = await chrome.storage.local.get();
+let s = new StorageHandler("local", debug);
 
 // added for presence
 let trackData = [];
-let presenceActive = false;
-
-const debug = function() {
-    return Function.prototype.bind.call(console.log, console, `👷`);
-}();
+let presenceSettings;
 
 const mh = new MessageHandler('background', debug);
 
@@ -83,10 +84,19 @@ chrome.runtime.onInstalled.addListener(async () => {
 
     // await chrome.storage.local.clear();     // ToDo: Reconsider this for some data
 
-    storage = await chrome.storage.local.get(null);
+    storage = await chrome.storage.local.get();
+    presenceSettings = storage.presence;
+    // debug("onInstalled presenceSettings", presenceSettings);
+
     await chrome.storage.local.set({streamTabs: []});
+
+    // presence settings
     if(!storage['presence'])
         await chrome.storage.local.set({presence: settingsPrototype});
+    else{
+        presenceSettings.active = false;
+        await chrome.storage.local.set({presence: presenceSettings});
+    }
 
     // ToDo: rename
     if(!storage['imageCapture']){
@@ -99,7 +109,7 @@ chrome.runtime.onInstalled.addListener(async () => {
         await chrome.storage.local.set({imageCapture});
     }
 
-    debug("onInstalled local storage: ", await chrome.storage.local.get(null));
+    debug("onInstalled local storage: ", await chrome.storage.local.get());
 
     // Testing
 
@@ -141,6 +151,8 @@ async function dashInit(data){
     // not sure what this was all about. Maybe tab specific settings?
 
     const tabId = data.tabId;
+
+    /*
     const tabDataObj = await chrome.storage.local.get(['tabData']);
         if(!tabDataObj.tabData){
             debug("no tabData in storage");
@@ -152,18 +164,18 @@ async function dashInit(data){
         let responseData = tabDataObj.tabData.filter(data=>data?.sourceId===tabId);
         responseData.tabId = tabId;
 
+     */
 
         const messageToSend = {
             from: 'background',
-            to: 'dash', // was content
-            message: 'dash_init_data',
-            data: responseData
+            to: 'content',
+            message: 'dash_open',
+            // data: responseData.,
+            tabId: tabId,
         }
 
-
         // ToDo: populate this
-        mh.sendMessage('dash', m.DASH_INIT_DATA, messageToSend);
-        // await chrome.tabs.sendMessage(tabId, {...messageToSend})
+        mh.sendMessage('dash', m.DASH_OPEN, messageToSend);
 
         debug("sent dash init data", data);
 }
@@ -188,7 +200,7 @@ async function frameCap(data){
 }
 
 
-mh.addListener(m.DASH_INIT, dashInit);
+// mh.addListener(m.DASH_INIT, dashInit);
 mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 // Presence handling
@@ -205,31 +217,70 @@ async function presenceOff(){
         setTimeout(async ()=>{
             if(!trackData.some(td => td.state === 'live')){
                 chrome.action.setIcon({path: "../icons/v_128.png"});
-                webhook('off', storage['presence'], debug);
+
+                /*
+                let {presence} = await chrome.storage.local.get("presence");
+                presence.active = false;
+                await chrome.storage.local.set({presence});
+                 */
+
+                let presence = await s.get("presence");
+                debug(`got presence`, presence);
+
+                webhook('off', presence, debug);
 
                 // ToDo: check HID permissions
-                if(storage['presence'].hid === true)
+                if(presence?.hid === true)
                     await glow([0,0,0]);
-                presenceActive = false;
                 debug("turn presence off here");
+
             }
         }, 2000);
     }
 }
 
+async function presenceOn(){
+    debug("turn presence on here");
+
+    /*
+    let {presence} = await chrome.storage.local.get("presence");
+    debug("presenceSettings", presence);
+    presence.active = true;
+    await chrome.storage.local.set({presence});
+     */
+
+    let presence = s.get("presence");
+    await s.update("presence", {active: true});
+
+    webhook('on', presence, debug);
+    if(presence?.hid === true)
+        await glow([255,0,0]);
+    await chrome.action.setIcon({path: "../icons/v_rec.png"});
+
+}
+
 // Note: https://developer.chrome.com/blog/page-lifecycle-api/ says don't do `beforeunload`
 
 async function handleTabRemoved(tabId){
-    debug(`tab ${tabId} closed`);
     trackData = trackData.filter(td => td.tabId !== tabId);
-    await presenceOff();
+    if(s.contents.presence.active)
+        await presenceOff();
     // await removeTab(tabId);  // if addTab is used again
 }
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
+    debug(`tab ${tabId} removed`);
     await handleTabRemoved(tabId);
 });
 chrome.tabs.onReplaced.addListener(async (tabId, removeInfo)=>{
+    debug(`tab ${tabId} replaced`);
     await handleTabRemoved(tabId);
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo)=>{
+    if (changeInfo.status === 'complete') {
+        debug(`tab ${tabId} refreshed`);
+        await handleTabRemoved(tabId);
+    }
 });
 
 mh.addListener(m.NEW_TRACK, async data=>{
@@ -239,14 +290,10 @@ mh.addListener(m.NEW_TRACK, async data=>{
     if(trackData.some(td => td.id === id)){
         debug(`track ${id} already in trackData array`);
     } else {
+        // Presence handling
         if(!trackData.some(td => td.state === 'live')){
-            if(!presenceActive){
-                presenceActive = true;
-                debug("turn presence on here");
-                webhook('on', storage['presence'], debug);
-                if(storage['presence'].hid === true)
-                    await glow([255,0,0]);
-                await chrome.action.setIcon({path: "../icons/v_rec.png"});
+            if(!presenceSettings?.active){
+                await presenceOn();
             } else debug("presence already active");
         }
         trackData.push(data);
@@ -277,6 +324,7 @@ mh.addListener('alter_stream', async data=>{
 
 // ToDo: change to pageAction?
 chrome.action.onClicked.addListener(async (tab)=>{
+    debug(`icon clicked on tab ${tab.id}`);
     const messageToSend = {
         to: 'content',
         from: 'background',
@@ -303,7 +351,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 debug("background.js loaded");
 
-// ToDo: set this up; put in a storage module?
+/*
 chrome.storage.onChanged.addListener(async function(changes, namespace) {
     if(namespace !== 'local')
         return;
@@ -317,3 +365,5 @@ chrome.storage.onChanged.addListener(async function(changes, namespace) {
 
     // storage = await chrome.storage.local.get(null);
 });
+
+ */

@@ -20,14 +20,14 @@ export async function openDevice() {
     let device_list;
     try{
         // ToDo: figure out how to trigger this from the worker - fire from content?
-        device_list = await navigator.hid.getDevices();
+        device_list = await navigator.hid?.getDevices();
     }
     catch (error) {
         console.log("embrava error", error);
         return null;
     }
 
-    if(device_list.length === 0)
+    if(!device_list || device_list.length === 0)
         return null;
 
     let device = device_list.find(d => d.vendorId === vendorId && d.productId === productId);

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>getUserMedia</title>
+    <style>
+        video {
+            opacity: 20%;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+<video autoplay playsinline muted controls></video>
+<br>
+<button id="start">Start</button>
+<button id="stop">Stop</button>
+<script type="module">
+
+    const startBtn = document.querySelector('button#start');
+    const stopBtn = document.querySelector('button#stop');
+
+    const video = document.querySelector('video');
+    let stream;
+    window.stream = stream;
+    video.srcObject = stream;
+
+    async function getCam() {
+        stream = await navigator.mediaDevices.getUserMedia({video: true});
+        console.log("started camera stream")
+    }
+
+    startBtn.onclick = async () => {
+        await getCam();
+    }
+
+    stopBtn.onclick = () => {
+        stream.getTracks().forEach(track => track.stop());
+        console.log("stopped all tracks")
+    }
+
+    // getCam();
+
+</script>
+</body>
+</html>
