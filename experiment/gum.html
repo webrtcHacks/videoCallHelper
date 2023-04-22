@@ -23,10 +23,10 @@
     const video = document.querySelector('video');
     let stream;
     window.stream = stream;
-    video.srcObject = stream;
 
     async function getCam() {
         stream = await navigator.mediaDevices.getUserMedia({video: true});
+        video.srcObject = stream;
         console.log("started camera stream")
     }
 
@@ -35,6 +35,7 @@
     }
 
     stopBtn.onclick = () => {
+        video.pause();
         stream.getTracks().forEach(track => track.stop());
         console.log("stopped all tracks")
     }
