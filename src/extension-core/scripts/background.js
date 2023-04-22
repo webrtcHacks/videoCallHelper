@@ -10,12 +10,11 @@ const debug = Function.prototype.bind.call(console.log, console, `👷`);
 
 
 let streamTabs; // Not currently used
-let storage = await chrome.storage.local.get();
-let s = new StorageHandler("local", debug);
+//let storage = await chrome.storage.local.get();
+let storage = await new StorageHandler("local", debug);
 
 // added for presence
 let trackData = [];
-let presenceSettings;
 
 const mh = new MessageHandler('background', debug);
 
@@ -82,34 +81,30 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.runtime.onInstalled.addListener(async () => {
 
-    // await chrome.storage.local.clear();     // ToDo: Reconsider this for some data
+    debug("onInstalled starting local storage: ", storage.contents);
 
-    storage = await chrome.storage.local.get();
-    presenceSettings = storage.presence;
-    // debug("onInstalled presenceSettings", presenceSettings);
-
-    await chrome.storage.local.set({streamTabs: []});
+    //await storage.set("streamTabs", []);
 
     // presence settings
-    if(!storage['presence'])
-        await chrome.storage.local.set({presence: settingsPrototype});
+    if(!storage.contents.presence)
+        await storage.set('presence', settingsPrototype);
     else{
-        presenceSettings.active = false;
-        await chrome.storage.local.set({presence: presenceSettings});
+        await storage.update('presence', {active:false});
     }
 
     // ToDo: rename
-    if(!storage['imageCapture']){
+    if(!storage.contents.imageCapture){
         // Image capture
-        const imageCapture = {
+        const imageCaptureSettings = {
             startOnPc: false,
             captureIntervalMs: (30 * 1000),
             samplingActive: false,
         }
-        await chrome.storage.local.set({imageCapture});
+        await storage.update('imageCapture', imageCaptureSettings);
     }
 
-    debug("onInstalled local storage: ", await chrome.storage.local.get());
+    // self-view settings
+    await storage.set('selfView', {active: false, enabled: storage.contents['selfView']?.enabled || false});
 
     // Testing
 
@@ -218,19 +213,11 @@ async function presenceOff(){
             if(!trackData.some(td => td.state === 'live')){
                 chrome.action.setIcon({path: "../icons/v_128.png"});
 
-                /*
-                let {presence} = await chrome.storage.local.get("presence");
-                presence.active = false;
-                await chrome.storage.local.set({presence});
-                 */
-
-                let presence = await s.get("presence");
-                debug(`got presence`, presence);
-
-                webhook('off', presence, debug);
+                if(storage.contents.presence.active)
+                    webhook('off', storage.contents.presence, debug);
 
                 // ToDo: check HID permissions
-                if(presence?.hid === true)
+                if(storage.contents.presence?.hid === true)
                     await glow([0,0,0]);
                 debug("turn presence off here");
 
@@ -242,18 +229,10 @@ async function presenceOff(){
 async function presenceOn(){
     debug("turn presence on here");
 
-    /*
-    let {presence} = await chrome.storage.local.get("presence");
-    debug("presenceSettings", presence);
-    presence.active = true;
-    await chrome.storage.local.set({presence});
-     */
+    await storage.update("presence", {active: true});
 
-    let presence = s.get("presence");
-    await s.update("presence", {active: true});
-
-    webhook('on', presence, debug);
-    if(presence?.hid === true)
+    webhook('on', storage.contents.presence, debug);
+    if(storage.contents.presence?.hid === true)
         await glow([255,0,0]);
     await chrome.action.setIcon({path: "../icons/v_rec.png"});
 
@@ -263,8 +242,12 @@ async function presenceOn(){
 
 async function handleTabRemoved(tabId){
     trackData = trackData.filter(td => td.tabId !== tabId);
-    if(s.contents.presence.active)
+    // ToDo: work through this
+    if(trackData)
+        await storage.update("presence", {active: false});
+    if(storage.contents.presence && storage.contents.presence.active){
         await presenceOff();
+    }
     // await removeTab(tabId);  // if addTab is used again
 }
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
@@ -292,8 +275,9 @@ mh.addListener(m.NEW_TRACK, async data=>{
     } else {
         // Presence handling
         if(!trackData.some(td => td.state === 'live')){
-            if(!presenceSettings?.active){
-                await presenceOn();
+            if(!storage.contents.presence?.active){
+                // TODO: put this back
+                // await presenceOn();
             } else debug("presence already active");
         }
         trackData.push(data);
@@ -342,20 +326,3 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 debug("background.js loaded");
-
-/*
-chrome.storage.onChanged.addListener(async function(changes, namespace) {
-    if(namespace !== 'local')
-        return;
-
-    for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
-        storage[key] = newValue;
-        debug(
-            `Storage key "${key}" in namespace "${namespace}" changed.`,
-            `\n> Old value was`, oldValue, `\n> New value is`,  newValue);
-    }
-
-    // storage = await chrome.storage.local.get(null);
-});
-
- */

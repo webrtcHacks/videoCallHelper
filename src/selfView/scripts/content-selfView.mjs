@@ -1,10 +1,16 @@
-/* Self-view replacement */
+/*
+ * Obscures the self-view video element
+ *
+ * enabled means the feature is turned on
+ * active means there is a video element that is actively being obscured
+ */
 
 // ToDo: didn't always work when moving from pre-calls screen into main room
 
 // NOTES:
 // uses storage changes to toggle on/off
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 // Keep track of remote tracks so we don't alter them
 const remoteTrackIds = new Set();
@@ -15,7 +21,8 @@ export class selfViewElementModifier {
 
     selfViewElement = null;
     selfViewCheckInterval = null;
-    enabled = null;                         // should we modify the self-view if we can?
+
+    obscuring = false;
 
     SELF_VIEW_CHECK_INTERVAL = 3 * 1000;    // how often in ms to see if the self-view element has been removed
     OBSCURE_DELAY = 4 * 1000;               // wait in ms before obscuring to give time for the video to load
@@ -26,6 +33,7 @@ export class selfViewElementModifier {
 
         // bad pattern to handle async class construction?
         return (async () => {
+            this.storage = await new StorageHandler('local', selfViewElementModifier.debug);
             await this.#storageCheck();
             return this;
         })();
@@ -37,21 +45,37 @@ export class selfViewElementModifier {
     // handles initial settings from storage and looks for changes
     async #storageCheck() {
         // get the current setting
-        this.enabled = (await chrome.storage.local.get('selfView'))?.selfView;
-        selfViewElementModifier.debug("Self View Obscure settings:", this.enabled);
+        let enabled = this.storage.contents['selfView'].enabled || false;
+        let active = this.storage.contents['selfView'].active || false;
+        selfViewElementModifier.debug(`Self View Obscure settings - enabled: ${enabled}, active: ${active}`);
 
         // initialize storage if value is not there (like on 1st load)
-        if (this.enabled === undefined) {
-            await chrome.storage.local.set({selfView: false});
-            this.enabled = false;
-            selfViewElementModifier.debug("self-view settings not found in storage; set to false");
+        if (enabled === undefined || active === undefined) {
+            selfViewElementModifier.debug(`self-view settings not found in storage.\n
+                \tupdated - enabled: ${enabled}, active: ${active}}`);
+            await this.storage.update("selfView", {enabled: enabled, active: active});
         }
 
         // obscure if active
-        if(this.enabled)
+        if(enabled)
             setTimeout(async () => await this.obscure(), this.OBSCURE_DELAY);
 
         // watch for settings changes & respond
+        this.storage.addListener('selfView', async (newValue) => {
+            selfViewElementModifier.debug(`selfView storage changes: `, newValue);
+            // if(newValue.enabled === undefined)
+            //    return;
+
+            // ToDo: do I need to check the stream here?
+            if (this.obscuring === false && newValue.enabled === true) {
+                await this.obscure();
+            } else if (!newValue.enabled) {
+                await this.clear();
+            }
+            // this.obscuring = newValue.enabled;
+        });
+
+        /*
         chrome.storage.onChanged.addListener(async (changes, area) => {
             if (changes['selfView']) {
                 selfViewElementModifier.debug(`storage area "${area}" changes: `, changes['selfView']);
@@ -63,6 +87,8 @@ export class selfViewElementModifier {
                 }
             }
         });
+
+         */
     }
 
     // finds the self-view video element and obscures it
@@ -77,7 +103,9 @@ export class selfViewElementModifier {
             );
 
         if(videoElements.length === 0){
-            selfViewElementModifier.debug(`No video elements found for stream ${stream.id}`);
+            selfViewElementModifier.debug(`No video elements found for stream ${this.stream.id}`);
+            await this.storage.update('selfView', {active: false});
+            return
         }
         else
             selfViewElementModifier.debug('current local videoElements', videoElements);
@@ -86,7 +114,8 @@ export class selfViewElementModifier {
         // make sure there is a valid source
         const findElement =
             // Look for matching streams
-            videoElements.find(ve => ve.srcObject?.id === this.stream.id
+            videoElements.find(
+                ve => ve.srcObject?.id === this.stream.id
                 // or tracks
                 || ve.srcObject.getVideoTracks()[0].id === this.stream.getVideoTracks()[0].id)
             // or look for generated videos
@@ -99,8 +128,9 @@ export class selfViewElementModifier {
             findElement.style.filter = 'blur(10px) opacity(80%) grayscale(50%)';
             // this.drawCrosshair(findElement);
             this.selfViewElement = findElement;
-            await mh.sendMessage("dash", m.SELF_VIEW, {enabled: true});
+            this.obscuring = true;
 
+            await this.storage.update('selfView', {active: true});
             this.#monitorElement();
         } else {
             // ToDo: doesn't work on my local gum page
@@ -108,7 +138,8 @@ export class selfViewElementModifier {
             selfViewElementModifier.debug(`No self-view video found in these video elements: `, videoElements,
                 `\nTrying again in ${this.OBSCURE_DELAY/1000} seconds`);
             // await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
-            if(this.enabled)
+            this.obscuring = false;
+            if(this.storage.contents['selfView'].enabled)
                 setTimeout(async () => await this.obscure(), this.OBSCURE_DELAY);
         }
     }
@@ -117,13 +148,15 @@ export class selfViewElementModifier {
     // note: mutationObserver didn't work reliably
     #monitorElement() {
         this.selfViewCheckInterval = setInterval(async () => {
-            if(!this.enabled)
+            if(!this.storage.contents['selfView'].enabled)
                 clearInterval(this.selfViewCheckInterval);
             else{
                 if (!document.body.contains(this.selfViewElement) || !this.selfViewElement?.srcObject?.active){
                     selfViewElementModifier.debug('self-view video removed or ended. ', 'Element: ', this.selfViewElement,'srcObject: ', this.selfViewElement?.srcObject);
                     clearInterval(this.selfViewCheckInterval);
-                    await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
+                    // await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
+                    this.obscuring = false;
+                    await this.storage.update('selfView', {active: false});
                     setTimeout(async () => await this.obscure(), this.OBSCURE_DELAY);
                 }
             }
@@ -174,7 +207,8 @@ export class selfViewElementModifier {
     // turn off the obscuring filters
     async clear() {
         clearInterval(this.selfViewCheckInterval);
-        await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
+        this.obscuring = false;
+        await this.storage.update('selfView', {active: false});
         this.selfViewElement.style.filter = 'blur(0) opacity(1) grayscale(0)';
     }
 

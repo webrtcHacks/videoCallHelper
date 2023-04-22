@@ -4,12 +4,16 @@ import './style.scss';
 // ToDo: this isn't working - doesn't save
 import '../imageCapture/scripts/imageCaptureSettings.mjs';
 // import '../presence/scripts/presenceSettings.mjs';
-
+import {StorageHandler} from '../modules/storageHandler.mjs';
 
 // const debug = (args)=> {
 const debug = function() {
     return Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
 }();
+
+let storage = await new StorageHandler("local", debug);
+// for debugging
+window.storage = storage;
 
 let currentTabId;
 const remoteAudioLevels = [];
@@ -29,12 +33,6 @@ window.events = [];
 // ToDo: should this be `dash` ???
 // const mh = new MessageHandler('dash', debug);
 // const sendMessage = mh.sendMessage;
-
-// TODO: move all dashboard state to storage
-function handleInitMessage(message){
-    eventSpanElem.innerText += `${new Date(message?.timestamp).toLocaleTimeString()}: ${message.message} with data ${JSON.stringify(message.data)}\n`;
-    debug('dash_init_data', message);
-}
 
 // mh.addListener(m.DASH_OPEN, handleInitMessage);
 
@@ -148,58 +146,72 @@ document.querySelector("button#presence_setup").onclick = async ()=> {
     await chrome.tabs.create({url});
 }
 
-const {presence} =  await chrome.storage.local.get("presence");
-if(presence?.active){
+// ToDo: redo this
+/*
+const presence = await storage.get("presence");
+
+if(presence.active !== undefined){
     debug("presence state", presence);
     statusSpanElem.innerText = `${presence.active ? "active" : "inactive"}`;
 }
+else {
+    debug("presence state not found");
+    statusSpanElem.innerText = "ERROR";
+}
 
-chrome.storage.onChanged.addListener((changes, namespace) => {
-    if(changes['presence']){
-        debug("presence changed", changes['presence'].newValue);
-        statusSpanElem.innerText = changes['presence'].newValue.active ? "active" : "inactive";
-    }
+ */
+
+storage.addListener('presence', (newValue) => {
+    debug("presence changed", newValue);
+    statusSpanElem.innerText = newValue.active ? "active" : "inactive";
 });
-
 
 // Hide self view
 // ToDo: move this into a module?
 const selfViewCheckbox = document.querySelector("input#hide_self_view_check");
 const selfViewStatus = document.querySelector("span#self_view_status");
 
-let selfViewSettings = (await chrome.storage.local.get('selfView'))?.selfView || false;
-debug("self-view is set to:", selfViewSettings);
-selfViewCheckbox.checked = selfViewSettings;
+function updateSelfViewUI() {
 
-if(selfViewCheckbox.checked )
-    selfViewStatus.innerText = "Looking for self-view";
-else
-    selfViewStatus.innerText = "Click above to enable";
+    // const enabled = storage.contents['selfView']?.enabled || false
+    // const active = storage.contents['selfView']?.active || false;
+    // debug("updateSelfViewUI | storage:", storage.contents['selfView']);
+    const enabled = storage.contents['selfView'].enabled;
+    const active = storage.contents['selfView'].active;
 
-
-selfViewCheckbox.onclick = async (e)=> {
-    const enabled = e.target.checked;
-    debug(`hide self-view is ${enabled}`);
-    selfViewSettings = enabled;
-    await chrome.storage.local.set({selfView: enabled});
-    if(enabled)
+    if(enabled && active)
+        selfViewStatus.innerText = "Obscuring self-view";
+    else if(enabled && !active)
         selfViewStatus.innerText = "Looking for self-view";
     else
         selfViewStatus.innerText = "Click above to enable";
+
+    // TODO: this is always showing active: false
+    //  issue is storage['key']:{active: true, enabled: true} is created which means update isn't working
+    debug("updateSelfViewUI | enabled:", enabled, "active:", active);
+
 }
 
-// ToDo: some kind of message registry to add messages from modules?
-//  should the messageHandler use local storage for context->dash?
 
-/*
-mh.addListener(m.SELF_VIEW, (e)=>{
-    if(e.enabled)
-        selfViewStatus.innerText = "Active";
-    else
-        selfViewStatus.innerText = "Looking for self-view";
+// let selfViewSettings = (await chrome.storage.local.get('selfView'))?.selfView || false;
+//let selfViewSettings = await storage.get('selfView');
+debug("self-view settings:", storage.contents['selfView']);
+selfViewCheckbox.checked = storage.contents['selfView']?.enabled || false;
+updateSelfViewUI();
+
+
+selfViewCheckbox.onclick = async (e)=> {
+    const enabled = selfViewCheckbox.checked;
+    debug(`set self-view enabled to ${enabled}`);
+    await storage.update('selfView', {enabled: enabled});
+    // updateSelfViewUI();
+}
+
+storage.addListener('selfView', (newValue) => {
+    // selfViewCheckbox.checked = storage.contents['selfView'].enabled;
+    updateSelfViewUI();
 });
 
- */
 
 async function main(){
     // await sendMessage('background', m.DASH_INIT);
