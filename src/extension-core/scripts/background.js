@@ -12,6 +12,7 @@ const debug = Function.prototype.bind.call(console.log, console, `👷`);
 let streamTabs; // Not currently used
 //let storage = await chrome.storage.local.get();
 let storage = await new StorageHandler("local", debug);
+self.storage = storage; // for debugging
 
 // added for presence
 let trackData = [];
@@ -211,6 +212,7 @@ async function presenceOff(){
         debug("presenceOff: waiting 2 seconds for changes");
         setTimeout(async ()=>{
             if(!trackData.some(td => td.state === 'live')){
+                debug("turn presence off here");
                 chrome.action.setIcon({path: "../icons/v_128.png"});
 
                 if(storage.contents.presence.active)
@@ -219,7 +221,9 @@ async function presenceOff(){
                 // ToDo: check HID permissions
                 if(storage.contents.presence?.hid === true)
                     await glow([0,0,0]);
-                debug("turn presence off here");
+
+                await storage.update('presence', {active: false});
+
 
             }
         }, 2000);
@@ -237,6 +241,17 @@ async function presenceOn(){
     await chrome.action.setIcon({path: "../icons/v_rec.png"});
 
 }
+
+storage.addListener('presence', async (newValue) => {
+
+    debug(`selfView storage changes: `, newValue);
+    if (trackData.some(td => td.state === 'live') && newValue.enabled === true) {
+        await presenceOn();
+    } else if (storage.contents.active === true && newValue.enabled === false) {
+        await presenceOff();
+    }
+});
+
 
 // Note: https://developer.chrome.com/blog/page-lifecycle-api/ says don't do `beforeunload`
 
@@ -275,9 +290,8 @@ mh.addListener(m.NEW_TRACK, async data=>{
     } else {
         // Presence handling
         if(!trackData.some(td => td.state === 'live')){
-            if(!storage.contents.presence?.active){
-                // TODO: put this back
-                // await presenceOn();
+            if(storage.contents.presence && storage.contents.presence.enabled){
+                await presenceOn();
             } else debug("presence already active");
         }
         trackData.push(data);

@@ -4,31 +4,33 @@
  * Mainly for dashboard and storing settings
  */
 
+let instance;
 
 export class StorageHandler {
 
-    contents = {};
     area = "local";
     #listeners = [];
 
-    constructor(area = "local", debug = () => {
-    }) {
+    static contents = {};
+
+    // ToDo: singleton is messing up Extension contexts.
+    //  Add a context check - i.e. "background", "dash", etc.
+    constructor(area = "local", debug = () => {}) {
+        // singleton pattern
+        if (instance) {
+            // console.info("existing instance");
+            return instance;
+        }
+        instance = this;
+        // console.info("new instance");
+
         this.storage = chrome.storage[area];
         this.area = area;
         this.debug = debug;
 
-        /*
-        this.storage.get().then((contents) => {
-            this.contents = contents;
-            // for debugging
-            this.debug("starting storage contents", contents);
-        }).catch((error) => {
-            this.debug("error getting storage contents", error);
-        });
-         */
 
         return (async () => {
-            this.contents = await this.storage.get();
+            StorageHandler.contents = await this.storage.get();
 
             // update contents on change
             chrome.storage.onChanged.addListener(async (changes, namespace) => {
@@ -39,8 +41,8 @@ export class StorageHandler {
                 for (let [key, {oldValue, newValue}] of Object.entries(changes)) {
                     // Q: is the below redundant if set and update always update contents?
                     // A: no, because the class has several instances that are unaware of each other
-                    Object.assign(this.contents, {[key]: newValue});
-                    // contents[key] = newValue;
+                    Object.assign(StorageHandler.contents, {[key]: newValue});
+
                     this.debug(
                         `Storage key "${key}" in namespace "${namespace}" changed.`,
                         `\n> Old value was`, oldValue, `\n> New value is`, newValue);
@@ -53,7 +55,7 @@ export class StorageHandler {
 
                 // storage = await chrome.storage.local.get(null);
 
-                // this.debug("updated storage contents", this.contents);
+                // this.debug("updated storage contents", StorageHandler.contents);
             });
 
             return this;
@@ -61,31 +63,7 @@ export class StorageHandler {
 
     }
 
-    // ToDo: not updating
-    //  issue is storage['key']:{active: true, enabled: true} is created which means update isn't working
-    //  chrome.storage.get shows fine
     async update(key = "", newValue = {}) {
-        /*
-        if (!key) {
-            this.debug("no key provided - can't update");
-            return;
-        }
-
-        const current = await this.storage.get(key);
-        const oldData = JSON.parse(JSON.stringify((current[key])));
-        const updatedData = Object.assign({}, current[key], newValue);
-        // const updatedKey = Object.assign(current, {[key]: updatedData});
-        this.debug(`updated key: "${key}" \n> oldValue: `, oldData, "\n> newValue: ", updatedData);
-        // console.log("updated key", updatedKey);
-
-        await this.storage.set({[key]: updatedData});
-
-        this.debug("contents before update", JSON.parse(JSON.stringify(this.contents)));
-        Object.assign(this.contents, {[key]: updatedData});
-        this.debug("contents after update", JSON.parse(JSON.stringify(this.contents)));
-        return {[key]: updatedData}
-
-         */
 
         if (key === "" || !key) {
             console.debug("no key provided - can't update");
@@ -93,14 +71,14 @@ export class StorageHandler {
         }
 
         try {
-            const updatedValue = Object.assign(this.contents[key], newValue);
-            Object.assign(this.contents, {[key]: updatedValue});
-            await this.storage.set(this.contents)
-            return this.contents[key];
+            const updatedValue = Object.assign(StorageHandler.contents[key], newValue);
+            Object.assign(StorageHandler.contents, {[key]: updatedValue});
+            await this.storage.set(StorageHandler.contents)
+            return StorageHandler.contents[key];
         } catch (error) {
             this.debug("error updating storage", error);
             this.debug("key", key, "newValue", newValue);
-            this.debug("contents", this.contents);
+            this.debug("contents", StorageHandler.contents);
             this.debug("storage", this.storage.get());
         }
     }
@@ -114,7 +92,7 @@ export class StorageHandler {
     }
 
     async set(key = "", value = {}) {
-        Object.assign(this.contents, {[key]: value});
+        Object.assign(StorageHandler.contents, {[key]: value});
         await this.storage.set({[key]: value});
         return value;
     }
@@ -125,7 +103,7 @@ export class StorageHandler {
     }
 
     get contents() {
-        return this.contents;
+        return StorageHandler.contents;
     }
 
     // ToDo: removeListener

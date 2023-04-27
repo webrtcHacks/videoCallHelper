@@ -1,3 +1,4 @@
+// ToDo: handle debug function
 export const settingsPrototype = {
     on: {
         onUrl: "",
@@ -13,10 +14,13 @@ export const settingsPrototype = {
     },
     hid: false,
     active: false,
+    enabled: true   // ToDo: change this to false for production
 }
 
 // ToDo: error checking on these entered values
-export function webhook(state, settings, log = console.log) {
+export function webhook(state, settings, debug = console.log) {
+
+    debug("webhook settings", settings);
 
     // ToDo: error handling if these fields aren't set
     let url = state === "on" ? settings.on.onUrl : settings.off.offUrl;
@@ -53,11 +57,11 @@ export function webhook(state, settings, log = console.log) {
         // In case we care about the response someday
         .then(
             response => {
-                log("fetch details:", url, fetchParams, response);
-                response.text().then(text => log("response text: " + text))
+                debug("fetch details:", url, fetchParams, response);
+                response.text().then(text => debug("response text: " + text))
             })
         .catch(function (error) {
-            log("fetch request failed details:", url, fetchParams, error);
+            debug("fetch request failed details:", url, fetchParams, error);
         });
 }
 
