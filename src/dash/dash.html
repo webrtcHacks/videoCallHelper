@@ -10,6 +10,10 @@
         <div class="dashBox card col-3 ps-3">
             <h5>Frame Capture</h5>
             <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="enable_img_cap_check">
+                <label class="form-check-label" for="enable_img_cap_check">Enable Image Capture</label>
+            </div>
+            <div class="form-check form-switch mb-2">
                 <input class="form-check-input" type="checkbox" id="start_on_pc_check" disabled>
                 <label class="form-check-label" for="start_on_pc_check">Start on peerConnection?</label>
             </div>
@@ -65,15 +69,15 @@
         </div>
         <div class="dashBox card col-3">
             <h5>Presence </h5>
-                <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" id="enable_presence_check">
-                    <label class="form-check-label" for="enable_presence_check">Automatic presence update</label>
-                </div>
-                <h6>status: <span id="presence_status" class="">Unknown</span></h6>
-                <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
-                    <span class="form-label">Manual controls: </span>
-                    <button id="busy" class="btn btn-sm btn-outline-danger">Busy</button>
-                    <button id="not_busy" class="btn btn-sm btn-outline-success">Not busy</button>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="enable_presence_check">
+                <label class="form-check-label" for="enable_presence_check">Automatic presence update</label>
+            </div>
+            <h6>status: <span id="presence_status" class="">Unknown</span></h6>
+            <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
+                <span class="form-label">Manual controls: </span>
+                <button id="busy" class="btn btn-sm btn-outline-danger">Busy</button>
+                <button id="not_busy" class="btn btn-sm btn-outline-success">Not busy</button>
             </div>
             <button id="presence_setup" class="btn btn-sm btn-link text-start">Presence Settings</button>
         </div>

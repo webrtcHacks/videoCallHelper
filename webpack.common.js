@@ -12,7 +12,7 @@ module.exports = {
         inject: './src/extension-core/scripts/inject.js',
         dash: './src/dash/dash.js',
         storage: './src/extension-core/scripts/storage.js',
-        images: './src/imageCapture/scripts/imageCapture.js',
+        images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
         framing: './src/framing/scripts/framingAnalysis.js',
         presence: './src/presence/scripts/presenceSettings.mjs'
     },

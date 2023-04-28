@@ -17,8 +17,8 @@ const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
 // await sendMessage('all', 'hello there', {foo: 'bar'});
 
-const storage = await chrome.storage.local.get();
-await debug("storage contents:", storage);
+// const storage = await chrome.storage.local.get();
+// await debug("storage contents:", storage);
 
 const dashHeight = 180;
 // ToDo: inline CSS with webpack
@@ -240,8 +240,8 @@ async function gumStreamStart(data){
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', m.TRACK_TRANSFER_COMPLETE, {id});
 
-    // Todo: do I need a registry of applet functions to run here?
-    grabFrames(stream);
+    // image capture
+    await grabFrames(stream);
 
     // self-view
     await new selfViewElementModifier(stream);

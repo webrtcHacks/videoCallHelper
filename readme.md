@@ -3,6 +3,9 @@
 ## Dev build
 `npm run watch`
 
+## prod build
+`npm run build`
+
 ## contexts
 1. background (extension)
 2. content (extension)

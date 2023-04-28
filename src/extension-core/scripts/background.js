@@ -1,4 +1,4 @@
-import {get, set, update} from "idb-keyval";
+import {get, set as idbSet, update} from "idb-keyval";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 import {settingsPrototype, webhook} from "../../presence/scripts/presence.mjs";
@@ -192,11 +192,11 @@ async function frameCap(data){
     const dataToSave = {};
     dataToSave[id] = imgData;
 
-    await set(id, imgData);
+    await idbSet(id, imgData);
 }
 
 
-// mh.addListener(m.DASH_INIT, dashInit);
+// Q: is it better to use storage for this?
 mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 // Presence handling
