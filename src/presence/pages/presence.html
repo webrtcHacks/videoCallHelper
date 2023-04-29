@@ -20,6 +20,10 @@
     </div>
     <div id="settings_div">
         <h2>Settings</h2>
+        <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" id="enable_presence_check">
+            <label class="form-check-label" for="enable_presence_check">Automatic presence update</label>
+        </div>
         <input id="embrava" type="checkbox">
         <label for="embrava">Embrava BlyncLight</label><br>
 
@@ -36,7 +40,7 @@
                     <label for="onHeaders">Headers</label>
                     <textarea id="onHeaders" name="onHeaders" wrap="soft"></textarea>
                     <br>
-                    <input type="hidden" name="onMethod" value="false">
+                    <input type="hidden" name="onMethod" value="POST">
                     <input id="onGetSwitch" type="checkbox" class="getSwitch" name="onMethod" value="GET">
                     <label for="onGetSwitch">Use a GET</label><br>
                     <label for="onPostBody" class="onPostBody">POST Body</label>
@@ -60,7 +64,7 @@
                     <textarea id="offHeaders" name="offHeaders" wrap="soft"></textarea>
                     <br>
                     <input type="hidden" name="offMethod" value="POST">
-                    <input id="offGetSwitch" type="checkbox" name="offMethod" class="getSwitch" value="GET">
+                    <input id="offGetSwitch" type="checkbox" class="getSwitch" name="offMethod" value="GET">
                     <label for="offGetSwitch">Use a GET</label><br>
                     <label for="offPostBody" class="offPostBody">POST Body</label>
                     <textarea id="offPostBody" class="form-control offPostBody" name="offPostBody"

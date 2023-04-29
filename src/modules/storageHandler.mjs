@@ -4,84 +4,84 @@
  * Mainly for dashboard and storing settings
  */
 
+let instance;
 
 export class StorageHandler {
 
-    contents = {};
     area = "local";
     #listeners = [];
 
-    constructor(area = "local", debug = ()=>{}) {
+    static contents = {};
+
+    // ToDo: singleton is messing up Extension contexts.
+    //  Add a context check - i.e. "background", "dash", etc.
+    constructor(area = "local", debug = () => {}) {
+        // singleton pattern
+        if (instance) {
+            // console.info("existing instance");
+            return instance;
+        }
+        instance = this;
+        // console.info("new instance");
+
         this.storage = chrome.storage[area];
         this.area = area;
         this.debug = debug;
 
-        chrome.storage[area].get().then((contents)=> {
-            this.contents = contents;
-            this.debug("starting storage contents", contents);
-        }).catch((error)=> {
-           this.debug("error getting storage contents", error) ;
-        });
 
-        // update contents on change
-        chrome.storage.onChanged.addListener(async (changes, namespace)=> {
-            // debug("storage changed", changes, namespace);
-            if(namespace !== this.area)
-                return;
+        return (async () => {
+            StorageHandler.contents = await this.storage.get();
 
-            for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
-                Object.assign(this.contents, {key: newValue});
-                // contents[key] = newValue;
-                this.debug(
-                    `Storage key "${key}" in namespace "${namespace}" changed.`,
-                    `\n> Old value was`, oldValue, `\n> New value is`,  newValue);
+            // update contents on change
+            chrome.storage.onChanged.addListener(async (changes, namespace) => {
+                // debug("storage changed", changes, namespace);
+                if (namespace !== this.area)
+                    return;
 
-                this.#listeners.forEach( listener =>{
-                    if(listener.key === key)
-                        listener.callback.call(listener.callback, newValue)
-                });
+                for (let [key, {oldValue, newValue}] of Object.entries(changes)) {
+                    // Q: is the below redundant if set and update always update contents?
+                    // A: no, because the class has several instances that are unaware of each other
+                    Object.assign(StorageHandler.contents, {[key]: newValue});
 
+                    this.debug(
+                        `Storage key "${key}" in namespace "${namespace}" changed.`,
+                        `\n> Old value was`, oldValue, `\n> New value is`, newValue);
 
-            }
+                    this.#listeners.forEach(listener => {
+                        if (listener.key === key)
+                            listener.callback.call(listener.callback, newValue)
+                    });
+                }
 
-            // storage = await chrome.storage.local.get(null);
+                // storage = await chrome.storage.local.get(null);
 
-            this.debug("updated storage contents", this.contents);
-        });
+                // this.debug("updated storage contents", StorageHandler.contents);
+            });
+
+            return this;
+        })();
+
     }
 
-    // ToDo: not updating
     async update(key = "", newValue = {}) {
 
-        const current = await this.storage.get(key);
-        // console.log("current", JSON.parse(JSON.stringify(current)));
-        const oldData = JSON.parse(JSON.stringify((current[key])));
-        const updatedData = Object.assign({}, current[key], newValue);
-        const updatedKey =  Object.assign(current, {[key]: updatedData});
-        console.log(`updated key:"${key}": \n> oldValue: `, oldData, "\n> newValue: ", updatedData);
-        // console.log("updated key", updatedKey);
+        if (key === "" || !key) {
+            console.debug("no key provided - can't update");
+            return;
+        }
 
-        await this.storage.set(updatedKey);
-        return updatedKey
-
+        try {
+            const updatedValue = Object.assign(StorageHandler.contents[key], newValue);
+            Object.assign(StorageHandler.contents, {[key]: updatedValue});
+            await this.storage.set(StorageHandler.contents)
+            return StorageHandler.contents[key];
+        } catch (error) {
+            this.debug("error updating storage", error);
+            this.debug("key", key, "newValue", newValue);
+            this.debug("contents", StorageHandler.contents);
+            this.debug("storage", this.storage.get());
+        }
     }
-
-    /*
-    async function update(key = "", newValue = {}) {
-    const current = await chrome.storage.session.get(key);
-    console.log("current", JSON.parse(JSON.stringify(current)));
-    const oldData = JSON.parse(JSON.stringify((current[key])));
-    const updatedData = Object.assign({}, current[key], newValue);
-    const updatedKey =  Object.assign(current, {[key]: updatedData});
-    console.log("updated Data: \n> oldValue: ", oldData, "\n> newValue: ", updatedData);
-    console.log("updated key", updatedKey);
-
-    await chrome.storage.session.set(updatedKey);
-    return updatedKey
-}
-
-     */
-
 
     async get(key = null) {
         if (key) {
@@ -92,17 +92,18 @@ export class StorageHandler {
     }
 
     async set(key = "", value = {}) {
+        Object.assign(StorageHandler.contents, {[key]: value});
         await this.storage.set({[key]: value});
         return value;
     }
 
-    addListener = (key, callback = null)=>{
-        this.#listeners.push( {key, callback});
+    addListener = (key, callback = null) => {
+        this.#listeners.push({key, callback});
         this.debug(`added storage listener "${key}"`);
     }
 
     get contents() {
-        return this.contents;
+        return StorageHandler.contents;
     }
 
     // ToDo: removeListener

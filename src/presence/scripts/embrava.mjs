@@ -65,13 +65,15 @@ document.addEventListener('disconnect', async (e)=> {
 });
  */
 
+// ToDo: handle HID settings change - update the below for new storage handler
+/*
 chrome.storage.onChanged.addListener(async function(changes, namespace) {
     if(namespace !== 'local')
         return;
 
     if(changes['presence']){
         const presence = changes['presence'].newValue;
-        if(presence.hid){
+        if(presence?.hid){
             if(presence.on.busy)
                 await glow([255, 0, 0]);
             else
@@ -83,3 +85,5 @@ chrome.storage.onChanged.addListener(async function(changes, namespace) {
 
     // storage = await chrome.storage.local.get(null);
 });
+
+ */

@@ -1,3 +1,5 @@
+// handler for standalone image capture display page
+
 import {entries, clear, delMany, get, set} from 'idb-keyval';
 import './imageCaptureSettings.mjs';
 

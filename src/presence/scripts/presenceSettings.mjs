@@ -1,30 +1,38 @@
-// ToDo: break this into 2 modules - 1 without the DOM for background and 1 with the DOM for dash
+// UI handler for standalone settings page
 
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {glow, disconnect} from "./embrava.mjs"
 import {settingsPrototype, webhook} from "./presence.mjs";
+import {StorageHandler} from "../../modules/storageHandler.mjs";
 
-const mh = new MessageHandler('dash', console.log);
+const debug = Function.prototype.bind.call(console.debug, console, `vch presenceSettings: `);
 
-const statusSpanElem = document.querySelector('span#status');
+// const mh = new MessageHandler('dash', console.log);
+const storage = await new StorageHandler("local", debug);
+
+const statusSpanElem = document.querySelector('span#presence_status');
 const btnBusy = document.querySelector('button#busy');
 const btnNotBusy = document.querySelector('button#not_busy');
-
 const formOn = document.querySelector('form#on');
 const formOff = document.querySelector('form#off');
 
 const embravaCheck = document.querySelector('input#embrava') || document.createElement('input');
-let busy = false;
+const enabledCheck = document.querySelector('input#enable_presence_check');
+
 
 // ToDo: clean up these object names to not start with off/on - left over when I did not have an on/off structure
 
 
 // let settings = JSON.parse(localStorage.getItem("presence")) || settingsPrototype;
-const storage = await chrome.storage.local.get('presence');
-let settings = storage?.presence || settingsPrototype;
+// const storage = await chrome.storage.local.get('presence');
+// const storage = await s.get('presence');
+let settings = storage.contents['presence'];
+if(!settings){
+    settings = await storage.set('presence', settingsPrototype);
+}
 
-console.log("Settings:", settings);
-// ToDo: initial state
+debug("presence settings:", settings);
+
+// only trigger on a change from no gUM stream to a gUM stream for now
 /*
 if (settings.busy)
     ledStatus = settings.busy;
@@ -35,100 +43,95 @@ else {
  */
 
 function displaySettings() {
-
+    settings = storage.contents['presence'];
+    enabledCheck.checked = settings.enabled;
     embravaCheck.checked = settings.hid;
 
     // ToDo: should these values be initialized for the initial install?
-
-    formOn["onUrl"].value = settings?.on["onUrl"] || "";
-    formOn["onHeaders"].value = settings?.on["onHeaders"] || "";
-    formOn["onPostBody"].value = settings?.on["onPostBody"] || "";
-    formOn["onGetSwitch"].checked = settings?.on["onMethod"] === "GET";
-    if(formOn["onGetSwitch"].checked)
-        document.querySelector("textarea#onPostBody").style.display = "none";
-
-    formOff["offUrl"].value = settings?.off["offUrl"] || "";
-    formOff["offHeaders"].value = settings?.off["offHeaders"] || "";
-    formOff["offPostBody"].value = settings?.off["offPostBody"] || "";
-    formOff["offGetSwitch"].checked = settings?.off["offMethod"] === "GET";
-    if(formOff["offGetSwitch"].checked)
-        document.querySelector("textarea#offPostBody").style.display = "none";
-
-}
-displaySettings();
-
-formOn["onGetSwitch"].onchange = function (e) {
-    if (e.target.checked) {
-        document.querySelector("textarea#onPostBody").style.display = "none";
-        settings.on["onMethod"] = "GET";
-    } else {
-        document.querySelector("textarea#onPostBody").style.display = "block";
-        settings.on["onMethod"] = "POST";
+    if(formOn) {
+        formOn["onUrl"].value = settings?.on["onUrl"] || "";
+        formOn["onHeaders"].value = settings?.on["onHeaders"] || "";
+        formOn["onPostBody"].value = settings?.on["onPostBody"] || "";
+        formOn["onGetSwitch"].checked = settings?.on["onMethod"] === "GET";
+        if (formOn["onGetSwitch"].checked)
+            document.querySelector("textarea#onPostBody").style.display = "none";
     }
-}
 
-formOff["offGetSwitch"].onchange = function (e) {
-    if (e.target.checked) {
-        document.querySelector("textarea#offPostBody").style.display = "none";
-        settings.off["offMethod"] = "GET";
-    } else {
-        document.querySelector("textarea#offPostBody").style.display = "block";
-        settings.off["offMethod"] = "POST";
+    if(formOff){
+        formOff["offUrl"].value = settings?.off["offUrl"] || "";
+        formOff["offHeaders"].value = settings?.off["offHeaders"] || "";
+        formOff["offPostBody"].value = settings?.off["offPostBody"] || "";
+        formOff["offGetSwitch"].checked = settings?.off["offMethod"] === "GET";
+        if(formOff["offGetSwitch"].checked)
+            document.querySelector("textarea#offPostBody").style.display = "none";
     }
+
 }
 
 displaySettings();
 
-async function busyHandler() {
-    busy = true;
-    statusSpanElem.textContent = "Busy";
-    webhook("on", settings);
-    if(embravaCheck.checked)
-        await glow([255, 0, 0]);
+
+enabledCheck.onchange = async ()=> {
+    const enabled = enabledCheck.checked;
+    debug(`presence enabled to ${enabled}`);
+    await storage.update('presence', {enabled: enabled});
 }
 
-async function notBusyHandler() {
-    busy = false;
-    statusSpanElem.textContent = "Not Busy";
-    webhook("off", settings);
-    if(embravaCheck.checked)
-        await glow([0, 0, 0]);
-}
+// ToDo: single submit - this requires 2 submits for each form right now
+async function formSubmitHandler(e){
+    const form = e.target.id;
+    e.preventDefault();
+    debug(`${form} form submit`);
+    const formData = new FormData(e.target);
 
-// mh.addListener(m.GUM_STREAM_START, busyHandler);
-// mh.addListener(m.GUM_STREAM_STOP, notBusyHandler);
-// mh.addListener(m.UNLOAD, notBusyHandler);
+    const formDataObj = Object.fromEntries(formData.entries());
+    debug(formDataObj);
 
-// manual buttons
-btnBusy.onclick = busyHandler;
-btnNotBusy.onclick = notBusyHandler;
+    if (form === "on"){
+        settings.on = formDataObj;
+        formOff.submit(); // didn't work
 
-// ToDo: single submit
-[formOn, formOff].forEach(form => form.addEventListener('submit', async function (e) {
-        const form = e.target.id;
-        e.preventDefault();
-        console.log(`${form} form submit`);
-        const formData = new FormData(e.target);
+    }
+    else if (form === "off"){
+        settings.off = formDataObj;
+        formOn.submit();  // didn't work
+    }
 
-        const formDataObj = Object.fromEntries(formData.entries());
-        console.log(formDataObj);
-
-        if (form === "on"){
-            settings.on = formDataObj;
-            formOff.submit(); // didn't work
-
-        }
-        else if (form === "off"){
-            settings.off = formDataObj;
-            formOn.submit();  // didn't work
-        }
-
-        // localStorage.setItem("presence", JSON.stringify(settings));
-        await chrome.storage.local.set({presence: settings});
+    // localStorage.setItem("presence", JSON.stringify(settings));
+    await chrome.storage.local.set({presence: settings});
 
     displaySettings();
-    })
-);
+}
+
+if(formOn){
+    // Handle the on and off form submissions
+    formOn["onGetSwitch"].onchange = function (e) {
+        if (e.target.checked) {
+            document.querySelector("textarea#onPostBody").style.display = "none";
+            settings.on["onMethod"] = "GET";
+        } else {
+            document.querySelector("textarea#onPostBody").style.display = "block";
+            settings.on["onMethod"] = "POST";
+        }
+    }
+    formOn.addEventListener('submit', formSubmitHandler);
+}
+
+
+if(formOff){
+    formOff["offGetSwitch"].onchange = function (e) {
+        if (e.target.checked) {
+            document.querySelector("textarea#offPostBody").style.display = "none";
+            settings.off["offMethod"] = "GET";
+        } else {
+            document.querySelector("textarea#offPostBody").style.display = "block";
+            settings.off["offMethod"] = "POST";
+        }
+    }
+    formOff.addEventListener('submit', formSubmitHandler);
+}
+
+
 
 // embrava HID device
 // if(embravaCheck.checked)
@@ -150,11 +153,48 @@ embravaCheck.onchange = async () => {
 
      */
 
-    console.log(`Embrava busy light is ${embravaCheck.checked ? "set" : "unset"}`);
-    // save to settings
-    settings.hid = embravaCheck.checked;
-    // localStorage.setItem("presence", JSON.stringify(settings));
-    await chrome.storage.local.set({presence: settings});
+    debug(`Embrava busy light is ${embravaCheck.checked ? "set" : "unset"}`);
+    await storage.update("presence", {hid: embravaCheck.checked});
 
 }
 
+// Manual button handlers
+// ToDo: think through how manual `active` impacts the automatic state changes
+async function busyHandler() {
+    await storage.update('presence', {active: true});
+    webhook("on", settings);
+    if(embravaCheck.checked)
+        await glow([255, 0, 0]);
+    displaySettings();
+}
+
+async function notBusyHandler() {
+    await storage.update('presence', {active: false});
+    webhook("off", settings);
+    if(embravaCheck.checked)
+        await glow([0, 0, 0]);
+    displaySettings();
+}
+
+// mh.addListener(m.GUM_STREAM_START, busyHandler);
+// mh.addListener(m.GUM_STREAM_STOP, notBusyHandler);
+// mh.addListener(m.UNLOAD, notBusyHandler);
+
+storage.addListener('presence', ()=>{
+
+    debug("storage listener for presence", storage.contents['presence']);
+
+    const enabled = storage.contents['presence'].enabled;
+    const active = storage.contents['presence'].active;
+
+    if(enabled && active)
+        statusSpanElem.innerText = "Busy";
+    else if(enabled && !active)
+        statusSpanElem.innerText = "Not busy";
+    else
+        statusSpanElem.innerText = "Click above to enable";
+});
+
+// manual buttons
+btnBusy.onclick = busyHandler;
+btnNotBusy.onclick = notBusyHandler;

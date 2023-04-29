@@ -7,7 +7,9 @@ class BuildTimePlugin {
     apply(compiler) {
         compiler.hooks.done.tap('BuildTimePlugin', (compilation) => {
             setTimeout(() => {
-                const buildTime = new Date().toLocaleTimeString();
+                const date = new Date();
+                date.setMilliseconds(date.getMilliseconds() - 500);
+                const buildTime = date.toLocaleTimeString();
                 console.log(`Build completed at ${buildTime}`);
             }, 500);
         });

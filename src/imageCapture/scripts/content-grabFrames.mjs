@@ -1,4 +1,8 @@
-import {MessageHandler} from "../../modules/messageHandler.mjs";
+// ToDo: running multiple intervals at once
+// ToDo: refactor this to grab images out of the worker?
+
+import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 // Image capture module for content.js
 const debug = function () {
@@ -6,51 +10,35 @@ const debug = function () {
 }();
 
 const sendMessage = new MessageHandler('content', debug, false).sendMessage;
-
+let storage = await new StorageHandler("local", debug);
 
 let captureInterval;
 let currentStream = null;
+let running = false;
 
-let settings = (await chrome.storage.local.get('imageCapture'))?.imageCapture
+let settings = storage.contents['imageCapture'];
 debug("Image Capture settings:", settings);
 
 // Set default values if storage is blank
-if (!settings) {
-    settings = {};
-    settings.startOnPc = false;
-    settings.captureIntervalMs = (60 * 1000);
-    settings.samplingActive = false;
-}
+const initSettings = {
+        startOnPc: storage.contents['imageCapture']?.startOnPc || false,
+        captureIntervalMs: storage.contents['imageCapture']?.captureIntervalMs || (60 * 1000),
+        active: storage.contents['imageCapture']?.active || false,
+        enabled: storage.contents['imageCapture']?.enabled || false
+    };
 
-
-// check for settings changes
-chrome.storage.onChanged.addListener(async (changes, area) => {
-    if (changes['imageCapture']) {
-        debug(`storage area "${area}" changes: `, changes['imageCapture']);
-        settings = changes['imageCapture'].newValue;
-
-        // Stop sampling
-        if (changes['imageCapture'].oldValue?.samplingActive === true && changes['imageCapture'].newValue?.samplingActive === false) {
-            clearInterval(captureInterval);
-
-        }
-        // Start sampling
-        else if (!changes['imageCapture'].oldValue?.samplingActive && changes['imageCapture'].newValue?.samplingActive) {
-            grabFrames();
-        }
-        // Change the sampling interval
-        else if (changes['imageCapture'].oldValue?.captureIntervalMs !== changes['imageCapture'].newValue?.captureIntervalMs) {
-            clearInterval(captureInterval);
-            grabFrames();
-        }
-    }
-});
+// ToDo: change this to update
+await storage.set('imageCapture', initSettings);
 
 
 // Generator that uses Media stream processor to get images
 async function* getImages(stream) {
     // Insertable stream image capture
-    const [track] = stream.getVideoTracks();
+    const [track] = stream?.getVideoTracks();
+    if(!track){
+        debug("No video track to grab frames from");
+        return
+    }
     const processor = new MediaStreamTrackProcessor(track);
     const reader = await processor.readable.getReader();
 
@@ -59,6 +47,7 @@ async function* getImages(stream) {
     const ctx = canvas.getContext("bitmaprenderer");
 
     let stopGenerator = false;
+    let running = true;
 
     async function readFrame() {
         const {value: frame, done} = await reader.read();
@@ -91,6 +80,7 @@ async function* getImages(stream) {
             yield imgData
         } else {
             stopGenerator = true;
+            running = false;
             return false
         }
     }
@@ -98,7 +88,25 @@ async function* getImages(stream) {
 
 
 // Check the stream before getting images
-export function grabFrames(newStream) {
+export async function grabFrames(newStream) {
+
+    // Check globals
+
+    if(!storage.contents['imageCapture'].enabled){
+        debug("Image capture is not enabled");
+        return
+    }
+
+    if(running){
+        debug("Image capture is already running");
+        return
+    }
+
+    if(!newStream?.active && !currentStream?.active){
+        debug("No active stream to grab frames from");
+        return
+    }
+
 
     // Check the newStream if it is supplied
     if (newStream) {
@@ -131,9 +139,6 @@ export function grabFrames(newStream) {
                 return
             }
         }
-
-        // clear the current interval if it is running
-        clearInterval(captureInterval);
     }
     else{
         // if it is not supplied, use the current stream
@@ -142,18 +147,49 @@ export function grabFrames(newStream) {
 
 
     // Now start capturing images and send them
-    if (settings.samplingActive) {
-        const getImg = getImages(newStream);
+    const getImg = getImages(newStream);
 
-        captureInterval = setInterval(async () => {
-            const imgData = await getImg.next();
+    // clear the current interval if it is running
+    clearInterval(captureInterval);
+    captureInterval = setInterval(async () => {
+        const imgData = await getImg.next();
 
-            if (imgData.value)
-                await sendMessage('all', 'frame_cap', imgData.value);
-            if (imgData.done) {
-                clearInterval(captureInterval);
-                debug("No more image data", imgData);
-            }
-        }, settings.captureIntervalMs);
-    }
+        if (imgData.value)
+            await sendMessage('all', m.FRAME_CAPTURE, imgData.value);
+
+        if (imgData.done) {
+            clearInterval(captureInterval);
+            await storage.update('imageCapture', {active: false});
+            debug("No more image data", imgData);
+        }
+    }, storage.contents['imageCapture'].captureIntervalMs);
+
+    await storage.update('imageCapture', {active: true});
+
 }
+
+
+// check for settings changes
+storage.addListener('imageCapture', async (newValue) => {
+    debug(`imageCapture storage changes: `, newValue);
+
+    // Stop sampling
+    if (storage.contents['imageCapture'].active === true && newValue?.active === false) {
+        debug("Stopping image capture");
+        clearInterval(captureInterval);
+        await storage.update('imageCapture', {active: false});
+    }
+    // Start sampling
+    else if (storage.contents['imageCapture'].enabled && newValue?.active && !running){ //} && currentStream?.active) {
+        debug("Starting image capture");
+        await grabFrames();
+    }
+    // Change the sampling interval
+    else if (newValue.captureIntervalMs) {
+        debug(`Changing image capture interval to ${newValue.captureIntervalMs}`);
+        clearInterval(captureInterval);
+        if(storage.contents['imageCapture'].active)
+            await grabFrames();
+    }
+
+});
