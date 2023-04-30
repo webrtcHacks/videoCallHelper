@@ -94,7 +94,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     }
 
     // ToDo: rename
-    if(!storage.contents.imageCapture){
+    if(!storage.contents['imageCapture']){
         // Image capture
         const imageCaptureSettings = {
             startOnPc: false,
@@ -105,7 +105,21 @@ chrome.runtime.onInstalled.addListener(async () => {
     }
 
     // self-view settings
-    await storage.set('selfView', {active: false, enabled: storage.contents['selfView']?.enabled || false});
+    const selfViewSettings = {
+        active: false,
+        enabled: storage.contents['selfView']?.enabled || false,
+    }
+    await storage.set('selfView', selfViewSettings);
+
+    // bad connection settings
+    const badConnectionSettings = {
+        enabled: true,
+        active: false,
+        level: "none"
+    }
+    await storage.set('badConnection', badConnectionSettings);
+
+
 
     // Testing
 

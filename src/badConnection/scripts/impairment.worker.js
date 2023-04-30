@@ -489,6 +489,10 @@ onmessage = async (event) => {
         impairment.operation = "skip";
         debug("pausing stream");
     }
+    else if (command === 'unpause') {
+        impairment.operation = "impair";
+        debug("unpausing stream");
+    }
     else if (command === 'stop') {
         await impairment.stop();
         debug("stopping stream");
