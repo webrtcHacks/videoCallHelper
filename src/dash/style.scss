@@ -6,22 +6,23 @@
   background-color: black;
   border-color: black;
 }
+
 .dashBox {
   overflow-y: hidden;
   font-size: smaller;
 }
-input[type=range] {
-  -webkit-appearance: slider-vertical;
-  transform: scaleX(-1);
-  transform-origin: center;
-}
 
-div.range-slider {
-  margin: 0;
-}
-
-input#slider {
-  width: 50px;
+input#bcs_level {
+  // width: 30px;
+  // appearance: slider-vertical;
+  // transform: scaleX(-1);
+  // transform-origin: center;
+  // ToDo: "appearance: slider-vertical" is giving a chrome warning
+  //  need to dynamically adjust the width to equal the table height in JS
+  width: 60px;
+  margin-left: -20px;
+  margin-right: -20px;
+  transform: rotate(90deg);
 }
 
 h5 {
