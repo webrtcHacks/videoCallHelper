@@ -96,19 +96,13 @@ class Impairment {
         this.#setupCodec();
     }
 
-    /*
-    static #debug(...messages) {
-        console.debug(`vch 💉😈 `, ...messages);
-    }
-     */
-
     static #debug = Function.prototype.bind.call(console.debug, console, `vch 😈🫙️`);
 
     async #sleep(ms) {
         await new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    // ToDo: update impairment values here
+    // This wasn't working consistently - h264 problem?
     #addPacketLoss(chunk) {
         let chunkWithLoss = new Uint8Array(chunk.byteLength);
         chunk.copyTo(chunkWithLoss);
@@ -215,6 +209,7 @@ class Impairment {
             const {widthFactor, heightFactor, framerateFactor, keyFrameInterval} = this.impairmentConfig.video;
 
             /*
+                // from: https://raw.githubusercontent.com/tidoust/media-tests/main/main.js for reference
                 alpha: 'discard',
                 latencyMode: 'realtime',
                 bitrateMode: 'variable',
@@ -229,21 +224,23 @@ class Impairment {
                 pt: 1
              */
 
-
             // Configure the codec
             this.codecConfig = {
-                // ToDO: this was 'vp8' - trying h264 for better hardware acceleration
-                // from: https://raw.githubusercontent.com/tidoust/media-tests/main/main.js
+                // ToDo: severe to moderate not working when using h264 config below
+                //  wanted h264 for better hardware acceleration
+
+                /*
+                codec: "avc1.42002A",
                 alpha: 'discard',
                 latencyMode: 'realtime',
                 bitrateMode: 'variable',
-                codec: "avc1.42002A",
                 avc: {format: "annexb"},
                 hardwareAcceleration: "prefer-hardware",
                 pt: 1,
                 keyInterval: keyFrameInterval,
+                 */
 
-                // codec: 'vp8',
+                codec: 'vp8',
                 width: (width / (widthFactor || 1)).toFixed(0),
                 height: (height / (heightFactor || 1)).toFixed(0),
                 framerate: (frameRate / (framerateFactor || 1)).toFixed(0)
@@ -292,6 +289,15 @@ class Impairment {
                 } else {
                     // Start webcodecs for impairment
                     if (this.operation === 'impair') {
+
+                        // ToDo: retest this
+                        /*
+                        if(Math.random() <= this.frameDrop ){
+                            frame.close();
+                            return
+                        }
+                         */
+
                         const keyFrame = this.frameCounter % this.keyFrameInterval === 0 || this.#forceKeyFrame;
                         if (this.#forceKeyFrame) {
                             Impairment.#debug(`set ${this.frameCounter} to keyframe`);
@@ -306,7 +312,6 @@ class Impairment {
                     }
                     // Do nothing and re-enqueue the frame
                     else if (this.operation === 'passthrough') {
-                        // if(Math.random() >= this.frameDrop ) // ToDo: put this back
                         await this.#controller.enqueue(frame);
                     }
                     // Drop the frame
@@ -320,7 +325,8 @@ class Impairment {
                     }
 
                     this.frameCounter++;
-                    // frame.close();
+                    // debug(`${this.kind} frame ${this.frameCounter} processed`);
+                    frame.close();
                 }
             },
             flush: (controller) => {
@@ -335,6 +341,7 @@ class Impairment {
     set config(config) {
         this.impairmentConfig = config;
 
+
         this.#encoder.flush().then(() => {
             this.#loadConfig();
             this.#encoder.configure(this.codecConfig);
@@ -346,10 +353,14 @@ class Impairment {
         Impairment.#debug(`New configuration. Operation state: ${this.operation}. Config: `, config)
     }
 
+    get config() {
+        return this.impairmentConfig;
+    }
+
     start() {
         this.#forceKeyFrame = true; // update
         // this.operation = "impair";
-        Impairment.#debug(`start: processing ${this.kind} ${this.id}`);
+        Impairment.#debug(`start: processing ${this.kind} ${this.id} with ${this.operation}`);
     }
 
     pause() {
@@ -406,28 +417,32 @@ const testTransform = new TransformStream({
 
 // Message handler
 onmessage = async (event) => {
+    debug("received message", event.data);
     const {command} = event.data;
 
     if (command === 'setup'){
         const {reader, writer, id, kind, settings, impairmentState} = event.data;
 
-        impairment = new Impairment(kind, settings, id);
+        let config;
+        let operation = impairmentState === "passThrough" ? "passthrough" : "impair";
 
         if(impairmentState === "severe"){
-            impairment.impairmentConfig = Impairment.severeImpairmentConfig;
-            impairmentState.operation = "impair";
+            config = Impairment.severeImpairmentConfig;
+            // impairmentState.operation = "impair";
         }
         if(impairmentState === "moderate") {
-            impairment.impairmentConfig = Impairment.moderateImpairmentConfig;
-            impairmentState.operation = "impair";
+            config = Impairment.moderateImpairmentConfig;
+            // impairmentState.operation = "impair";
         }
         else{
-            impairment.operation = "passthrough";
+            // impairment.operation = "passthrough";
         }
 
+        impairment = new Impairment(kind, settings, id, config);
         impairment.start();
+        impairment.operation = operation;
 
-        debug(`processing new stream video`);
+        debug(`processing new stream video with operation ${impairment.operation} and impairment:`, impairment.impairmentConfig[kind]);
         // self.postMessage({response: "before reader"});
 
         // Learning: not easy to pipe streams - could be worth a post
@@ -453,7 +468,7 @@ onmessage = async (event) => {
         // Conclusion: pipeThrough locks the writer so you can send it again; would need to clone
 
         // first frame response (or maybe 0) causing issues in some services
-        const minFrameNumberToStart = 2;
+        const minFrameNumberToStart = 3;
         impairment.onFrameNumber(minFrameNumberToStart, () => {
             // debug(`frame ${impairment.frameCounter} is >= ${minFrameNumberToStart}, sending "started"`);
             self.postMessage({response: "started"});
@@ -472,13 +487,13 @@ onmessage = async (event) => {
 
     }
     else if (command === 'moderate') {
-        impairment.config = Impairment.moderateImpairmentConfig;
         impairment.operation = "impair";
+        impairment.config = Impairment.moderateImpairmentConfig;
         debug("impairing stream moderately");
     }
     else if (command === 'severe') {
-        impairment.config = Impairment.severeImpairmentConfig;
         impairment.operation = "impair";
+        impairment.config = Impairment.severeImpairmentConfig;
         debug("impairing stream severely");
     }
     else if(command === 'passthrough') {
@@ -502,3 +517,4 @@ onmessage = async (event) => {
         debug(`Unhandled message: `, event);
     }
 };
+
