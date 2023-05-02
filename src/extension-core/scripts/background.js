@@ -257,9 +257,6 @@ storage.addListener('presence', async (newValue) => {
 
 async function handleTabRemoved(tabId){
     trackData = trackData.filter(td => td.tabId !== tabId);
-    // ToDo: work through this
-    if(trackData)
-        await storage.update("presence", {active: false});
     if(storage.contents.presence && storage.contents.presence.active){
         await presenceOff();
     }

@@ -14,7 +14,7 @@ export const settingsPrototype = {
     },
     hid: false,
     active: false,
-    enabled: true   // ToDo: change this to false for production
+    enabled: false
 }
 
 // ToDo: error checking on these entered values
@@ -29,7 +29,7 @@ export function webhook(state, settings, debug = console.log) {
     let headers = state === "on" ? settings.on.onHeaders : settings.off.offHeaders;
 
     if (url === "") {
-        console.log("No " + state + " url set");
+        debug("No " + state + " url set");
         return
     }
 
@@ -45,7 +45,7 @@ export function webhook(state, settings, debug = console.log) {
         };
 
         if (postBody !== "")
-            fetchParams.body = postBody;    // JSON.stringify(postBody);    // ToDo: not sure why I need the parse all of the sudden
+            fetchParams.body = postBody;    // JSON.stringify(postBody);    // not sure why I need the parse all of the sudden
     }
 
     if (headers !== "")
