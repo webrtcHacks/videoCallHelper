@@ -6,7 +6,6 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch presenceSettings: `);
 
-// const mh = new MessageHandler('dash', console.log);
 const storage = await new StorageHandler("local", debug);
 
 const statusSpanElem = document.querySelector('span#presence_status');
@@ -18,29 +17,12 @@ const formOff = document.querySelector('form#off');
 const embravaCheck = document.querySelector('input#embrava') || document.createElement('input');
 const enabledCheck = document.querySelector('input#enable_presence_check');
 
-
-// ToDo: clean up these object names to not start with off/on - left over when I did not have an on/off structure
-
-
-// let settings = JSON.parse(localStorage.getItem("presence")) || settingsPrototype;
-// const storage = await chrome.storage.local.get('presence');
-// const storage = await s.get('presence');
 let settings = storage.contents['presence'];
 if(!settings){
     settings = await storage.set('presence', settingsPrototype);
 }
 
 debug("presence settings:", settings);
-
-// only trigger on a change from no gUM stream to a gUM stream for now
-/*
-if (settings.busy)
-    ledStatus = settings.busy;
-else {
-    settings.busy = false;
-    ledStatus = "off";
-}
- */
 
 function displaySettings() {
     settings = storage.contents['presence'];
@@ -71,7 +53,7 @@ function displaySettings() {
 displaySettings();
 
 
-enabledCheck.onchange = async ()=> {
+enabledCheck.onclick = async ()=> {
     const enabled = enabledCheck.checked;
     debug(`presence enabled to ${enabled}`);
     await storage.update('presence', {enabled: enabled});
@@ -137,7 +119,7 @@ if(formOff){
 // if(embravaCheck.checked)
 //     await openDevice()
 
-embravaCheck.onchange = async () => {
+embravaCheck.onclick = async () => {
     // Update the light
 
     // let embraja.mjs handle this from storage change
@@ -176,9 +158,9 @@ async function notBusyHandler() {
     displaySettings();
 }
 
-// mh.addListener(m.GUM_STREAM_START, busyHandler);
-// mh.addListener(m.GUM_STREAM_STOP, notBusyHandler);
-// mh.addListener(m.UNLOAD, notBusyHandler);
+// manual buttons
+btnBusy.onclick = busyHandler;
+btnNotBusy.onclick = notBusyHandler;
 
 storage.addListener('presence', ()=>{
 
@@ -194,7 +176,3 @@ storage.addListener('presence', ()=>{
     else
         statusSpanElem.innerText = "Click above to enable";
 });
-
-// manual buttons
-btnBusy.onclick = busyHandler;
-btnNotBusy.onclick = notBusyHandler;
