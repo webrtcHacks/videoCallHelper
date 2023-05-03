@@ -185,7 +185,7 @@ async function monitorTrack(track, streamId) {
         id,
         kind,
         label,
-        state: readyState,
+        readyState: readyState,
         streamId
     }
 
@@ -194,14 +194,14 @@ async function monitorTrack(track, streamId) {
 
     // Note: this only fires if the browser forces the track to stop; not for most user actions
     track.addEventListener('ended', async (e) => {
-        trackData.state = 'ended';
+        trackData.readyState = 'ended';
         await sendMessage('background', m.TRACK_ENDED, trackData);
     });
 
     // use an interval to check if the track has ended
     const monitor = setInterval(async () => {
-        if (track.readyState === 'ended') {
-            trackData.state = 'ended';
+        if(track.readyState === 'ended'){
+            trackData.readyState = 'ended';
             await sendMessage('background', m.TRACK_ENDED, trackData);
             clearInterval(monitor);
         }
