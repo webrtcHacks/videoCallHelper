@@ -204,14 +204,14 @@ mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 async function presenceOff(){
 
-    if(trackData.some(td => td.state === 'live')){
+    if(trackData.some(td => td.readyState === 'live')){
         debug("presenceOff check: some tracks still live", trackData);
     }
     else {
         // Wait to see if another track is enabled within 2 seconds as can happen with device changes
         debug("presenceOff: waiting 2 seconds for changes");
         setTimeout(async ()=>{
-            if(!trackData.some(td => td.state === 'live')){
+            if(!trackData.some(td => td.readyState === 'live')){
                 debug("turn presence off here");
                 chrome.action.setIcon({path: "../icons/v_128.png"});
 
@@ -245,7 +245,7 @@ async function presenceOn(){
 storage.addListener('presence', async (newValue) => {
 
     debug(`selfView storage changes: `, newValue);
-    if (trackData.some(td => td.state === 'live') && newValue.enabled === true) {
+    if (trackData.some(td => td.readyState === 'live') && newValue.enabled === true) {
         await presenceOn();
     } else if (storage.contents.active === true && newValue.enabled === false) {
         await presenceOff();
@@ -286,7 +286,7 @@ mh.addListener(m.NEW_TRACK, async data=>{
         debug(`track ${id} already in trackData array`);
     } else {
         // Presence handling
-        if(!trackData.some(td => td.state === 'live')){
+        if(!trackData.some(td => td.readyState === 'live')){
             if(storage.contents.presence && storage.contents.presence.enabled){
                 await presenceOn();
             } else debug("presence already active");
@@ -298,9 +298,10 @@ mh.addListener(m.NEW_TRACK, async data=>{
 
 mh.addListener(m.TRACK_ENDED, async data=>{
     trackData = trackData.filter(td => td.id !== data.id);
-
     // wait 2 seconds to see if another track is started
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // these are in presence off
+        // await new Promise(resolve => setTimeout(resolve, 2000));
+        // if(!trackData.some(td => td.readyState === 'live'))
     await presenceOff();
 });
 
