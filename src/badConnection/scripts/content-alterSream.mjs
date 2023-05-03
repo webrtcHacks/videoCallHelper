@@ -40,12 +40,30 @@ export async function alterStream(stream) {
     // ToDo: see if I can extend the writer in the worker and have that message back here
 
     class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
+
+        /*
+        // MediaStreamTrack
+        contentHint: ""
+        enabled: true
+        id: "74f2ebf6-1018-4e3e-8c3e-b6fa1c073e03"
+        kind: "video"
+        label: "FaceTime HD Camera (3A71:F4B5)"
+        muted: false
+        oncapturehandlechange: null
+        onended: null
+        onmute: null
+        onunmute: null
+        readyState: "live"
+         */
+
         constructor(options, track) {
             super(options);
+            super(track)
             this._label = track.label;
             this._contentHint = track.contentHint;
             this._enabled = track.enabled || true;
             this._muted = track.muted;
+
         }
 
         get label() {
