@@ -9,14 +9,15 @@
     <div class="row">
         <div class="dashBox card col-3 ps-3">
             <h5>Frame Capture</h5>
-            <div class="form-check form-switch mb-2">
+            <div class="form-check form-check-inline form-switch mb-2 w-50">
                 <input class="form-check-input" type="checkbox" id="enable_img_cap_check">
                 <label class="form-check-label" for="enable_img_cap_check">Enable Image Capture</label>
-            <!-- /div>
-            <div class="form-check form-switch mb-2 w-50"-->
+                <input type="checkbox" id="start_on_pc_check" disabled hidden>
+            </div>
+            <!--div class="form-check form-check-inline form-switch mb-2 w-50">
                 <input class="form-check-input" type="checkbox" id="start_on_pc_check" disabled>
                 <label class="form-check-label" for="start_on_pc_check">Start on peerConnection?</label>
-            </div>
+            </div-->
             <div class="mb-2">
                 <label for="interval" class="form-label">Time between images in sec:</label>
                 <input id="interval" type="text" value="30" size="8" required pattern="^[0-9]{1,9}$"

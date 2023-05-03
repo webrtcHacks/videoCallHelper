@@ -33,3 +33,11 @@ h5 {
   color: $gray-500;
   text-transform: uppercase;
 }
+
+#bcs-level .inactive {
+  $form-range-thumb-bg: $gray-500;
+}
+
+#bcs-level .active {
+  $form-range-thumb-bg: $component-active-bg;
+}

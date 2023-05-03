@@ -145,25 +145,31 @@ function updateBcsSlider(){
 
     bcsSelect.value = bcsSliderVal;
 
-    bcsSelect.onchange = async (e) => {
-        let command;
-        switch (Number(e.target.value)) {
-            case 0:
-                command = 'passthrough';
-                break;
-            case 1:
-                command = 'moderate';
-                break;
-            case 2:
-                command = 'severe';
-                break;
-            default:
-                console.log("invalid selection");
-        }
-        debug(`Bad Connection Simulator: ${command} selected`);
-        await storage.update('badConnection', {level: command});
-    }
+    if(storage.contents['badConnection'].active)
+        bcsSelect.classList.add("form-range");
+    else
+        bcsSelect.classList.remove("form-range");
 }
+
+bcsSelect.onclick = async (e) => {
+    let command;
+    switch (Number(e.target.value)) {
+        case 0:
+            command = 'passthrough';
+            break;
+        case 1:
+            command = 'moderate';
+            break;
+        case 2:
+            command = 'severe';
+            break;
+        default:
+            console.log("invalid selection");
+    }
+    debug(`Bad Connection Simulator: ${command} selected`);
+    await storage.update('badConnection', {level: command});
+}
+
 // initial settings
 updateBcsSlider();
 
