@@ -132,6 +132,15 @@ storage.addListener('selfView', () => {
 /************ START badConnection ************/
 
 const bcsSelect = document.querySelector("input#bcs_level");
+const bcsEnabledCheck = document.querySelector("input#bcs_enabled_check");
+
+bcsEnabledCheck.checked = storage.contents['badConnection'].enabled;
+
+bcsEnabledCheck.onclick = async ()=> {
+    const enabled = bcsEnabledCheck.checked;
+    // debug(`set badConnection enabled to ${enabled}`);
+    await storage.update('badConnection', {enabled: enabled});
+}
 
 function updateBcsSlider(){
     let bcsSliderVal = 3;
