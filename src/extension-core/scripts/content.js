@@ -2,6 +2,7 @@ import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 import {alterStream} from "../../badConnection/scripts/content-alterSream.mjs";
+import {VCHMediaStreamTrack} from "../../badConnection/scripts/VCHMediaStreamTrack.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -26,6 +27,7 @@ const sendMessage = mh.sendMessage;
 const dashHeight = 180;
 // ToDo: inline CSS with webpack
 const dashStyle = `position:fixed;top:0;left:0;width:100%;max-height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
+
 // const dashStyle = `position:fixed;top:0;left:0;width:100%;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 
 
@@ -202,7 +204,7 @@ async function monitorTrack(track, streamId) {
 
     // use an interval to check if the track has ended
     const monitor = setInterval(async () => {
-        if(track.readyState === 'ended'){
+        if (track.readyState === 'ended') {
             trackData.readyState = 'ended';
             await sendMessage('background', m.TRACK_ENDED, trackData);
             clearInterval(monitor);
@@ -236,6 +238,18 @@ async function gumStreamStart(data) {
     streams.push(origStream);
     debug("current streams", streams);
 
+    // ToDo: handle this
+    debug("Transferred video track settings: ", origStream.getVideoTracks()[0].getSettings());
+    debug("Transferred video track constraints: ", origStream.getVideoTracks()[0].getConstraints());
+    debug("Transferred video track capabilities: ", origStream.getVideoTracks()[0].getCapabilities());
+
+    if (video.srcObject.getTracks().length === 0) {
+        debug("no tracks found in stream", video.srcObject);
+        // ToDo: handle this
+        await sendMessage('inject', m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
+        return;
+    }
+
     // Added for presence
     origStream.getTracks().forEach(track => monitorTrack(track, origStream.id));
 
@@ -248,13 +262,25 @@ async function gumStreamStart(data) {
     });
 
     // BadConnection simulator
-    if (video.srcObject.getTracks().length > 0) {
-        const modifiedStream = await alterStream(video.srcObject);
+    try{
+        // ToDo: add VCHMediaStreamTrack to AlterStream so it acts on every track in that stream
+        const modifiedStream = await alterStream(origStream);
+        // video.srcObject = new VCHMediaStreamTrack(modifiedStream, origStream);
+
         debug(`new modifiedStream: `, modifiedStream);
         debug(`new modifiedStream tracks: `, modifiedStream.getTracks());
         video.srcObject = modifiedStream;
-    } else
-        debug("modifiedStream has no video tracks", video.srcObject);
+        debug("added modified stream to video element", video);
+
+        debug("Modified video track settings: ", modifiedStream.getVideoTracks()[0].getSettings());
+        debug("Modified video track constraints: ", modifiedStream.getVideoTracks()[0].getConstraints());
+        debug("Modified video track capabilities: ", modifiedStream.getVideoTracks()[0].getCapabilities());
+
+    }
+    catch (err) {
+        debug("alterStream error: ", err);
+    }
+
 
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
@@ -263,6 +289,7 @@ async function gumStreamStart(data) {
     await grabFrames(origStream);
 
     // self-view
+    // this works as long as I reuse the streamID?
     await new selfViewElementModifier(origStream);
 
 }

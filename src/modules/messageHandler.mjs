@@ -175,6 +175,7 @@ export class MessageHandler {
 export const MESSAGE = {
     // used in inject.js
     STREAM_TRANSFER_COMPLETE: 'stream_transfer_complete',
+    STREAM_TRANSFER_FAILED: 'stream_transfer_failed',
     GUM_STREAM_START: 'gum_stream_start',
     AUDIO_TRACK_ADDED: 'audio_track_added',
     VIDEO_TRACK_ADDED: 'video_track_added',

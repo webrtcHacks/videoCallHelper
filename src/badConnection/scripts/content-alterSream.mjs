@@ -9,39 +9,29 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️�
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 let storage = await new StorageHandler("local", debug);
 
-// returns a promise that resolves to a MediaStreamTrackGenerator
-export async function alterStream(stream) {
 
-    // For debugging - can be removed
-    class FrameCountWritableStream extends WritableStream {
-        constructor(writer) {
-            super({
-                write: chunk => {
-                    writer.frameCount++;
-                    return writer.write(chunk);
-                },
-                abort: () => writer.abort(),
-                close: () => writer.close(),
-            });
-            this._writer = writer;
-            this._writer.frameCount = 0;
-        }
-
-        get frameCount() {
-            return this._writer.frameCount;
-        }
+// For debugging - can be removed
+class FrameCountWritableStream extends WritableStream {
+    constructor(writer) {
+        super({
+            write: chunk => {
+                writer.frameCount++;
+                return writer.write(chunk);
+            },
+            abort: () => writer.abort(),
+            close: () => writer.close(),
+        });
+        this._writer = writer;
+        this._writer.frameCount = 0;
     }
 
-    // Learning: I was not able to transfer a modified writer to the worker
-    // My goal is to wait until something is written to the track before returning the new stream
-    // it seems there is some typechecking and Chrome doesn't allow an extended object
-    // I always get the error:
-    //  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
-    // ToDo: see if I can extend the writer in the worker and have that message back here
+    get frameCount() {
+        return this._writer.frameCount;
+    }
+}
 
-    class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
-
-        /*
+class VCHTrack { // extends MediaStreamTrack {
+    /*
         // MediaStreamTrack
         contentHint: ""
         enabled: true
@@ -54,66 +44,154 @@ export async function alterStream(stream) {
         onmute: null
         onunmute: null
         readyState: "live"
-         */
+       */
 
-        constructor(options, track) {
-            super(options);
-            super(track)
-            this._label = track.label;
-            this._contentHint = track.contentHint;
-            this._enabled = track.enabled || true;
-            this._muted = track.muted;
+    constructor(target, source) {
+        // super(track, options);      // this never works
+        this.target = target;
 
+        this._settings = source.getSettings();
+        this._constraints = source.getConstraints();
+        this._capabilities = source.getCapabilities();
+
+        this.contentHint = source.contentHint;
+        this.enabled = source.enabled;
+        this.id = source.id;
+        this.kind = source.kind;
+        this.label = source.label;
+        this.muted = source.muted;
+        this.oncapturehandlechange = source.oncapturehandlechange;
+        this.onended = source.onended;
+        this.onmute = source.onmute;
+        this.onunmute = source.onunmute;
+        this.readyState = source.readyState;
+    }
+
+    getSettings() {
+        return this._settings;
+    }
+
+    getConstraints() {
+        return this._constraints;
+    }
+
+    getCapabilities() {
+        return this._capabilities;
+    }
+
+    // From chatGTP:
+    // To make the ModifiedMediaStreamTrack object itself usable as a srcObject for a video element,
+    // we've implemented the Symbol.toPrimitive method. This method allows the object to be converted to a
+    // primitive value when needed, such as when setting a video element's srcObject property. In this case,
+    // we've implemented the method to return the original MediaStreamTrack object by default or as a string,
+    // and to return null for any other hint. With this implementation, you can use the ModifiedMediaStreamTrack
+    // object itself as the srcObject for a video element, like so: videoElement.srcObject = modifiedTrack;.
+    [Symbol.toPrimitive](hint) {
+        if (hint === 'default' || hint === 'string') {
+            return this.target;
         }
+        return null;
+    }
 
-        get label() {
-            return this._label;
-        }
+}
 
-        get contentHint() {
-            return this._contentHint;
-        }
+// Learning: I was not able to transfer a modified writer to the worker
+// My goal is to wait until something is written to the track before returning the new stream
+// it seems there is some typechecking and Chrome doesn't allow an extended object
+// I always get the error:
+//  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
+// ToDo: see if I can extend the writer in the worker and have that message back here
 
-        get enabled() {
-            return this._enabled;
-        }
+// ToDo: implement methods to prelicate original track
+class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
-        set enabled(enabled) {
-            this._enabled = enabled;
-            this._muted = enabled;  // ToDo: check the spec for function here
-            return this._enabled;
-        }
+    /*
+    // MediaStreamTrack
+    contentHint: ""
+    enabled: true
+    id: "74f2ebf6-1018-4e3e-8c3e-b6fa1c073e03"
+    kind: "video"
+    label: "FaceTime HD Camera (3A71:F4B5)"
+    muted: false
+    oncapturehandlechange: null
+    onended: null
+    onmute: null
+    onunmute: null
+    readyState: "live"
+     */
 
-        /*
-        get writable() {
-            const writer = super.writable;
-            const frameCount = { count: 0 };
-            const writableStream = new WritableStream({
-                write: (chunk) => {
-                    frameCount.count++;
-                    return writer.write(chunk);
-                },
-                abort: (reason) => writer.abort(reason),
-                close: () => writer.close(),
-            });
-            const transferable = [writableStream];
-            Object.defineProperty(transferable, 'frameCount', {
-                get: () => frameCount.count,
-                enumerable: true,
-            });
-            return transferable;
-        }
+    constructor(options, track) {
+        super(options);
 
-        async waitForFrame() {
-            if(this.frameCount > 0)
-                return;
+        // ToDo:
+        // super(track)
+        this._label = track.label;
+        this._contentHint = track.contentHint;
+        this._enabled = track.enabled || true;
+        this._muted = track.muted;
 
-            while (this.frameCount === 0) {
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        }
+        this.sourceTrack = track;
+    }
 
-         */
+    get label() {
+        return this._label;
+    }
+
+    get contentHint() {
+        return this._contentHint;
+    }
+
+    get enabled() {
+        return this._enabled;
+    }
+
+    set enabled(enabled) {
+        this._enabled = enabled;
+        this._muted = enabled;  // ToDo: check the spec for function here
+        return this._enabled;
+    }
+
+    // Methods
+    applyConstraints(constraints) {
+        // ToDo:
+        debug(`TODO: apply constraints`, constraints);
+        // return this.sourceTrack.applyConstraints(constraints);
+    }
+
+    clone(){
+        // ToDo: will this have a new ID?
+        const clone = this.sourceTrack.clone();
+        debug(`cloning source track ${this.sourceTrack.label} with id ${this.sourceTrack.id} to ${clone.label} with id ${clone.id}`);
+        return clone
+    }
+
+    getCapabilities() {
+        debug(`getCapabilities`, this.sourceTrack.getCapabilities());
+        return this.sourceTrack.getCapabilities();
+    }
+
+    getConstraints() {
+        debug(`getConstraints`, this.sourceTrack.getConstraints());
+        return this.sourceTrack.getConstraints();
+    }
+
+    getSettings() {
+        debug(`getSettings`, this.sourceTrack.getSettings());
+        return this.sourceTrack.getSettings();
+    }
+
+    stop() {
+        debug(`stopping track source track ${this.label}`);
+        this.sourceTrack.stop();
+    }
+
+}
+
+// returns a promise that resolves to a MediaStreamTrackGenerator
+export async function alterStream(stream) {
+
+    if(!storage.contents['badConnection'].enabled){
+        return new Error("Bad connection is not enabled");
     }
 
     // Sets the GUI to active=false if there are no generated streams
@@ -123,8 +201,8 @@ export async function alterStream(stream) {
             await storage.update('badConnection', {active: false});
     }
 
-    const newStream = new MediaStream();
     const tracks = stream.getTracks();
+    const newStream = new MediaStream();
 
     // ToDo: need to close the worker when the stream is closed
 
@@ -145,6 +223,13 @@ export async function alterStream(stream) {
         const worker = new Worker(workerBlobURL, {name: workerName});
         worker.name = workerName;
 
+        function trackDone(){
+            worker.postMessage({command: "stop"});  // clean-up resources?
+            generator.stop();
+            worker.terminate();
+            track.stop();
+        }
+
         track.addEventListener('mute', () => {
             debug(`track ${track.id} muted, pausing worker ${worker.name}`)
             generator.enabled = false;
@@ -160,10 +245,8 @@ export async function alterStream(stream) {
 
         // ToDo: this is not working
         track.addEventListener('ended', () => {
-            debug(`track ${track.id} ended, stopping worker ${worker.name}`);
-            worker.postMessage({command: "stop"});  // clean-up resources?
-            generator.stop();
-            worker.terminate();
+            debug(`track ${track.id} ended event, stopping worker ${worker.name}`);
+            trackDone();
         });
 
 
@@ -180,9 +263,8 @@ export async function alterStream(stream) {
                     if(track.muted && track.readyState === "live")
                         debug(`track ${track.id} is muted, ignoring worker ${worker.name} error: `, e.data.error)
                     else{
-                        worker.postMessage({command: "stop"});  // clean-up resources?
-                        worker.terminate()
                         debug(`terminating worker ${worker.name}. worker error: `, e.data.error);
+                        trackDone();
 
                         // see if there are other tracks still running and update the gUI
                         await checkGeneratorStreams();

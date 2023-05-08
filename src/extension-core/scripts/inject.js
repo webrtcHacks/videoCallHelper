@@ -11,9 +11,7 @@ let monitorAudioSwitch = false;
 let processTrackSwitch = true;
 let enableWriter = true;
 
-const debug = function() {
-    return Function.prototype.bind.call(console.debug, console, `vch 💉  `);
-}();
+const debug = Function.prototype.bind.call(console.debug, console, `vch 💉 `);
 
 /*
 const {send, listen} = new MessageHandler('inject', debug);
@@ -30,7 +28,11 @@ const removeListener = mh.removeListener;
 // Put the stream in a temp DOM element for transfer to content.js context
 // content.js will swap with a replacement stream
 async function transferStream(stream){
-    // debug("Video track info: ", stream.getVideoTracks()[0].getSettings());
+    // ToDo: testing
+    debug("Source video track settings: ", stream.getVideoTracks()[0].getSettings());
+    debug("Source video track constraints: ", stream.getVideoTracks()[0].getConstraints());
+    debug("Source video track capabilities: ", stream.getVideoTracks()[0].getCapabilities());
+
     // window.vchStreams.push(stream); // for testing
 
     // only handle streams with video for now
@@ -63,14 +65,23 @@ async function transferStream(stream){
         function streamTransferComplete(data) {
             clearTimeout(timer);
             removeListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
+            removeListener(m.STREAM_TRANSFER_FAILED, streamTransferComplete);
+
+            // ToDo: the returned track is changed
+            debug("returned video track settings: ", video.srcObject.getVideoTracks()[0].getSettings());
+            debug("returned video track constraints: ", video.srcObject.getVideoTracks()[0].getConstraints());
+            debug("returned video track capabilities: ", video.srcObject.getVideoTracks()[0].getCapabilities());
+
 
             try{
-                const video = document.querySelector(`video#${data.id}`);
+                // const video = document.querySelector(`video#${data.id}`);
                 const modifiedStream = video.srcObject;         // ToDo: srcObject coming back as null on Jitsi on change cam preview
 
                 // video.srcObject = null;
-                document.body.removeChild(video);           // Clean-up the DOM
+                // ToDo: put this back after debugging
+                // document.body.removeChild(video);           // Clean-up the DOM
                 debug(`removed video element ${data.id}; new modified stream ${modifiedStream.id} returned within ${new Date().getTime() - startTime} ms`);
+
                 resolve(modifiedStream);
 
             }
@@ -80,7 +91,19 @@ async function transferStream(stream){
             }
         }
 
+        function streamTransferFailed(data) {
+            clearTimeout(timer);
+            removeListener(m.STREAM_TRANSFER_FAILED, streamTransferFailed);
+            removeListener(m.STREAM_TRANSFER_COMPLETE, streamTransferFailed);
+            const video = document.querySelector(`video#${data.id}`);
+            document.body.removeChild(video);           // Clean-up the DOM
+
+            debug(`stream transfer failed ${data.error}`, data);
+            reject(new Error(`stream transfer failed: ${data.error}`));
+        }
+
         addListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
+        addListener(m.STREAM_TRANSFER_FAILED, streamTransferFailed);
 
     });
 
@@ -154,9 +177,10 @@ function monitorAudio(peerConnection){
 
 if (!window.videoCallHelper) {
 
-    // getDisplayMedia Shim
     // ToDo: Google Meet doesn't use this
 
+    // ToDo: make a switch for this - not sure I need to shim this now
+    // getDisplayMedia Shim
     const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getDisplayMedia = async (constraints) => {
         const gdmStream = await origGetDisplayMedia(constraints);

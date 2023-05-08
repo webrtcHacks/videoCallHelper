@@ -6,7 +6,10 @@
     <style>
         video {
             /*opacity: 20%; */
-            height: 480px;
+            /*
+            height: 720px;
+            width: 1280px;
+             */
         }
         table, th, td {
             border: 1px solid grey;
@@ -34,12 +37,15 @@
 
     const video = document.querySelector('video');
     let stream;
-    window.stream = stream;
 
     async function getCam() {
-        stream = await navigator.mediaDevices.getUserMedia({video: true});
+        stream = await navigator.mediaDevices.getUserMedia({video: {height: 720, aspectRatio: 1.7777777778}});
         video.srcObject = stream;
+        window.stream = stream;
         console.log("started camera stream")
+
+        window.track = stream.getVideoTracks()[0];
+        console.log("track settings:", window.track.getSettings());
     }
 
     startBtn.onclick = async () => {
