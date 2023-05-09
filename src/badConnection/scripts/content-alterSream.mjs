@@ -30,71 +30,6 @@ class FrameCountWritableStream extends WritableStream {
     }
 }
 
-class VCHTrack { // extends MediaStreamTrack {
-    /*
-        // MediaStreamTrack
-        contentHint: ""
-        enabled: true
-        id: "74f2ebf6-1018-4e3e-8c3e-b6fa1c073e03"
-        kind: "video"
-        label: "FaceTime HD Camera (3A71:F4B5)"
-        muted: false
-        oncapturehandlechange: null
-        onended: null
-        onmute: null
-        onunmute: null
-        readyState: "live"
-       */
-
-    constructor(target, source) {
-        // super(track, options);      // this never works
-        this.target = target;
-
-        this._settings = source.getSettings();
-        this._constraints = source.getConstraints();
-        this._capabilities = source.getCapabilities();
-
-        this.contentHint = source.contentHint;
-        this.enabled = source.enabled;
-        this.id = source.id;
-        this.kind = source.kind;
-        this.label = source.label;
-        this.muted = source.muted;
-        this.oncapturehandlechange = source.oncapturehandlechange;
-        this.onended = source.onended;
-        this.onmute = source.onmute;
-        this.onunmute = source.onunmute;
-        this.readyState = source.readyState;
-    }
-
-    getSettings() {
-        return this._settings;
-    }
-
-    getConstraints() {
-        return this._constraints;
-    }
-
-    getCapabilities() {
-        return this._capabilities;
-    }
-
-    // From chatGTP:
-    // To make the ModifiedMediaStreamTrack object itself usable as a srcObject for a video element,
-    // we've implemented the Symbol.toPrimitive method. This method allows the object to be converted to a
-    // primitive value when needed, such as when setting a video element's srcObject property. In this case,
-    // we've implemented the method to return the original MediaStreamTrack object by default or as a string,
-    // and to return null for any other hint. With this implementation, you can use the ModifiedMediaStreamTrack
-    // object itself as the srcObject for a video element, like so: videoElement.srcObject = modifiedTrack;.
-    [Symbol.toPrimitive](hint) {
-        if (hint === 'default' || hint === 'string') {
-            return this.target;
-        }
-        return null;
-    }
-
-}
-
 // Learning: I was not able to transfer a modified writer to the worker
 // My goal is to wait until something is written to the track before returning the new stream
 // it seems there is some typechecking and Chrome doesn't allow an extended object
@@ -102,7 +37,7 @@ class VCHTrack { // extends MediaStreamTrack {
 //  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
 // ToDo: see if I can extend the writer in the worker and have that message back here
 
-// ToDo: implement methods to prelicate original track
+// ToDo: implement methods to replicate original track
 class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
     /*
@@ -129,6 +64,10 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
         this._contentHint = track.contentHint;
         this._enabled = track.enabled || true;
         this._muted = track.muted;
+
+        this._settings = track.getSettings();
+        this._constraints = track.getConstraints();
+        this._capabilities = track.getCapabilities();
 
         this.sourceTrack = track;
     }
@@ -165,19 +104,26 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
         return clone
     }
 
+
     getCapabilities() {
-        debug(`getCapabilities`, this.sourceTrack.getCapabilities());
-        return this.sourceTrack.getCapabilities();
+        //debug(`getCapabilities`, this.sourceTrack.getCapabilities());
+        // return this.sourceTrack.getCapabilities();
+        debug(`getCapabilities`, this._capabilities);
+        return this._capabilities;
     }
 
     getConstraints() {
-        debug(`getConstraints`, this.sourceTrack.getConstraints());
-        return this.sourceTrack.getConstraints();
+        //debug(`getConstraints`, this.sourceTrack.getConstraints());
+        // return this.sourceTrack.getConstraints();
+        debug(`getConstraints`, this._constraints);
+        return this._constraints;
     }
 
     getSettings() {
-        debug(`getSettings`, this.sourceTrack.getSettings());
-        return this.sourceTrack.getSettings();
+        // debug(`getSettings`, this.sourceTrack.getSettings());
+        // return this.sourceTrack.getSettings();
+        debug(`getSettings`, this._settings);
+        return this._settings;
     }
 
     stop() {
@@ -214,9 +160,22 @@ export async function alterStream(stream) {
         const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
         const writer = generator.writable;
 
+        // make the generator act like the original track
+        // const vchTrack = new VCHMediaStreamTrack(generator);
+        debug("alteredMediaStreamTrackGenerator video track: ", generator);
+        debug("alteredMediaStreamTrackGenerator video track settings: ", generator.getSettings());
+        debug("alteredMediaStreamTrackGenerator video track constraints: ", generator.getConstraints());
+        debug("alteredMediaStreamTrackGenerator video track capabilities: ", generator.getCapabilities());
+
         newStream.addTrack(generator);
 
-        debug(`generator track state before worker ${generator.readyState}`, generator);
+        debug("newStream video track: ", newStream.getVideoTracks()[0]);
+        debug("newStream video track settings: ",  newStream.getTracks()[0].getSettings());
+        debug("newStream video track constraints: ", newStream.getTracks()[0].getConstraints());
+        debug("newStream video track capabilities: ", newStream.getTracks()[0].getCapabilities());
+
+
+        // debug(`generator track state before worker ${generator.readyState}`, generator);
 
         const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
         const workerName = `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`;

@@ -2,11 +2,9 @@ import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 import {alterStream} from "../../badConnection/scripts/content-alterSream.mjs";
-import {VCHMediaStreamTrack} from "../../badConnection/scripts/VCHMediaStreamTrack.mjs";
 
 const streams = [];
 let trackInfos = [];
-
 
 window.vchStreams = streams;
 
@@ -239,9 +237,9 @@ async function gumStreamStart(data) {
     debug("current streams", streams);
 
     // ToDo: handle this
-    debug("Transferred video track settings: ", origStream.getVideoTracks()[0].getSettings());
-    debug("Transferred video track constraints: ", origStream.getVideoTracks()[0].getConstraints());
-    debug("Transferred video track capabilities: ", origStream.getVideoTracks()[0].getCapabilities());
+    // debug("Transferred video track settings: ", origStream.getVideoTracks()[0].getSettings());
+    // debug("Transferred video track constraints: ", origStream.getVideoTracks()[0].getConstraints());
+    // debug("Transferred video track capabilities: ", origStream.getVideoTracks()[0].getCapabilities());
 
     if (video.srcObject.getTracks().length === 0) {
         debug("no tracks found in stream", video.srcObject);
@@ -261,25 +259,35 @@ async function gumStreamStart(data) {
         }
     });
 
+
     // BadConnection simulator
     try{
         // ToDo: add VCHMediaStreamTrack to AlterStream so it acts on every track in that stream
         const modifiedStream = await alterStream(origStream);
         // video.srcObject = new VCHMediaStreamTrack(modifiedStream, origStream);
+        debug("Modified video track: ", modifiedStream.getVideoTracks()[0]);
+        debug("Modified video track settings: ", modifiedStream.getVideoTracks()[0].getSettings());
+        debug("Modified video track constraints: ", modifiedStream.getVideoTracks()[0].getConstraints());
+        debug("Modified video track capabilities: ", modifiedStream.getVideoTracks()[0].getCapabilities());
+
 
         debug(`new modifiedStream: `, modifiedStream);
         debug(`new modifiedStream tracks: `, modifiedStream.getTracks());
         video.srcObject = modifiedStream;
         debug("added modified stream to video element", video);
 
-        debug("Modified video track settings: ", modifiedStream.getVideoTracks()[0].getSettings());
-        debug("Modified video track constraints: ", modifiedStream.getVideoTracks()[0].getConstraints());
-        debug("Modified video track capabilities: ", modifiedStream.getVideoTracks()[0].getCapabilities());
+        debug("Attached video track: ", video.srcObject.getVideoTracks()[0]);
+        debug("Attached video track settings: ", video.srcObject.getVideoTracks()[0].getSettings());
+        debug("Attached video track constraints: ", video.srcObject.getVideoTracks()[0].getConstraints());
+        debug("Attached video track capabilities: ", video.srcObject.getVideoTracks()[0].getCapabilities());
 
     }
     catch (err) {
         debug("alterStream error: ", err);
     }
+
+    // instead of the above
+    // video.srcObject = origStream;
 
 
     // send a message back to inject to remove the temp video element
