@@ -17,8 +17,20 @@ export const settingsPrototype = {
     enabled: false
 }
 
+// dont repeat on webhook for each track
+let webhookIsActive = false;
+
 // ToDo: error checking on these entered values
 export function webhook(state, settings, debug = console.log) {
+
+    if(webhookIsActive && state === "on") {
+        debug("webhook already on");
+        return
+    }
+    else if(!webhookIsActive && state === "off"){
+        debug("webhook already off");
+        return
+    }
 
     debug("webhook settings", settings);
 
@@ -35,8 +47,7 @@ export function webhook(state, settings, debug = console.log) {
 
     let fetchParams = {};
 
-    // ToDo: is method a boolean or a string?
-    if (method) {  //=== 'POST') {
+    if (method === 'POST') {
         fetchParams = {
             method: 'POST',
             headers: {
@@ -59,6 +70,11 @@ export function webhook(state, settings, debug = console.log) {
             response => {
                 debug("fetch details:", url, fetchParams, response);
                 response.text().then(text => debug("response text: " + text))
+
+                if(response.ok && state === "on") {
+                    webhookIsActive = true;
+                }
+
             })
         .catch(function (error) {
             debug("fetch request failed details:", url, fetchParams, error);
