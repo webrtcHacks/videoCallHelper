@@ -40,7 +40,7 @@ class Impairment {
             bitrate: 10_000
         },
         video: {
-            loss: 0.0025,
+            loss:  0.05, //0.0025,
             payloadSize: 90,
             keyFrameInterval: 30,
             delayMs: 250,
@@ -63,7 +63,7 @@ class Impairment {
             bitrate: 6_000
         },
         video: {
-            loss: 0.05,
+            loss: 0.1, // 0.05,
             payloadSize: 90,
             keyFrameInterval: 30,   // 15
             delayMs: 500,
@@ -153,7 +153,7 @@ class Impairment {
                 Impairment.#debug(`${this.kind} metadata: `, metadata);
             }
             // ToDo: ISSUE HAPPENING HERE
-            //const modifiedChunk = this.#addPacketLoss(chunk, this.kind);
+            // const modifiedChunk = this.#addPacketLoss(chunk, this.kind);
             // const modifiedChunk = chunk;
 
             await this.#sleep(this.delayMs);
@@ -291,18 +291,18 @@ class Impairment {
                     if (this.operation === 'impair') {
 
                         // ToDo: retest this
-                        /*
                         if(Math.random() <= this.frameDrop ){
                             frame.close();
                             return
                         }
-                         */
 
                         const keyFrame = this.frameCounter % this.keyFrameInterval === 0 || this.#forceKeyFrame;
                         if (this.#forceKeyFrame) {
                             Impairment.#debug(`set ${this.frameCounter} to keyframe`);
                             this.#forceKeyFrame = false;
                         }
+
+                        // ToDo: upscale the frame to its original size before encoding
                         this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
 
                         // part of update
