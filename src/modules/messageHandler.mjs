@@ -212,4 +212,8 @@ export const MESSAGE = {
     // self-view
     SELF_VIEW: 'self_view',
 
+    // bad connection
+    GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
+    UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
+
 }

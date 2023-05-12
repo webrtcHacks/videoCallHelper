@@ -2,13 +2,49 @@
 // one worker per track for processing and altering
 
 import impairmentWorkerScript from "./impairment.worker.js";
+import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {set} from "idb-keyval";
 
 // import impairmentWorkerScript from '../../badConnection/scripts/impairment.worker.js';
-const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️😈`);
+const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
 
-import {StorageHandler} from "../../modules/storageHandler.mjs";
-let storage = await new StorageHandler("local", debug);
+// import {StorageHandler} from "../../modules/storageHandler.mjs";
+// let storage = await new StorageHandler("local", debug);
 
+/************ START get settings ************/
+
+const mh = new MessageHandler('inject', debug);
+const sendMessage = mh.sendMessage;
+const addListener = mh.addListener;
+const removeListener = mh.removeListener;
+
+// for reference
+let settings = {
+    enabled: true,
+    active: false,
+    level: "passthrough"
+}
+/*
+const storage = {
+    contents: {
+        badConnection: {
+            enabled: true,
+            active: false,
+            level: "passthrough"
+        }
+    }
+}
+ */
+
+mh.addListener( m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
+    debug("got new settings", data)
+    settings = data;
+});
+mh.sendMessage('content', m.GET_BAD_CONNECTION_SETTINGS);
+
+/************ END get settings  ************/
+
+window.newStreams = [];
 
 // For debugging - can be removed
 class FrameCountWritableStream extends WritableStream {
@@ -136,7 +172,7 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 // returns a promise that resolves to a MediaStreamTrackGenerator
 export async function alterStream(stream) {
 
-    if(!storage.contents['badConnection'].enabled){
+    if(!settings.enabled){
         return new Error("Bad connection is not enabled");
     }
 
@@ -144,7 +180,8 @@ export async function alterStream(stream) {
     async function checkGeneratorStreams(){
         const active = window.newStreams.find(stream => stream.active);
         if(active === undefined)
-            await storage.update('badConnection', {active: false});
+            // await storage.update('badConnection', {active: false});
+            settings.active = false;
     }
 
     const tracks = stream.getTracks();
@@ -243,16 +280,27 @@ export async function alterStream(stream) {
                 id: track.id,
                 kind: track.kind,
                 settings: track.getSettings(),
-                impairmentState: storage.contents['badConnection'].level
+                impairmentState:  settings.level,
             }, [reader, writer]);
 
         });
 
+        // do I really need a 2nd listener to communicate with the worker?
+        mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, async (newSettings) => {
+            debug("badConnection changed to: ", newSettings);
+            if(newSettings.enabled === false){
+                worker.postMessage({command: "passthrough"});
+            }
+            if(newSettings.level)
+                worker.postMessage({command: newSettings.level});
+        });
+        /*
         await storage.addListener('badConnection', async (newValue) => {
             debug("badConnection changed to: ", newValue);
             if(newValue.level)
                 worker.postMessage({command: newValue.level});
         });
+         */
 
     }))
         .catch(err => {
@@ -263,7 +311,9 @@ export async function alterStream(stream) {
     // Do I need to make sure these work?
     if (newStream.getTracks().filter(track => track.readyState === 'live').length > 0) {
         window.newStreams.push(newStream);      // ToDo: for debugging
-        await storage.update('badConnection', {active: true})
+        // await storage.update('badConnection', {active: true});
+        settings.active = true;
+        mh.sendMessage(m.UPDATE_BAD_CONNECTION_SETTINGS, settings);
         return newStream;
     }
     else {

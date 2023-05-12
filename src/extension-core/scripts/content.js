@@ -1,7 +1,9 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
-import {alterStream} from "../../badConnection/scripts/content-alterSream.mjs";
+// import {alterStream} from "../../badConnection/scripts/alterSream.mjs";
+
+
 
 const streams = [];
 let trackInfos = [];
@@ -19,8 +21,30 @@ const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
 // await sendMessage('all', 'hello there', {foo: 'bar'});
 
-// const storage = await chrome.storage.local.get();
-// await debug("storage contents:", storage);
+
+/************ START bad connection ************/
+// ToDo - possibly move this into a module
+// Need to relay badConnection updates between inject and dash
+import {StorageHandler} from "../../modules/storageHandler.mjs";
+let storage = await new StorageHandler("local", debug);
+
+const bcsInitSettings = {
+    enabled: storage.contents['badConnection']?.enabled ?? false,
+    active: false,
+    level: "passthrough"
+}
+
+await storage.update('badConnection', bcsInitSettings);
+await storage.addListener('badConnection', (newValue) => {
+    debug("badConnection settings changed", newValue);
+    sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, newValue);
+});
+
+mh.addListener(m.GET_BAD_CONNECTION_SETTINGS, () => {
+    sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, bcsInitSettings);
+});
+
+/************ END bad connection ************/
 
 const dashHeight = 180;
 // ToDo: inline CSS with webpack
@@ -195,7 +219,7 @@ async function monitorTrack(track, streamId) {
         await sendMessage('background', m.NEW_TRACK, trackData);
 
     // Note: this only fires if the browser forces the track to stop; not for most user actions
-    track.addEventListener('ended', async (e) => {
+    track.addEventListener('ended', async () => {
         trackData.readyState = 'ended';
         await sendMessage('background', m.TRACK_ENDED, trackData);
     });
@@ -261,8 +285,9 @@ async function gumStreamStart(data) {
 
 
     // BadConnection simulator
+    // the stream used by inject.js is a different object due to context switch; this messed up some services
+   /*
     try{
-        // ToDo: add VCHMediaStreamTrack to AlterStream so it acts on every track in that stream
         const modifiedStream = await alterStream(origStream);
         // video.srcObject = new VCHMediaStreamTrack(modifiedStream, origStream);
         debug("Modified video track: ", modifiedStream.getVideoTracks()[0]);
@@ -285,6 +310,7 @@ async function gumStreamStart(data) {
     catch (err) {
         debug("alterStream error: ", err);
     }
+    */
 
     // instead of the above
     // video.srcObject = origStream;
