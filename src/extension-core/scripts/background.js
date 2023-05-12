@@ -115,7 +115,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     const badConnectionSettings = {
         enabled: true,
         active: false,
-        level: "none"
+        level: "passthrough"
     }
     await storage.set('badConnection', badConnectionSettings);
 

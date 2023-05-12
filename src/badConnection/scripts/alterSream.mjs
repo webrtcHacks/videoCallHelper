@@ -6,9 +6,27 @@ import impairmentWorkerScript from "./impairment.worker.js";
 // import impairmentWorkerScript from '../../badConnection/scripts/impairment.worker.js';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️😈`);
 
-import {StorageHandler} from "../../modules/storageHandler.mjs";
-let storage = await new StorageHandler("local", debug);
+// import {StorageHandler} from "../../modules/storageHandler.mjs";
+// let storage = await new StorageHandler("local", debug);
 
+// for reference
+let settings = {
+    enabled: true,
+    active: false,
+    level: "passthrough"
+}
+
+const storage = {
+    contents: {
+        badConnection: {
+            enabled: true,
+            active: false,
+            level: "passthrough"
+        }
+    }
+}
+
+window.newStreams = [];
 
 // For debugging - can be removed
 class FrameCountWritableStream extends WritableStream {
@@ -144,7 +162,8 @@ export async function alterStream(stream) {
     async function checkGeneratorStreams(){
         const active = window.newStreams.find(stream => stream.active);
         if(active === undefined)
-            await storage.update('badConnection', {active: false});
+            // await storage.update('badConnection', {active: false});
+            storage.contents['badConnection'].active = false;
     }
 
     const tracks = stream.getTracks();
@@ -243,16 +262,18 @@ export async function alterStream(stream) {
                 id: track.id,
                 kind: track.kind,
                 settings: track.getSettings(),
-                impairmentState: storage.contents['badConnection'].level
+                impairmentState:  "passthrough", // Changed to always start with passthrough // storage.contents['badConnection'].level
             }, [reader, writer]);
 
         });
 
+        /*
         await storage.addListener('badConnection', async (newValue) => {
             debug("badConnection changed to: ", newValue);
             if(newValue.level)
                 worker.postMessage({command: newValue.level});
         });
+         */
 
     }))
         .catch(err => {
@@ -263,7 +284,8 @@ export async function alterStream(stream) {
     // Do I need to make sure these work?
     if (newStream.getTracks().filter(track => track.readyState === 'live').length > 0) {
         window.newStreams.push(newStream);      // ToDo: for debugging
-        await storage.update('badConnection', {active: true})
+        // await storage.update('badConnection', {active: true});
+        storage.contents['badConnection'].active = true;
         return newStream;
     }
     else {

@@ -39,7 +39,7 @@
     let stream;
 
     async function getCam() {
-        stream = await navigator.mediaDevices.getUserMedia({video: {height: 720, aspectRatio: 1.7777777778}});
+        stream = await navigator.mediaDevices.getUserMedia({video: {height: {exact: 720}, aspectRatio: 1.7777777778}});
         video.srcObject = stream;
         window.stream = stream;
         console.log("started camera stream")

@@ -1,6 +1,7 @@
 'use strict';
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {VCHMediaStreamTrack} from "../../badConnection/scripts/VCHMediaStreamTrack.mjs";
+import {alterStream} from "../../badConnection/scripts/alterSream.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -10,7 +11,6 @@ const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
 const appEnabled = true;
 let monitorAudioSwitch = false;
 let processTrackSwitch = true;
-let enableWriter = true;
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉 `);
 
@@ -29,11 +29,21 @@ const removeListener = mh.removeListener;
 // Put the stream in a temp DOM element for transfer to content.js context
 // content.js will swap with a replacement stream
 async function transferStream(stream){
-
-    debug("Source video track: ", stream.getVideoTracks()[0]);
-    debug("Source video track settings: ", stream.getVideoTracks()[0].getSettings());
-    debug("Source video track constraints: ", stream.getVideoTracks()[0].getConstraints());
-    debug("Source video track capabilities: ", stream.getVideoTracks()[0].getCapabilities());
+    // ToDo: shadow dom?
+    const video = document.createElement('video');
+    // video.id = stream.id;
+    video.id = `vch-${Math.random().toString().substring(10)}`;
+    video.srcObject = stream;
+    video.hidden = true;
+    video.muted = true;
+    document.body.appendChild(video);
+    video.oncanplay = () => {
+        video.oncanplay = null;
+        sendMessage('all', m.GUM_STREAM_START, {id: video.id});
+    }
+}
+/*
+async function transferStream(stream){
 
     // window.vchStreams.push(stream); // for testing
 
@@ -69,7 +79,7 @@ async function transferStream(stream){
             removeListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
             removeListener(m.STREAM_TRANSFER_FAILED, streamTransferComplete);
 
-
+            // resolve();
 
             try{
                 // const video = document.querySelector(`video#${data.id}`);
@@ -105,6 +115,7 @@ async function transferStream(stream){
                 debug(`Error in streamTransferComplete: `, e);
                 reject(e);
             }
+
         }
 
         function streamTransferFailed(data) {
@@ -124,6 +135,8 @@ async function transferStream(stream){
     });
 
 }
+
+ */
 
 // extract and send track event data
 // ToDo: merge this into monitorTrack in content.js?
@@ -214,14 +227,16 @@ if (!window.videoCallHelper) {
         const stream = await origGetUserMedia(constraints);
         try{
             // Handles track events of the original stream
-            const tracks = stream.getTracks();
-
+            // const tracks = stream.getTracks();
             // ToDo: move this into content.js
             // tracks.forEach(track=>processTrack(track, "gum"))
+
             debug("got stream", stream);
 
-            const newStream = await transferStream(stream);         // transfer the stream to the content script
-            return newStream                                        // return the altered stream
+            await transferStream(stream);               // transfer the stream to the content script
+            const alteredStream = await alterStream(stream);
+            debug("alteredStream", alteredStream);
+            return alteredStream                                        // return the altered stream
         }
         catch (err) {
             debug("getUserMedia error!:", err);

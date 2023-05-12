@@ -1,10 +1,6 @@
 // Import not workinng when this whole file is loaded inline
 // import {Impairment} from "../../badConnection/scripts/impairment.mjs";
-/*
-self.onmessage = function(e) {
-    console.debug('Worker received data:', e.data);
-}
-*/
+
 
 /*
  * Class that sets up a transform stream that can add an impairment
@@ -424,7 +420,7 @@ onmessage = async (event) => {
         const {reader, writer, id, kind, settings, impairmentState} = event.data;
 
         let config;
-        let operation = impairmentState === "passThrough" ? "passthrough" : "impair";
+        let operation = impairmentState === "passthrough" ? "passthrough" : "impair";
 
         if(impairmentState === "severe"){
             config = Impairment.severeImpairmentConfig;
@@ -435,12 +431,13 @@ onmessage = async (event) => {
             // impairmentState.operation = "impair";
         }
         else{
-            // impairment.operation = "passthrough";
+            debug(`Error: invalid impairmentState: ${impairmentState}}`);
+            operation = "passthrough";
         }
 
         impairment = new Impairment(kind, settings, id, config);
-        impairment.start();
         impairment.operation = operation;
+        impairment.start();
 
         debug(`processing new stream video with operation ${impairment.operation} and impairment:`, impairment.impairmentConfig[kind]);
         // self.postMessage({response: "before reader"});
