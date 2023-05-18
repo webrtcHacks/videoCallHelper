@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tee with Breakout Box tests</title>
+</head>
+<head>
+    <meta charset="UTF-8">
+    <title>getUserMedia</title>
+    <style>
+        video {
+            /*opacity: 20%; */
+            /*
+            height: 720px;
+            width: 1280px;
+             */
+        }
+        table, th, td {
+            border: 1px solid grey;
+            border-collapse: collapse;
+            text-align: right;
+        }
+        td:first-child {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+<video id="sourceVid" autoplay playsinline muted controls></video>
+<video id="genVid1" autoplay playsinline muted controls></video>
+<video id="genVid2" autoplay playsinline muted controls></video>
+<br>
+<button id="start">Start</button>
+<button id="stop">Stop</button>
+<button id="clone" disabled>Clone</button>
+<br>
+<!--label for="apply_constraints_to_generator">Apply Constraints to Generator</label>
+<button id="apply_constraints_to_generator" disabled>Apply</button>
+<br>
+<label for="apply_constraints_to_clone">Apply Constraints to Cloned Generator</label>
+<button id="apply_constraints_to_clone">Apply</button>
+<br-->
+<div id="stats"></div>
+
+<script type="module">
+
+    const startBtn = document.querySelector('button#start');
+    const stopBtn = document.querySelector('button#stop');
+    const stats = document.querySelector('div#stats');
+    const cloneBtn = document.querySelector('button#clone');
+    // const applyBtn = document.querySelector('button#apply_constraints_to_clone');
+
+    const sourceVid = document.querySelector('video#sourceVid');
+    const genVid1 = document.querySelector('video#genVid1');
+    const genVid2 = document.querySelector('video#genVid2');
+
+
+    const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms));
+
+
+    async function generate(stream) {
+        const canvas = new OffscreenCanvas(1, 1);
+        const ctx = canvas.getContext('2d', {desynchronized: true}); //('bitmaprenderer');
+
+        const transform = new TransformStream({
+            transform: async (frame, controller) => {
+
+
+                // FINDING: need to use displayHeight since codedHeight is wrong
+                const height = frame.displayHeight; // frame.codedHeight;
+                const width = frame.displayWidth; // frame.codedWidth;
+                canvas.height = height;
+                canvas.width = width;
+
+                ctx.translate(0, height);
+                ctx.scale(1, -1);
+                ctx.drawImage(frame, 0, 0);
+
+                // FINDING: timestamp now required
+                const params = {
+                    timestamp: frame.timestamp,
+                    // codedHeight: 640,
+                    // codedWidth: 360,
+                }
+                const newFrame = new VideoFrame(canvas, params);
+                await controller.enqueue(newFrame);
+
+                frame.close();
+
+            }
+        });
+
+
+        const [track] = stream.getVideoTracks();
+        const {height, width} = track.getSettings();
+
+        const processor = new MediaStreamTrackProcessor(track);
+        const reader = processor.readable;
+
+        const generator1 = new MediaStreamTrackGenerator({kind: track.kind});
+        const writer1 = generator1.writable;
+
+        const genStream1 = new MediaStream([generator1]);
+        window.genStream1 = genStream1;
+
+        const generator2 = new MediaStreamTrackGenerator({kind: track.kind});
+        const writer2 = generator2.writable;
+
+        const genStream2 = new MediaStream([generator2]);
+        window.genStream2 = genStream2;
+
+        genVid1.srcObject = genStream1;
+        console.log("generator1 track:", generator1);
+
+        genVid2.srcObject = genStream1;
+        console.log("generator2 track:", generator2);
+
+        // FINDING: every new write generating an onplaying event?
+        //         genVid.onloadedmetadata = () => {
+        genVid1.onloadeddata = () => {
+            /*
+        }
+            console.log("generator track settings:", generator.getSettings());
+            console.log("generator track constraints:", generator.getConstraints());
+            console.log("generator track capabilities:", generator.getCapabilities());
+
+            // FINDING: video element is 640x480 when sourceElement is set to 640x360
+            // the below didn't help
+            // genVid.height = genVid.videoHeight;
+            // genVid.width = genVid.videoWidth;
+            // genVid.srcObject = genStream;
+            console.log(`generated video element dimensions ${genVid.width}x${genVid.height}`);
+            console.log(`generated video offset dimensions ${genVid.offsetWidth}x${genVid.offsetHeight}`);
+            console.log(`generated video element video dimensions: ${sourceVid.videoWidth}x${sourceVid.videoHeight}`);
+
+             */
+        }
+
+        const tee = reader
+            .pipeThrough(transform)
+            .tee();
+
+        await Promise.all([
+            tee[0].pipeTo(writer1),
+            tee[1].pipeTo(writer2)
+        ])
+            .catch(e => console.error(e));
+
+    }
+    async function getCam() {
+        const stream = await navigator.mediaDevices.getUserMedia({video: {aspectRatio: 1.7777777778}});
+        const [track] = stream.getVideoTracks();
+        console.log("Source track:", track);
+        console.log("Source track settings:", track.getSettings());
+        console.log("Source track constraints:", track.getConstraints());
+        console.log("Source track capabilities:", track.getCapabilities());
+
+        sourceVid.onloadedmetadata = () => {
+            console.log(`video element video dimensions: ${sourceVid.videoWidth}x${sourceVid.videoHeight}`)
+        }
+
+        sourceVid.onplaying = async () => {
+            console.log("video playing");
+            sourceVid.onplaying = null;
+            await generate(stream);
+        }
+
+        sourceVid.srcObject = stream;
+        window.stream = stream;
+        console.log("started camera stream")
+
+        window.sourceTrack = stream.getVideoTracks()[0];
+    }
+
+    startBtn.onclick = async () => {
+        await getCam();
+    }
+
+    stopBtn.onclick = () => {
+        document.querySelectorAll('video').forEach(vid => vid?.srcObject?.getTracks().forEach(track => track.stop()));
+        //stream.getTracks().forEach(track => track.stop());
+        console.log("stopped all tracks")
+    }
+
+    // cloneBtn.onclick = async () => await clone();
+
+    // applyBtn.onclick = async () => await generatorCloneApplyConstraints();
+
+    function calculateStats() {
+
+        let decodedFrames = 0,
+            droppedFrames = 0,
+            startTime = new Date().getTime(),
+            initialTime = new Date().getTime();
+
+        const interval = setInterval(function() {
+
+            //see if webkit stats are available; exit if they aren't
+            if (!sourceVid.webkitDecodedFrameCount) {
+                console.log("Video FPS calcs not supported");
+                clearInterval(interval);
+            }
+            //get the stats
+            else {
+                const currentTime = new Date().getTime();
+                let deltaTime = (currentTime - startTime) / 1000;
+                let totalTime = (currentTime - initialTime) / 1000;
+                startTime = currentTime;
+
+                // Calculate decoded frames per sec.
+                const currentDecodedFPS = (sourceVid.webkitDecodedFrameCount - decodedFrames) / deltaTime;
+                const decodedFPSavg = sourceVid.webkitDecodedFrameCount / totalTime;
+                decodedFrames = sourceVid.webkitDecodedFrameCount;
+
+                // Calculate dropped frames per sec.
+                const currentDroppedFPS = (sourceVid.webkitDroppedFrameCount - droppedFrames) / deltaTime;
+                const droppedFPSavg = sourceVid.webkitDroppedFrameCount / totalTime;
+                droppedFrames = sourceVid.webkitDroppedFrameCount;
+
+                //write the results to a table
+                stats.innerHTML =
+                    "<table><tr><th>Type</th><th>Total</th><th>Avg</th><th>Current</th></tr>" +
+                    "<tr><td>Decoded</td><td>" + decodedFrames + "</td><td>" + decodedFPSavg.toFixed() + "</td><td>" + currentDecodedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>Dropped</td><td>" + droppedFrames + "</td><td>" + droppedFPSavg.toFixed() + "</td><td>" + currentDroppedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>All</td><td>" + (decodedFrames + droppedFrames) + "</td><td>" + (decodedFPSavg + droppedFPSavg).toFixed() + "</td><td>" + (currentDecodedFPS + currentDroppedFPS).toFixed() + "</td></tr></table>" +
+                    "Camera resolution: " + sourceVid.videoWidth + " x " + sourceVid.videoHeight;
+            }
+        }, 1000);
+    }
+
+    sourceVid.addEventListener('loadeddata', (event) => {
+        console.log(`Actual stream height: ${sourceVid.videoHeight}`);
+        calculateStats();
+    });
+
+    // getCam();
+
+</script>
+</body>
+</html>
+

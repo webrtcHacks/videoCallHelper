@@ -26,6 +26,7 @@
 <br>
 <button id="start">Start</button>
 <button id="stop">Stop</button>
+<button id="clone">Clone</button>
 <br>
 <div id="stats"></div>
 
@@ -34,18 +35,43 @@
     const startBtn = document.querySelector('button#start');
     const stopBtn = document.querySelector('button#stop');
     const stats = document.querySelector('div#stats');
+    const cloneBtn = document.querySelector('button#clone');
 
     const video = document.querySelector('video');
     let stream;
 
+
+    function clone(){
+        const cloneTrack = stream.getVideoTracks()[0].clone();
+        console.log("cloneTrack:", cloneTrack);
+        console.log("cloneTrack settings:", cloneTrack.getSettings());
+        console.log("cloneTrack constraints:", cloneTrack.getConstraints());
+        console.log("cloneTrack capabilities:", cloneTrack.getCapabilities());
+
+        const cloneStream = new MediaStream([cloneTrack]);
+
+        video.srcObject = cloneStream;
+        window.cloneStream = cloneStream;
+        console.log("started cloned stream")
+
+        window.sourceTrack = stream.getVideoTracks()[0];
+        window.cloneTrack = cloneTrack;
+    }
+
     async function getCam() {
         stream = await navigator.mediaDevices.getUserMedia({video: {height: {exact: 720}, aspectRatio: 1.7777777778}});
+        const [track] = stream.getVideoTracks();
+        console.log("Source track:", track);
+        console.log("Source track settings:", track.getSettings());
+        console.log("Source track constraints:", track.getConstraints());
+        console.log("Source track capabilities:", track.getCapabilities());
+
+
         video.srcObject = stream;
         window.stream = stream;
         console.log("started camera stream")
 
-        window.track = stream.getVideoTracks()[0];
-        console.log("track settings:", window.track.getSettings());
+        window.sourceTrack = stream.getVideoTracks()[0];
     }
 
     startBtn.onclick = async () => {
@@ -57,6 +83,8 @@
         stream.getTracks().forEach(track => track.stop());
         console.log("stopped all tracks")
     }
+
+    cloneBtn.onclick = () => clone();
 
     function calculateStats() {
 
