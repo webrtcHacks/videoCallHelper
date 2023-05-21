@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>cloning vs. new generators</title>
+</head>
+<head>
+    <meta charset="UTF-8">
+    <title>getUserMedia</title>
+    <style>
+        table, th, td {
+            border: 1px solid grey;
+            border-collapse: collapse;
+            text-align: right;
+        }
+
+        td:first-child {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+<div id="videos"></div>
+<br>
+<button id="start">Start</button>
+<button id="stop">Stop</button>
+<button id="clone_source">Clone Source</button>
+<button id="new_gen">New Generator</button>
+<button id="clone_gen">Clone Generator</button>
+<br>
+<h4>Apply constraints</h4>
+<button id="apply_constraints_to_source">Source</button>
+<button id="apply_constraints_to_first_generator">Generator</button>
+<button id="apply_constraints_to_first_clone">First Clone</button>
+<button id="apply_constraints_to_second_clone">Second Generator</button>
+
+<div id="stats"></div>
+
+<script type="module">
+
+    const startBtn = document.querySelector('button#start');
+    const stopBtn = document.querySelector('button#stop');
+    const stats = document.querySelector('div#stats');
+    const newGenBtn = document.querySelector('button#new_gen');
+    const cloneSrcBtn = document.querySelector('button#clone_source');
+    const cloneGenBtn = document.querySelector('button#clone_gen');
+
+    const applySrcBtn = document.querySelector('button#apply_constraints_to_source');
+    const applyGenBtn = document.querySelector('button#apply_constraints_to_first_generator');
+    const applyCloneBtn = document.querySelector('button#apply_constraints_to_first_clone');
+    const applyClone2Btn = document.querySelector('button#apply_constraints_to_second_clone');
+
+    let cloneCount = 0;
+    let generators = [];
+    let reader;
+
+    // const sleep = ms => new Promise((resolve) => setTimeout(resolve, ms));
+
+    function newVid(stream, id) {
+        const vid = document.createElement('video');
+        vid.id = id;
+        vid.autoplay = true;
+        vid.playsinline = true;
+        vid.muted = true;
+        vid.controls = true;
+        vid.srcObject = stream;
+
+        vid.onloadedmetadata = async () => {
+            const [track] = stream.getVideoTracks();
+
+            const processor = new MediaStreamTrackProcessor(track);
+            reader = processor.readable;
+
+            console.log(`${id} element video dimensions: ${vid.videoWidth}x${vid.videoHeight}`)
+            console.log(`${id} track: `, track);
+            console.log(`${id} track settings: `, track.getSettings());
+            console.log(`${id} track constraints: `, track.getConstraints());
+            console.log(`${id} track capabilities: `, track.getCapabilities());
+
+        }
+
+        document.querySelector('div#videos').appendChild(vid);
+        return vid;
+    }
+
+
+    async function generateOG(stream) {
+        const canvas = new OffscreenCanvas(1, 1);
+        const ctx = canvas.getContext('2d', {desynchronized: true}); //('bitmaprenderer');
+
+        const [track] = stream.getVideoTracks();
+        const transform = transform(track);
+
+
+        // const [track] = stream.getVideoTracks();
+        // const {height, width} = track.getSettings();
+
+
+        const generator1 = new MediaStreamTrackGenerator({kind: track.kind});
+        const writer1 = generator1.writable;
+
+        const genStream1 = new MediaStream([generator1]);
+        window.genStream1 = genStream1;
+
+        const generator2 = new MediaStreamTrackGenerator({kind: track.kind});
+        const writer2 = generator2.writable;
+
+        const genStream2 = new MediaStream([generator2]);
+        window.genStream2 = genStream2;
+
+        genVid1.srcObject = genStream1;
+        console.log("generator1 track:", generator1);
+
+        genVid2.srcObject = genStream1;
+        console.log("generator2 track:", generator2);
+
+        // FINDING: every new write generating an onplaying event?
+        //         genVid.onloadedmetadata = () => {
+        genVid1.onloadeddata = () => {
+            /*
+        }
+            console.log("generator track settings:", generator.getSettings());
+            console.log("generator track constraints:", generator.getConstraints());
+            console.log("generator track capabilities:", generator.getCapabilities());
+
+            // FINDING: video element is 640x480 when sourceElement is set to 640x360
+            // the below didn't help
+            // genVid.height = genVid.videoHeight;
+            // genVid.width = genVid.videoWidth;
+            // genVid.srcObject = genStream;
+            console.log(`generated video element dimensions ${genVid.width}x${genVid.height}`);
+            console.log(`generated video offset dimensions ${genVid.offsetWidth}x${genVid.offsetHeight}`);
+            console.log(`generated video element video dimensions: ${sourceVid.videoWidth}x${sourceVid.videoHeight}`);
+
+             */
+        }
+
+        const tee = reader
+            .pipeThrough(transform)
+            .tee();
+
+        await Promise.all([
+            clonevsgen[0].pipeTo(writer1),
+            clonevsgen[1].pipeTo(writer2)
+        ])
+            .catch(e => console.error(e));
+
+    }
+
+    async function getCam() {
+        const stream = await navigator.mediaDevices.getUserMedia({video: {aspectRatio: 1.7777777778}});
+
+        const sourceVid = newVid(stream, 'source');
+
+        sourceVid.onplaying = async () => {
+            console.log("video playing");
+            sourceVid.onplaying = null;
+            // await generate(stream);
+
+            const [track] = stream.getVideoTracks();
+
+            const generator = new MediaStreamTrackGenerator({kind: track.kind});
+            generators.push({track: generator, writer: generator.writable.getWriter()});
+            newVid(new MediaStream([generator]), `generated${generators.length}`);
+
+            generator.addEventListener('ended', (event) => {
+                console.log("addEventListener source track ended", event);
+            });
+
+            const canvas = new OffscreenCanvas(1, 1);
+            const ctx = canvas.getContext('2d', {desynchronized: true});
+
+            const transform = new TransformStream({
+                transform: async (frame, controller) => {
+
+                    // FINDING: need to use displayHeight since codedHeight is wrong
+                    const height = frame.displayHeight; // frame.codedHeight;
+                    const width = frame.displayWidth; // frame.codedWidth;
+                    canvas.height = height;
+                    canvas.width = width;
+
+                    ctx.translate(0, height);
+                    ctx.scale(1, -1);
+                    ctx.drawImage(frame, 0, 0);
+
+                    // FINDING: timestamp now required
+                    const params = {
+                        timestamp: frame.timestamp,
+                    }
+                    const newFrame = new VideoFrame(canvas, params);
+                    await controller.enqueue(newFrame);
+                    frame.close();
+                }
+            });
+
+            const transformReader = reader.pipeThrough(transform);
+            // .tee();  // tee only gives 2 readers
+
+
+            const teeReader = transformReader.getReader();
+
+            while (true) {
+                const readerFrame = await teeReader.read();
+                if (readerFrame.done || readerFrame.value === null) {
+                    console.log("reader done");
+                    break
+                }
+
+                generators.forEach( generator => {
+                    const {track, writer} = generator;
+                    // track the generator's readyState; remove it from the writers array when it's ended
+                    if(track.readyState === 'ended') {
+                        generators = generators.filter( gen => gen.id !== track.id);
+                        return;
+                    }
+                    // Needed to create a new frame, otherwise got:
+                    //  TypeError: Failed to execute 'write' on 'UnderlyingSinkBase': Empty video frame.
+                    const newFrame = new VideoFrame(readerFrame.value);
+                    writer.write(newFrame);
+                    // newFrame.close();    // this doesn't seem to cause a frame close error
+                });
+                readerFrame.value.close();  // this does?
+            }
+
+            /*
+            await writers.forEach( (writer, n) => {
+                tee[n].pipeTo(writers[n]);
+            });
+
+             */
+
+        }
+
+        sourceVid.addEventListener('loadeddata', (event) => {
+            console.log(`Actual stream height: ${sourceVid.videoHeight}`);
+            calculateStats(sourceVid);
+        });
+
+        window.stream = stream;
+        window.sourceTrack = stream.getVideoTracks()[0];
+        console.log("started camera stream")
+
+    }
+
+    startBtn.onclick = async () => {
+        await getCam();
+    }
+
+    stopBtn.onclick = () => {
+        document.querySelectorAll('video').forEach(vid => vid?.srcObject?.getTracks().forEach(track => track.stop()));
+        //stream.getTracks().forEach(track => track.stop());
+        console.log("stopped all tracks")
+    }
+
+    cloneSrcBtn.onclick = async () => {
+        const newTrack = sourceTrack.clone();
+        cloneCount++;
+        newVid(new MediaStream([newTrack]), `cloned${cloneCount}`);
+    }
+
+    newGenBtn.onclick = async () => {
+        const generator = new MediaStreamTrackGenerator({kind: 'video'});
+        generators.push({track: generator, writer: generator.writable.getWriter()});
+        newVid(new MediaStream([generator]), `generated${generators.length}`);
+
+        /*
+        // this doesn't work - onended is just if the track ends outside of the developer's control
+        //  like if the user unplugs it?
+        generator.onended = () => {
+            console.log("onended: track ended");
+        }
+
+        generator.addEventListener('ended', (event) => {
+            console.log("addEventListener track ended", event);
+        });
+         */
+
+    }
+
+    cloneGenBtn.onclick = async () => {
+        const generator = generators[0].track.clone();
+        cloneCount++;
+        newVid(new MediaStream([generator]), `cloned${cloneCount}`);
+    }
+
+    applySrcBtn.onclick = async () => {
+        const {height, width} = sourceTrack.getSettings();
+        await sourceTrack.applyConstraints({width: width/2, height: height/2});
+    }
+
+    applyGenBtn.onclick = async () => {
+        const {height, width} = generators[0].track.getSettings();
+        await generators[0].track.applyConstraints({width: width/2, height: height/2});
+    }
+
+    applyCloneBtn.onclick = async () => {
+        const cloneVid = document.querySelector(`video#cloned1`);
+        const {height, width} = cloneVid.srcObject.getVideoTracks()[0].getSettings();
+        await generators[0].track.applyConstraints({width: width/2, height: height/2});
+    }
+
+    applyClone2Btn.onclick = async () => {
+        const cloneVid = document.querySelector(`video#cloned2`);
+        const {height, width} = cloneVid.srcObject.getVideoTracks()[0].getSettings();
+        await generators[0].track.applyConstraints({width: width/2, height: height/2});
+    }
+
+    function calculateStats(videoElem) {
+
+        let decodedFrames = 0,
+            droppedFrames = 0,
+            startTime = new Date().getTime(),
+            initialTime = new Date().getTime();
+
+        const interval = setInterval(function () {
+
+            //see if webkit stats are available; exit if they aren't
+            if (!videoElem.webkitDecodedFrameCount) {
+                console.log("Video FPS calcs not supported");
+                clearInterval(interval);
+            }
+            //get the stats
+            else {
+                const currentTime = new Date().getTime();
+                let deltaTime = (currentTime - startTime) / 1000;
+                let totalTime = (currentTime - initialTime) / 1000;
+                startTime = currentTime;
+
+                // Calculate decoded frames per sec.
+                const currentDecodedFPS = (videoElem.webkitDecodedFrameCount - decodedFrames) / deltaTime;
+                const decodedFPSavg = videoElem.webkitDecodedFrameCount / totalTime;
+                decodedFrames = videoElem.webkitDecodedFrameCount;
+
+                // Calculate dropped frames per sec.
+                const currentDroppedFPS = (videoElem.webkitDroppedFrameCount - droppedFrames) / deltaTime;
+                const droppedFPSavg = videoElem.webkitDroppedFrameCount / totalTime;
+                droppedFrames = videoElem.webkitDroppedFrameCount;
+
+                //write the results to a table
+                stats.innerHTML =
+                    "<table><tr><th>Type</th><th>Total</th><th>Avg</th><th>Current</th></tr>" +
+                    "<tr><td>Decoded</td><td>" + decodedFrames + "</td><td>" + decodedFPSavg.toFixed() + "</td><td>" + currentDecodedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>Dropped</td><td>" + droppedFrames + "</td><td>" + droppedFPSavg.toFixed() + "</td><td>" + currentDroppedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>All</td><td>" + (decodedFrames + droppedFrames) + "</td><td>" + (decodedFPSavg + droppedFPSavg).toFixed() + "</td><td>" + (currentDecodedFPS + currentDroppedFPS).toFixed() + "</td></tr></table>" +
+                    "Camera resolution: " + videoElem.videoWidth + " x " + videoElem.videoHeight;
+            }
+        }, 1000);
+    }
+
+
+    // getCam();
+
+</script>
+</body>
+</html>
+
