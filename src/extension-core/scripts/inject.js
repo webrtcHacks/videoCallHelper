@@ -1,7 +1,7 @@
 'use strict';
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {VCHMediaStreamTrack} from "../../badConnection/scripts/VCHMediaStreamTrack.mjs";
-import {alterStream} from "../../badConnection/scripts/alterSream.mjs";
+import {alterStream} from "../../badConnection/scripts/alterStream.mjs";
 
 // Todo: make this an anonymous function for prod
 

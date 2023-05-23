@@ -286,6 +286,9 @@ class Impairment {
                     // Start webcodecs for impairment
                     if (this.operation === 'impair') {
 
+                        // ToDo: adjust the frame rate to always match the track settings
+
+
                         // ToDo: retest this
                         if(Math.random() <= this.frameDrop ){
                             frame.close();
@@ -308,6 +311,7 @@ class Impairment {
                     }
                     // Do nothing and re-enqueue the frame
                     else if (this.operation === 'passthrough') {
+                        // Impairment.#debug("passthrough", frame);
                         await this.#controller.enqueue(frame);
                     }
                     // Drop the frame
@@ -393,23 +397,23 @@ debug("I am a worker");
 let impairment;
 
 /*
+let frameCounter = 0;
+self.frameCounter = frameCounter;
+
 const testTransform = new TransformStream({
     start: controller => {
         debug("transform stream started", controller);
     },
     transform: async (frame, controller) => {
         frameCounter++;
-        debug(`transforming frame ${frameCounter}`);
-        if(mode === "passThrough"){
-            controller.enqueue(frame);
-        }
-        else if(mode === "delay"){
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            controller.enqueue(frame);
-        }
+        if(frameCounter % 100 === 0)
+            debug(`transforming frame ${frameCounter}`);
+        controller.enqueue(frame);
     },
 });
+
  */
+
 
 // Message handler
 onmessage = async (event) => {

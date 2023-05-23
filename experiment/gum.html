@@ -22,7 +22,9 @@
     </style>
 </head>
 <body>
-<video autoplay playsinline muted controls></video>
+<video id="source"autoplay playsinline muted controls></video>
+<video id="cloneVid"autoplay playsinline muted controls></video>
+
 <br>
 <button id="start">Start</button>
 <button id="stop">Stop</button>
@@ -37,12 +39,15 @@
     const stats = document.querySelector('div#stats');
     const cloneBtn = document.querySelector('button#clone');
 
-    const video = document.querySelector('video');
+    const video = document.querySelector('video#source');
     let stream;
 
 
     function clone(){
-        const cloneTrack = stream.getVideoTracks()[0].clone();
+        const sourceTrack = stream.getVideoTracks()[0];
+        const cloneTrack = sourceTrack.clone();
+        window.cloneTrack = cloneTrack;
+
         console.log("cloneTrack:", cloneTrack);
         console.log("cloneTrack settings:", cloneTrack.getSettings());
         console.log("cloneTrack constraints:", cloneTrack.getConstraints());
@@ -50,12 +55,17 @@
 
         const cloneStream = new MediaStream([cloneTrack]);
 
-        video.srcObject = cloneStream;
+        // video.srcObject = cloneStream;
+
+        const cloneVid = document.querySelector('video#cloneVid');
+        cloneVid.srcObject = cloneStream;
+
         window.cloneStream = cloneStream;
         console.log("started cloned stream")
 
-        window.sourceTrack = stream.getVideoTracks()[0];
-        window.cloneTrack = cloneTrack;
+
+        // window.sourceTrack = stream.getVideoTracks()[0];
+        // sourceTrack.stop();
     }
 
     async function getCam() {

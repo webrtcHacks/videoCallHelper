@@ -26,3 +26,24 @@ groupId: "1b6de2c476a29ad15fa5affb4456e5a5c1a8b8c257a6cb8c0742dbf5150a3820"
 height:{max: 1920, min: 1}
 resizeMode: ['none', 'crop-and-scale']
 width: {max: 1920, min: 1}
+
+## content vs. inject context
+
+Tried to run the worker in the content context.
+The stream/track object would get reset when switching contexts, so it would look like a 
+MediaStreamTrackGenerator instead of the faked MediaStreamTrack I setup with alteredMediaStreamTrack.
+This inturn would cause errors in the apps
+
+## cloning options
+
+1. clone the source gUM track and run it through a new generator
+ - Pro: could do applyContraints to the clone track without affecting the original source
+ - Con: way more resources
+2. clone the generated track
+ - Pro: easy
+ - Con: won't work with apply contraints
+3. Tee the generator output to a enw stream 
+ - Pro: no new resources
+ - Con: can't do applyContraints
+
+

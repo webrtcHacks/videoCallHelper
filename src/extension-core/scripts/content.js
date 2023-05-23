@@ -1,7 +1,7 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
-// import {alterStream} from "../../badConnection/scripts/alterSream.mjs";
+// import {alterStream} from "../../badConnection/scripts/alterStream.mjs";
 
 
 
