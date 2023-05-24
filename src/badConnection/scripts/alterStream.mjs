@@ -30,6 +30,8 @@ mh.sendMessage('content', m.GET_BAD_CONNECTION_SETTINGS);
 /************ END get settings  ************/
 
 window.newStreams = [];
+const alteredTracks = [];
+window.alteredTracks = alteredTracks;
 
 // Learning: I was not able to transfer a modified writer to the worker
 // My goal is to wait until something is written to the track before returning the new stream
@@ -201,7 +203,7 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
 }
 
-function alterTrack(track) {
+export function alterTrack(track) {
 
     // I used to return the promise which would only resolve after a couple of frames to make sure
     // the track was working. That doesn't work for the clone() method that needs an immediate response
@@ -276,6 +278,7 @@ function alterTrack(track) {
                     debug(`terminating worker ${worker.name}. worker error: `, e.data.error);
                     trackDone();
 
+                    // ToDo: better track status mechanism?
                     // see if there are other tracks still running and update the gUI
                     await checkGeneratorStreams();
 
@@ -301,6 +304,7 @@ function alterTrack(track) {
         debug("Error in alterTrack: ", err);
     });
 
+    alteredTracks.push(generator);
     return generator;
 
 }

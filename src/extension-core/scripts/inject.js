@@ -1,7 +1,6 @@
 'use strict';
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
-import {VCHMediaStreamTrack} from "../../badConnection/scripts/VCHMediaStreamTrack.mjs";
-import {alterStream} from "../../badConnection/scripts/alterStream.mjs";
+import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -139,9 +138,8 @@ async function transferStream(stream){
 
  */
 
-// extract and send track event data
 // ToDo: merge this into monitorTrack in content.js?
-
+// extract and send track event data
 async function processTrack(track, sourceLabel = ""){
 
     // ToDo: contentSelfView handler
@@ -235,9 +233,11 @@ if (!window.videoCallHelper) {
             debug("got stream", stream);
 
             await transferStream(stream);               // transfer the stream to the content script
-            const alteredStream = await alterStream(stream);
-            debug("alteredStream", alteredStream);
-            return alteredStream                                        // return the altered stream
+            return stream;                              // return the original stream
+
+            // const alteredStream = await alterStream(stream);
+            // debug("alteredStream", alteredStream);
+            // return alteredStream                                        // return the altered stream
         }
         catch (err) {
             debug("getUserMedia error!:", err);
@@ -297,6 +297,22 @@ if (!window.videoCallHelper) {
         tracks.forEach(track=>processTrack(track,"local"));
         return origPeerConnAddStream.apply(this, arguments)
     };
+
+    // ToDo
+    const origAddTransceiver = RTCPeerConnection.prototype.addTransceiver;
+    RTCPeerConnection.prototype.addTransceiver = function () {
+        debug(`addTransceiver shimmed on peerConnection`, this, arguments);
+        if(typeof(arguments[0]) !== 'string') {  // could be MediaStreamTrack, Canvas, Generator, etc
+            const newArguments = arguments;
+            const alteredTrack = alterTrack(arguments[0]);
+            debug("changing transceiver track (source, change)", arguments[0], alteredTrack);
+            arguments[0] = alteredTrack;
+            return origAddTransceiver.apply(this, newArguments)
+        }
+        else{
+            return origAddTransceiver.apply(this, arguments)
+        }
+    }
 
     const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
     RTCPeerConnection.prototype.setRemoteDescription = function () {
