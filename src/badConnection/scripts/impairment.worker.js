@@ -178,6 +178,8 @@ class Impairment {
             });
 
             // Video encode
+            // ToDo: gMeet error when applying virtual background
+            // 6dec99a7-2f82-4d8d-a643-2a4a0205d29e:181 Uncaught (in promise) TypeError: Failed to execute 'isConfigSupported' on 'VideoEncoder': Invalid framerate; expected range from 0.000100 to 1000000000.000000, received 0.000000.
             VideoEncoder.isConfigSupported(this.codecConfig).then((encoderSupport) => {
                 if (encoderSupport.supported){
                     this.#encoder = new VideoEncoder({output: handleEncodedFrame, error: debug});

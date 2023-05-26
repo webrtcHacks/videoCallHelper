@@ -316,7 +316,8 @@ mh.addListener(m.TRACK_ENDED, async data=>{
     // these are in presence off
         // await new Promise(resolve => setTimeout(resolve, 2000));
         // if(!trackData.some(td => td.readyState === 'live'))
-    await presenceOff();
+    if(storage.contents.presence && storage.contents.presence.active)
+        await presenceOff();
 });
 
 // ToDo: remove

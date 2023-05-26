@@ -28,7 +28,7 @@ const sendMessage = mh.sendMessage;
 
 // Put the stream in a temp DOM element for transfer to content.js context
 // content.js will swap with a replacement stream
-async function transferStream(stream){
+async function transferStream(stream) {
     // ToDo: shadow dom?
     const video = document.createElement('video');
     // video.id = stream.id;
@@ -42,6 +42,7 @@ async function transferStream(stream){
         sendMessage('all', m.GUM_STREAM_START, {id: video.id});
     }
 }
+
 /*
 async function transferStream(stream){
 
@@ -140,14 +141,14 @@ async function transferStream(stream){
 
 // ToDo: merge this into monitorTrack in content.js?
 // extract and send track event data
-async function processTrack(track, sourceLabel = ""){
+async function processTrack(track, sourceLabel = "") {
 
     // ToDo: contentSelfView handler
     const settings = await track.getSettings();
-    if(track.kind==='video')
+    if (track.kind === 'video')
         debug('video track settings', settings);
 
-    if(!processTrackSwitch)
+    if (!processTrackSwitch)
         return;
 
     // ToDo: do I really need to enumerate the object here?
@@ -155,7 +156,7 @@ async function processTrack(track, sourceLabel = ""){
     const trackData = {id, kind, label, readyState, deviceId};
     sendMessage('all', `${sourceLabel}_track_added`, {trackData});
 
-    async function trackEventHandler(event){
+    async function trackEventHandler(event) {
         const type = event.type;
         const {id, kind, label, readyState, enabled, contentHint, muted, deviceId} = event.target;
         const trackData = {id, kind, label, readyState, enabled, contentHint, muted, deviceId};
@@ -174,18 +175,18 @@ async function processTrack(track, sourceLabel = ""){
 // monitor local audio track audio levels
 // ToDo: need to stop / pause this
 // ToDo: should this be in content.js?
-function monitorAudio(peerConnection){
+function monitorAudio(peerConnection) {
     //[...await pc1.getStats()].filter(report=>/RTCAudioSource_1/.test(report))[0][1].audioLevel
     const audioLevels = new Array(LOCAL_AUDIO_SAMPLES_PER_SECOND);
     let counter = 0;
 
-    const interval = setInterval(async ()=>{
+    const interval = setInterval(async () => {
         counter++;
         // get audio energies from getStats
         const reports = await peerConnection.getStats();
-        const {audioLevel, totalAudioEnergy} = [...reports].filter(report=>/RTCAudioSource/.test(report))[0][1];
+        const {audioLevel, totalAudioEnergy} = [...reports].filter(report => /RTCAudioSource/.test(report))[0][1];
         audioLevels.push(audioLevel);
-        if(counter>=LOCAL_AUDIO_SAMPLES_PER_SECOND){
+        if (counter >= LOCAL_AUDIO_SAMPLES_PER_SECOND) {
             const avg = audioLevels.reduce((p, c) => p + c, 0) / audioLevels.length;
             // debug("audioLevel", avg);
             // ToDo: stop this when it is null or the PC is closed
@@ -198,7 +199,7 @@ function monitorAudio(peerConnection){
     // ToDo: use eventListener to prevent onconnectionstatechange from being overwritten by the app
     // peerConnection.onconnectionstatechange = () => {
     peerConnection.addEventListener('connectionstatechange', () => {
-        if(peerConnection.connectionState !== 'connected')
+        if (peerConnection.connectionState !== 'connected')
             clearInterval(interval);
     });
 }
@@ -222,9 +223,10 @@ if (!window.videoCallHelper) {
     // getUserMedia Shim
 
     const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+
     async function shimGetUserMedia(constraints) {
         const stream = await origGetUserMedia(constraints);
-        try{
+        try {
             // Handles track events of the original stream
             // const tracks = stream.getTracks();
             // ToDo: move this into content.js
@@ -238,8 +240,7 @@ if (!window.videoCallHelper) {
             // const alteredStream = await alterStream(stream);
             // debug("alteredStream", alteredStream);
             // return alteredStream                                        // return the altered stream
-        }
-        catch (err) {
+        } catch (err) {
             debug("getUserMedia error!:", err);
             return stream
         }
@@ -275,41 +276,124 @@ if (!window.videoCallHelper) {
     navigator.getUserMedia = _webkitGetUserMedia;
     navigator.mediaDevices.getUserMedia = shimGetUserMedia;
 
+
+    // This doesn't seem to be used by Google Meet
+    const origMediaStreamAddTrack = MediaStream.prototype.addTrack;
+    MediaStream.prototype.addTrack = function (track) {
+        debug(`addTrack shimmed on MediaStream`, this, track);
+        debug("MediaStream track settings", track.getSettings());
+        return origMediaStreamAddTrack.apply(this, arguments);
+    }
+
+
     // peerConnection shims
+
+    window.pcTracks = [];
+    window.pcStreams = [];      // streams always empty
+    window.pcs = [];
 
     const origAddTrack = RTCPeerConnection.prototype.addTrack;
     RTCPeerConnection.prototype.addTrack = function (track, stream) {
-        debug(`addTrack shimmed on peerConnection`, this, track, stream);
-        processTrack(track, "local").catch(err=>debug("processTrack error", err));
+        let streams = [...arguments].slice(1);
+        debug(`addTrack shimmed on peerConnection`, this, track, ...streams);
+        debug("peerConnection local track settings", track.getSettings());
+        // ToDo: debugging
+        window.pcTracks.push(track);
+        processTrack(track, "local").catch(err => debug("processTrack error", err));
 
         // ToDo: handle if the switch is changed
         // ToDo: no check to see if this is an audio track?
-        if(monitorAudioSwitch)
+        if (monitorAudioSwitch)
             monitorAudio(this);
 
+        const alteredTrack = alterTrack(track);
+        debug("changing addTrack track (source, change)", track, alteredTrack);
+
+        // ToDo: this should handle multiple streams if supplied as arguments
+        arguments[0] = alteredTrack;
         return origAddTrack.apply(this, arguments)
+        //return origAddTrack.apply(this, arguments)
     };
 
     const origPeerConnAddStream = RTCPeerConnection.prototype.addStream;
     RTCPeerConnection.prototype.addStream = function (stream) {
         debug(`addStream shimmed on peerConnection`, this, stream);
         const tracks = stream.getTracks();
-        tracks.forEach(track=>processTrack(track,"local"));
-        return origPeerConnAddStream.apply(this, arguments)
+        tracks.forEach(track => processTrack(track, "local"));
+
+        const alteredTracks = tracks.map(track => {
+            alterTrack(track);
+            window.pcTracks.push(track);
+        });
+        const alteredStream = new MediaStream(alteredTracks);
+        debug("changing addStream stream (source, change)", stream, alteredStream);
+        return origPeerConnAddStream.apply(this, [alteredStream, ...arguments])
+
+        // return origPeerConnAddStream.apply(this, arguments)
     };
 
-    // ToDo
+    //  It looks like Google Meet has its own addStream shim that does a track replacement instead of addTrack
+    //  try to shim RTCRtpSender.replaceTrack() - from MDN: https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpSender
+    //    "Attempts to replace the track currently being sent by the RTCRtpSender with another track, without
+    //    performing renegotiation. This method can be used, for example, to toggle between the front- and
+    //    rear-facing cameras on a device.
+
+    const origSenderReplaceTrack = RTCRtpSender.prototype.replaceTrack;
+    RTCRtpSender.prototype.replaceTrack = function (track) {
+        debug(`replaceTrack shimmed on RTCRtpSender`, this, track);
+        debug("RTC sender track settings", track.getSettings());
+
+        window.pcTracks.push(track);
+        if(track.sourceTrack){
+            debug("track already altered");
+            return origSenderReplaceTrack.apply(this, arguments);
+        }
+        else {
+            const alteredTrack = alterTrack(track);
+            arguments[0] = alteredTrack;
+            return origSenderReplaceTrack.apply(this, arguments);
+        }
+    }
+
+
     const origAddTransceiver = RTCPeerConnection.prototype.addTransceiver;
     RTCPeerConnection.prototype.addTransceiver = function () {
+        const init = arguments[1] || undefined;
         debug(`addTransceiver shimmed on peerConnection`, this, arguments);
-        if(typeof(arguments[0]) !== 'string') {  // could be MediaStreamTrack, Canvas, Generator, etc
-            const newArguments = arguments;
-            const alteredTrack = alterTrack(arguments[0]);
-            debug("changing transceiver track (source, change)", arguments[0], alteredTrack);
+        window.pcs.push(this);
+        if (typeof (arguments[0]) !== 'string') {  // could be MediaStreamTrack, Canvas, Generator, etc
+            const track = arguments[0];
+            window.pcTracks.push(track);
+            const alteredTrack = alterTrack(track);
+            debug("changing transceiver track (source, change)", track, alteredTrack);
             arguments[0] = alteredTrack;
-            return origAddTransceiver.apply(this, newArguments)
+            return origAddTransceiver.apply(this, arguments)
         }
+        /*
+        else if((init?.direction === 'sendrecv' || init?.direction === 'sendonly') && init?.streams){
+            init.streams.forEach( (stream, idx) => {
+                debug("addTransceiver stream", stream);
+                debug("addTransceiver stream tracks", stream.getTracks());
+                window.pcStreams.push(stream);
+
+                // This doesn't do anything
+                stream.addEventListener('addtrack', (event) => {
+                    debug("addTransceiver stream addtrack event", event);
+                    const track = event.track;
+                    window.pcTracks.push(track);
+                });
+            });
+
+            const newArguments = [arguments[0], init];
+            // return origAddTransceiver.apply(this, newArguments)
+            debug("addTransceiver changed [debug]", newArguments);
+            return origAddTransceiver.apply(this, arguments)
+
+        }
+
+         */
         else{
+            debug("addTransceiver no change");
             return origAddTransceiver.apply(this, arguments)
         }
     }
@@ -320,31 +404,35 @@ if (!window.videoCallHelper) {
         // ToDo: do this as part of onconnectionstatechange
         sendMessage('all', m.PEER_CONNECTION_OPEN, {});
 
+        // Remove audio level monitoring
+        /*
         // ToDo: average this locally before sending?
-        let interval = setInterval(()=>
-            this.getReceivers().forEach(receiver=>{
-                const {track:  {id, kind, label}, transport} = receiver;
+        let interval = setInterval(() =>
+            this.getReceivers().forEach(receiver => {
+                const {track: {id, kind, label}, transport} = receiver;
                 // const {id, kind, label} = track;
                 // ToDo: Uncaught TypeError: Cannot read properties of null (reading 'state') - added a `?` to fix, did it work?
-                if(transport?.state !=='connected'){
+                if (transport?.state !== 'connected') {
                     // debug("not connected", transport.state);
                     clearInterval(interval);
                     return
                 }
 
-                if(kind==='audio' && monitorAudioSwitch){
+                if (kind === 'audio' && monitorAudioSwitch) {
                     const sources = receiver.getSynchronizationSources();
-                    sources.forEach(syncSource=>{
-                       const {audioLevel, source} = syncSource;
+                    sources.forEach(syncSource => {
+                        const {audioLevel, source} = syncSource;
                         sendMessage('all', m.REMOTE_AUDIO_LEVEL, {audioLevel, source, id, kind, label});
                         // debug(`${source} audioLevel: ${audioLevel}`)
                     })
                 }
             }), 1000);
 
+         */
+
         this.addEventListener('track', (e) => {
             const track = e.track;
-            processTrack(track, "remote").catch(err=>debug("processTrack error", err));
+            processTrack(track, "remote").catch(err => debug("processTrack error", err));
             debug(`setRemoteDescription track event on peerConnection`, this, track)
         });
         return origPeerConnSRD.apply(this, arguments)
@@ -352,7 +440,7 @@ if (!window.videoCallHelper) {
 
 
     const origPeerConnClose = RTCPeerConnection.prototype.close;
-    RTCPeerConnection.prototype.close = function() {
+    RTCPeerConnection.prototype.close = function () {
         debug("closing PeerConnection ", this);
         sendMessage('all', m.PEER_CONNECTION_CLOSED, this);
         return origPeerConnClose.apply(this, arguments)

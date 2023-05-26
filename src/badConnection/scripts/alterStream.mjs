@@ -203,6 +203,8 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
 }
 
+// ToDo: need a way to replace an altered track
+// ToDo: mute / unmute not working
 export function alterTrack(track) {
 
     // I used to return the promise which would only resolve after a couple of frames to make sure
@@ -225,10 +227,35 @@ export function alterTrack(track) {
         // debug("alteredMediaStreamTrackGenerator video track constraints: ", generator.getConstraints());
         // debug("alteredMediaStreamTrackGenerator video track capabilities: ", generator.getCapabilities());
 
-        const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
+        // const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
         const workerName = `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`;
-        const worker = new Worker(workerBlobURL, {name: workerName});
+        // const worker = new Worker(workerBlobURL, {name: workerName});
+
+        let worker;
+        if (window.trustedTypes && trustedTypes.createPolicy) {
+            const policy = trustedTypes.createPolicy('my-policy', {
+                createScriptURL: (url) => url,
+            });
+            const workerBlobURL = URL.createObjectURL(
+                new Blob([impairmentWorkerScript], { type: 'application/javascript' })
+            );
+            worker = new Worker(policy.createScriptURL(workerBlobURL), {
+                name: workerName,
+            });
+        }
+        else {
+            const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
+            worker = new Worker(workerBlobURL, {name: workerName});
+        }
+
+        if(!worker) {
+            const error = new Error("Failed to create worker");
+            debug(error);
+            reject(error);
+        }
         worker.name = workerName;
+
+
 
         function trackDone() {
             worker.postMessage({command: "stop"});  // clean-up resources?
