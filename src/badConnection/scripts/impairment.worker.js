@@ -45,7 +45,8 @@ class Impairment {
             heightFactor: 2,
             bitrate: 400_000,   // 750_000
             framerateFactor: 2,
-            frameDrop: 0.2
+            frameDrop: 0.2,
+            frameRate: 10
 
         }
     }
@@ -68,7 +69,8 @@ class Impairment {
             heightFactor: 8,        // 4
             bitrate: 25_000,       // 300_000
             framerateFactor: 4,
-            frameDrop: 0.5
+            frameDrop: 0.5,
+            frameRate: 5
         }
     }
 
@@ -178,8 +180,6 @@ class Impairment {
             });
 
             // Video encode
-            // ToDo: gMeet error when applying virtual background
-            // 6dec99a7-2f82-4d8d-a643-2a4a0205d29e:181 Uncaught (in promise) TypeError: Failed to execute 'isConfigSupported' on 'VideoEncoder': Invalid framerate; expected range from 0.000100 to 1000000000.000000, received 0.000000.
             VideoEncoder.isConfigSupported(this.codecConfig).then((encoderSupport) => {
                 if (encoderSupport.supported){
                     this.#encoder = new VideoEncoder({output: handleEncodedFrame, error: debug});
@@ -188,7 +188,8 @@ class Impairment {
                 }
                 else
                     debug(`${this.kind} decoder config not supported`, this.codecConfig);
-            });
+            })
+                .catch((err) => {debug("encoder config error", err, this.codecConfig, this.trackSettings)});
 
         } else if (this.kind === 'audio') {
             // Audio decode
@@ -222,6 +223,9 @@ class Impairment {
                 pt: 1
              */
 
+            const codecFrameRate =  (frameRate / (framerateFactor || 1)).toFixed(0);
+
+
             // Configure the codec
             this.codecConfig = {
                 // ToDo: severe to moderate not working when using h264 config below
@@ -238,10 +242,13 @@ class Impairment {
                 keyInterval: keyFrameInterval,
                  */
 
+
                 codec: 'vp8',
                 width: (width / (widthFactor || 1)).toFixed(0),
                 height: (height / (heightFactor || 1)).toFixed(0),
-                framerate: (frameRate / (framerateFactor || 1)).toFixed(0)
+                // framerate: (frameRate / (framerateFactor || 1)).toFixed(0) || frameRate
+                // frameRate: frameRate;
+                frameRate: Math.max(this.impairmentConfig.video.frameRate, codecFrameRate )
             }
 
             // Set up the impairment
@@ -288,9 +295,6 @@ class Impairment {
                     // Start webcodecs for impairment
                     if (this.operation === 'impair') {
 
-                        // ToDo: adjust the frame rate to always match the track settings
-
-
                         // ToDo: retest this
                         if(Math.random() <= this.frameDrop ){
                             frame.close();
@@ -303,7 +307,8 @@ class Impairment {
                             this.#forceKeyFrame = false;
                         }
 
-                        // ToDo: upscale the frame to its original size before encoding
+                        // ToDo: upscale the frame to its original size before encoding??
+                        //  maybe it doesn't matter to the peerConnection encoder?
                         this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
 
                         // part of update
@@ -342,7 +347,6 @@ class Impairment {
 
     set config(config) {
         this.impairmentConfig = config;
-
 
         this.#encoder.flush().then(() => {
             this.#loadConfig();
