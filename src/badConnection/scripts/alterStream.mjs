@@ -62,9 +62,9 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
         this.options = options;
         this._label = sourceTrack.label;
-        this._contentHint = sourceTrack.contentHint;
-        this._enabled = sourceTrack.enabled || true;
-        this._muted = sourceTrack.muted;
+        // this._contentHint = sourceTrack.contentHint;
+        // this._enabled = sourceTrack.enabled || true;
+        // this._muted = sourceTrack.muted;
 
         this._settings = sourceTrack.getSettings();
         this._constraints = sourceTrack.getConstraints();
@@ -79,12 +79,19 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
         return this._label;
     }
 
+
     get contentHint() {
-        return this._contentHint;
+        // return this._contentHint;
+        return super.contentHint
     }
 
     get enabled() {
-        return this._enabled;
+        // return this._enabled;
+        return super.enabled;
+    }
+
+    get muted() {
+        return super.muted;
     }
 
     get writable() {
@@ -103,9 +110,10 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
 
     set enabled(enabled) {
-        this._enabled = enabled;
-        this._muted = enabled;  // ToDo: check the spec for function here
-        return this._enabled;
+        // this._enabled = enabled;
+        // this._muted = enabled;  // ToDo: check the spec for function here
+        // return this._enabled;
+        return super.enabled = enabled;
     }
 
 
@@ -207,15 +215,45 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 // ToDo: mute / unmute not working
 export function alterTrack(track) {
 
+
+    /*
+    // ToDo: gMeet audio self mute debugging
+    //  The below works for muting, but doesn't send any audio
+    if(track.kind === "audio") {
+        // const generator = new MediaStreamTrackGenerator({kind: track.kind});
+        const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
+        const writer = generator.writable;
+
+        const processor = new MediaStreamTrackProcessor(track);
+        const reader = processor.readable;
+
+        // Needed to add a delay here to avoid the following error:
+        //  vch 💉️😈 DEBUG: Insertable stream error DOMException: Failed to execute 'write' on 'UnderlyingSinkBase': Stream closed
+        setTimeout(() => {
+            reader
+                .pipeTo(writer)
+                .catch(async err => {
+                    debug(`DEBUG: Insertable stream error`, err);
+                });
+        }, 200);
+
+        return
+    }
+     */
+
+    // Don't process audio for google meet
+    if(track.kind === "audio" && window.location.host.includes("google"))
+        return track;
+
     // I used to return the promise which would only resolve after a couple of frames to make sure
     // the track was working. That doesn't work for the clone() method that needs an immediate response
     // so I return the generator and let the generator start when it starts
 
     const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
 
-
-    // keep the promise here incase I need to send a notification on resolve
+    // keep the promise here in case I need to send a notification on resolve
     new Promise((resolve, reject) => {
+
 
         const processor = new MediaStreamTrackProcessor(track);
         const reader = processor.readable;
@@ -226,6 +264,7 @@ export function alterTrack(track) {
         // debug("alteredMediaStreamTrackGenerator video track settings: ", generator.getSettings());
         // debug("alteredMediaStreamTrackGenerator video track constraints: ", generator.getConstraints());
         // debug("alteredMediaStreamTrackGenerator video track capabilities: ", generator.getCapabilities());
+
 
         // const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
         const workerName = `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`;

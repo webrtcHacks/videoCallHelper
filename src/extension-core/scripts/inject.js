@@ -309,7 +309,6 @@ if (!window.videoCallHelper) {
         const alteredTrack = alterTrack(track);
         debug("changing addTrack track (source, change)", track, alteredTrack);
 
-        // ToDo: this should handle multiple streams if supplied as arguments
         arguments[0] = alteredTrack;
         return origAddTrack.apply(this, arguments)
         //return origAddTrack.apply(this, arguments)
@@ -346,13 +345,15 @@ if (!window.videoCallHelper) {
         window.pcTracks.push(track);
         if(track.sourceTrack){
             debug("track already altered");
-            return origSenderReplaceTrack.apply(this, arguments);
         }
         else {
             const alteredTrack = alterTrack(track);
             arguments[0] = alteredTrack;
-            return origSenderReplaceTrack.apply(this, arguments);
+            // return origSenderReplaceTrack.apply(this, arguments);
         }
+
+        return origSenderReplaceTrack.apply(this, arguments);
+
     }
 
 
