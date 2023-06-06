@@ -1,28 +1,57 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
-import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
+import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
+// import {alterStream} from "../../badConnection/scripts/alterStream.mjs";
+
+
 
 const streams = [];
 let trackInfos = [];
 
 window.vchStreams = streams;
 
-const debug = function() {
+const debug = function () {
     return Function.prototype.bind.call(console.debug, console, `vch 🕵️‍ `);
 }();
 
 debug(`content.js loaded on ${window.location.href}`);
+// debug('content.js URL: ', chrome.runtime.getURL('content.js'));
 
 const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
 // await sendMessage('all', 'hello there', {foo: 'bar'});
 
-// const storage = await chrome.storage.local.get();
-// await debug("storage contents:", storage);
+
+/************ START bad connection ************/
+// ToDo - possibly move this into a module
+// Need to relay badConnection updates between inject and dash
+import {StorageHandler} from "../../modules/storageHandler.mjs";
+let storage = await new StorageHandler("local", debug);
+
+const bcsInitSettings = {
+    enabled: storage.contents['badConnection']?.enabled ?? false,
+    active: false,
+    level: "passthrough"
+}
+
+await storage.update('badConnection', bcsInitSettings);
+await storage.addListener('badConnection', (newValue) => {
+    debug("badConnection settings changed", newValue);
+    sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, newValue);
+});
+
+mh.addListener(m.GET_BAD_CONNECTION_SETTINGS, () => {
+    sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, bcsInitSettings);
+});
+
+/************ END bad connection ************/
 
 const dashHeight = 180;
 // ToDo: inline CSS with webpack
-const dashStyle = `position:fixed;top:0;left:0;width:100%;height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
+const dashStyle = `position:fixed;top:0;left:0;width:100%;max-height:${dashHeight}px;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
+
+// const dashStyle = `position:fixed;top:0;left:0;width:100%;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
+
 
 async function toggleDash() {
 
@@ -64,6 +93,7 @@ async function toggleDash() {
         }
     }
 }
+
 mh.addListener(m.TOGGLE_DASH, toggleDash);
 
 // Monitor and share track changes
@@ -74,7 +104,7 @@ async function syncTrackInfo() {
     debug("getting current video devices:", videoDevices);
 
     // video.js can ask for syncTrackInfo at any time, so see if there are still streams
-    if(streams.length === 0){
+    if (streams.length === 0) {
         debug("No streams to syncTrackInfo");
         return
     }
@@ -174,7 +204,7 @@ async function syncTrackInfo() {
 }
 
 // Added for presence
-async function monitorTrack(track, streamId){
+async function monitorTrack(track, streamId) {
     debug(`new track ${streamId} video settings: `, track);
     const {id, kind, label, readyState} = track;
     const trackData = {
@@ -185,18 +215,18 @@ async function monitorTrack(track, streamId){
         streamId
     }
 
-    if(track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
+    if (track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
         await sendMessage('background', m.NEW_TRACK, trackData);
 
     // Note: this only fires if the browser forces the track to stop; not for most user actions
-    track.addEventListener('ended', async (e) => {
+    track.addEventListener('ended', async () => {
         trackData.readyState = 'ended';
         await sendMessage('background', m.TRACK_ENDED, trackData);
     });
 
     // use an interval to check if the track has ended
     const monitor = setInterval(async () => {
-        if(track.readyState === 'ended'){
+        if (track.readyState === 'ended') {
             trackData.readyState = 'ended';
             await sendMessage('background', m.TRACK_ENDED, trackData);
             clearInterval(monitor);
@@ -218,38 +248,87 @@ async function monitorTrack(track, streamId){
      */
 }
 
+window.newStreams = [];
 
-async function gumStreamStart(data){
+
+// ToDo: count errors back from the worker - cancel modification attempts if too many
+
+async function gumStreamStart(data) {
     const id = data.id;
     const video = document.querySelector(`video#${id}`);
-    const stream = video.srcObject;
-    streams.push(stream);
+    const origStream = video.srcObject;
+    streams.push(origStream);
     debug("current streams", streams);
 
+    // ToDo: handle this
+    // debug("Transferred video track settings: ", origStream.getVideoTracks()[0].getSettings());
+    // debug("Transferred video track constraints: ", origStream.getVideoTracks()[0].getConstraints());
+    // debug("Transferred video track capabilities: ", origStream.getVideoTracks()[0].getCapabilities());
+
+    if (video.srcObject.getTracks().length === 0) {
+        debug("no tracks found in stream", video.srcObject);
+        // ToDo: handle this
+        await sendMessage('inject', m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
+        return;
+    }
+
     // Added for presence
-    stream.getTracks().forEach(track => monitorTrack(track, stream.id));
+    origStream.getTracks().forEach(track => monitorTrack(track, origStream.id));
 
     // ToDo: should really ignore streams and just monitor tracks
-    stream.addEventListener('removetrack', async (event) => {
+    origStream.addEventListener('removetrack', async (event) => {
         debug(`${event.track.kind} track removed`);
-        if(stream.getTracks().length === 0){
+        if (origStream.getTracks().length === 0) {
             await sendMessage('all', m.GUM_STREAM_STOP);
         }
     });
 
+
+    // BadConnection simulator
+    // the stream used by inject.js is a different object due to context switch; this messed up some services
+   /*
+    try{
+        const modifiedStream = await alterStream(origStream);
+        // video.srcObject = new VCHMediaStreamTrack(modifiedStream, origStream);
+        debug("Modified video track: ", modifiedStream.getVideoTracks()[0]);
+        debug("Modified video track settings: ", modifiedStream.getVideoTracks()[0].getSettings());
+        debug("Modified video track constraints: ", modifiedStream.getVideoTracks()[0].getConstraints());
+        debug("Modified video track capabilities: ", modifiedStream.getVideoTracks()[0].getCapabilities());
+
+
+        debug(`new modifiedStream: `, modifiedStream);
+        debug(`new modifiedStream tracks: `, modifiedStream.getTracks());
+        video.srcObject = modifiedStream;
+        debug("added modified stream to video element", video);
+
+        debug("Attached video track: ", video.srcObject.getVideoTracks()[0]);
+        debug("Attached video track settings: ", video.srcObject.getVideoTracks()[0].getSettings());
+        debug("Attached video track constraints: ", video.srcObject.getVideoTracks()[0].getConstraints());
+        debug("Attached video track capabilities: ", video.srcObject.getVideoTracks()[0].getCapabilities());
+
+    }
+    catch (err) {
+        debug("alterStream error: ", err);
+    }
+    */
+
+    // instead of the above
+    // video.srcObject = origStream;
+
+
     // send a message back to inject to remove the temp video element
-    await sendMessage('inject', m.TRACK_TRANSFER_COMPLETE, {id});
+    await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
 
     // image capture
-    await grabFrames(stream);
+    await grabFrames(origStream);
 
     // self-view
-    await new selfViewElementModifier(stream);
+    // this works as long as I reuse the streamID?
+    await new selfViewElementModifier(origStream);
 
 }
 
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
-
 
 
 // For timing testing
@@ -270,4 +349,4 @@ function addScript(path) {
 }
 
 addScript('/scripts/inject.js');
-debug("inject injected");
+// debug("inject injected");

@@ -71,15 +71,21 @@ async function getVideoTabId(){
     // log("videoTab", videoTab);
 }
 
+// let gumActive = false;
+chrome.runtime.onStartup.addListener(async () => {
+    // await getVideoTabId();
+})
+
 /*
-chrome.runtime.getPlatformInfo(info=>{
-    debug(`platform info:`, info);
-    // platform info: {arch: 'arm64', nacl_arch: 'arm', os: 'mac'}
-});
+ * Inter-script messaging
  */
 
-// Resets the storage to default starting values - i.e. everything active = false
-async function resetStorage(){
+chrome.runtime.onInstalled.addListener(async () => {
+
+    debug("onInstalled starting local storage: ", storage.contents);
+
+    //await storage.set("streamTabs", []);
+
     // presence settings
     if(!storage.contents.presence)
         await storage.set('presence', settingsPrototype);
@@ -87,7 +93,7 @@ async function resetStorage(){
         await storage.update('presence', {active:false});
     }
 
-    // imageCapture settings
+    // ToDo: rename
     if(!storage.contents['imageCapture']){
         // Image capture
         const imageCaptureSettings = {
@@ -99,7 +105,6 @@ async function resetStorage(){
     }
 
     // self-view settings
-
     const selfViewSettings = {
         active: false,
         enabled: storage.contents['selfView']?.enabled || false,
@@ -114,28 +119,7 @@ async function resetStorage(){
     }
     await storage.set('badConnection', badConnectionSettings);
 
-}
 
-await resetStorage();
-
-// ToDo: none of these runtime events seem to fire
-chrome.runtime.onConnect.addListener(async port => {
-    debug("onConnect local storage: ", storage.contents);
-    await resetStorage();
-});
-
-chrome.runtime.onStartup.addListener(async () => {
-    // await getVideoTabId();
-    debug("onStartup local storage: ", storage.contents);
-    await resetStorage();
-})
-
-chrome.runtime.onInstalled.addListener(async () => {
-
-    debug("onInstalled local storage: ", storage.contents);
-    await resetStorage();
-
-    //await storage.set("streamTabs", []);
 
     // Testing
 
@@ -171,11 +155,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     // chrome.runtime.openOptionsPage();
 
 });
-
-
-/*
- * Inter-script messaging
- */
 
 async function dashInit(data){
 
@@ -239,38 +218,27 @@ mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 async function presenceOff(){
 
-    async function off(){
-        if(storage.contents?.presence?.active === false)
-            return;
-
-        debug("turn presence off here");
-        chrome.action.setIcon({path: "../icons/v_128.png"});
-
-        webhook('off', storage.contents.presence, debug);
-
-        // ToDo: check HID permissions
-        if(storage.contents?.presence?.hid === true)
-            await glow([0,0,0]);
-
-        await storage.update('presence', {active: false});
-    }
-
-
-    // if the user disables presence while a track is live
-    if(!storage.contents['presence'].enabled){
-        await off();
-    }
-    // skip if there are still live tracks
-    else if(trackData.some(td => td.readyState === 'live')){
+    if(trackData.some(td => td.readyState === 'live')){
         debug("presenceOff check: some tracks still live", trackData);
     }
-    // No live tracks
     else {
         // Wait to see if another track is enabled within 2 seconds as can happen with device changes
         debug("presenceOff: waiting 2 seconds for changes");
         setTimeout(async ()=>{
             if(!trackData.some(td => td.readyState === 'live')){
-                await off();
+                debug("turn presence off here");
+                chrome.action.setIcon({path: "../icons/v_128.png"});
+
+                if(storage.contents.presence.active)
+                    webhook('off', storage.contents.presence, debug);
+
+                // ToDo: check HID permissions
+                if(storage.contents.presence?.hid === true)
+                    await glow([0,0,0]);
+
+                await storage.update('presence', {active: false});
+
+
             }
         }, 2000);
     }
@@ -303,7 +271,7 @@ storage.addListener('presence', async (newValue) => {
 
 async function handleTabRemoved(tabId){
     trackData = trackData.filter(td => td.tabId !== tabId);
-    if(storage.contents['presence']?.active){
+    if(storage.contents.presence && storage.contents.presence.active){
         await presenceOff();
     }
     // await removeTab(tabId);  // if addTab is used again
@@ -344,12 +312,20 @@ mh.addListener(m.NEW_TRACK, async data=>{
 
 mh.addListener(m.TRACK_ENDED, async data=>{
     trackData = trackData.filter(td => td.id !== data.id);
-    // thiw is in presence off
-    //  if(!trackData.some(td => td.readyState === 'live'))
-
     // wait 2 seconds to see if another track is started
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    await presenceOff();
+    // these are in presence off
+        // await new Promise(resolve => setTimeout(resolve, 2000));
+        // if(!trackData.some(td => td.readyState === 'live'))
+    if(storage.contents.presence && storage.contents.presence.active)
+        await presenceOff();
+});
+
+// ToDo: remove
+/* Bad connection experiments */
+mh.addListener('alter_stream', async data=>{
+    debug('alter_stream', data);
+    // This didn't work - never responds
+    debug("alter_stream video read: ", await data.streams.videoReader.getReader().read());
 });
 
 

@@ -162,11 +162,20 @@ export class MessageHandler {
         this.#listeners.push({message, callback, tabId});
         this.debug(`added listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
     }
+
+    // ToDo: test this - all copilot
+    removeListener = (message = "", callback = null, tabId = null) => {
+        this.#listeners = this.#listeners.filter(listener => {
+            return listener.message !== message || listener.callback !== callback || listener.tabId !== tabId;
+        });
+        this.debug(`removed listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
+    }
 }
 
 export const MESSAGE = {
     // used in inject.js
     STREAM_TRANSFER_COMPLETE: 'stream_transfer_complete',
+    STREAM_TRANSFER_FAILED: 'stream_transfer_failed',
     GUM_STREAM_START: 'gum_stream_start',
     AUDIO_TRACK_ADDED: 'audio_track_added',
     VIDEO_TRACK_ADDED: 'video_track_added',
@@ -190,7 +199,7 @@ export const MESSAGE = {
     TOGGLE_DASH: 'toggle_dash',
     // GUM_STREAM_START: 'gum_stream_start',
     // UNLOAD: 'unload',
-    TRACK_TRANSFER_COMPLETE: 'track_transfer_complete',
+    // TRACK_TRANSFER_COMPLETE: 'track_transfer_complete',  // should have been STREAM_TRANSFER_COMPLETE
 
     NEW_TRACK: 'new_track',
     TRACK_ENDED: 'track_ended',
@@ -202,5 +211,9 @@ export const MESSAGE = {
 
     // self-view
     SELF_VIEW: 'self_view',
+
+    // bad connection
+    GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
+    UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
 
 }

@@ -5,29 +5,83 @@
     <title>getUserMedia</title>
     <style>
         video {
-            opacity: 20%;
-            height: 300px;
+            /*opacity: 20%; */
+            /*
+            height: 720px;
+            width: 1280px;
+             */
+        }
+        table, th, td {
+            border: 1px solid grey;
+            border-collapse: collapse;
+            text-align: right;
+        }
+        td:first-child {
+            text-align: left;
         }
     </style>
 </head>
 <body>
-<video autoplay playsinline muted controls></video>
+<video id="source"autoplay playsinline muted controls></video>
+<video id="cloneVid"autoplay playsinline muted controls></video>
+
 <br>
 <button id="start">Start</button>
 <button id="stop">Stop</button>
+<button id="clone">Clone</button>
+<br>
+<div id="stats"></div>
+
 <script type="module">
 
     const startBtn = document.querySelector('button#start');
     const stopBtn = document.querySelector('button#stop');
+    const stats = document.querySelector('div#stats');
+    const cloneBtn = document.querySelector('button#clone');
 
-    const video = document.querySelector('video');
+    const video = document.querySelector('video#source');
     let stream;
-    window.stream = stream;
+
+
+    function clone(){
+        const sourceTrack = stream.getVideoTracks()[0];
+        const cloneTrack = sourceTrack.clone();
+        window.cloneTrack = cloneTrack;
+
+        console.log("cloneTrack:", cloneTrack);
+        console.log("cloneTrack settings:", cloneTrack.getSettings());
+        console.log("cloneTrack constraints:", cloneTrack.getConstraints());
+        console.log("cloneTrack capabilities:", cloneTrack.getCapabilities());
+
+        const cloneStream = new MediaStream([cloneTrack]);
+
+        // video.srcObject = cloneStream;
+
+        const cloneVid = document.querySelector('video#cloneVid');
+        cloneVid.srcObject = cloneStream;
+
+        window.cloneStream = cloneStream;
+        console.log("started cloned stream")
+
+
+        // window.sourceTrack = stream.getVideoTracks()[0];
+        // sourceTrack.stop();
+    }
 
     async function getCam() {
-        stream = await navigator.mediaDevices.getUserMedia({video: true});
+        stream = await navigator.mediaDevices.getUserMedia({video: {height: {exact: 720}, aspectRatio: 1.7777777778}});
+        const [track] = stream.getVideoTracks();
+        console.log("Source track:", track);
+        console.log("Source track settings:", track.getSettings());
+        console.log("Source track constraints:", track.getConstraints());
+        console.log("Source track capabilities:", track.getCapabilities());
+
+
         video.srcObject = stream;
+        window.stream = stream;
         console.log("started camera stream")
+
+        window.sourceTrack = stream.getVideoTracks()[0];
     }
 
     startBtn.onclick = async () => {
@@ -39,6 +93,55 @@
         stream.getTracks().forEach(track => track.stop());
         console.log("stopped all tracks")
     }
+
+    cloneBtn.onclick = () => clone();
+
+    function calculateStats() {
+
+        let decodedFrames = 0,
+            droppedFrames = 0,
+            startTime = new Date().getTime(),
+            initialTime = new Date().getTime();
+
+        const interval = setInterval(function() {
+
+            //see if webkit stats are available; exit if they aren't
+            if (!video.webkitDecodedFrameCount) {
+                console.log("Video FPS calcs not supported");
+                clearInterval(interval);
+            }
+            //get the stats
+            else {
+                const currentTime = new Date().getTime();
+                let deltaTime = (currentTime - startTime) / 1000;
+                let totalTime = (currentTime - initialTime) / 1000;
+                startTime = currentTime;
+
+                // Calculate decoded frames per sec.
+                const currentDecodedFPS = (video.webkitDecodedFrameCount - decodedFrames) / deltaTime;
+                const decodedFPSavg = video.webkitDecodedFrameCount / totalTime;
+                decodedFrames = video.webkitDecodedFrameCount;
+
+                // Calculate dropped frames per sec.
+                const currentDroppedFPS = (video.webkitDroppedFrameCount - droppedFrames) / deltaTime;
+                const droppedFPSavg = video.webkitDroppedFrameCount / totalTime;
+                droppedFrames = video.webkitDroppedFrameCount;
+
+                //write the results to a table
+                stats.innerHTML =
+                    "<table><tr><th>Type</th><th>Total</th><th>Avg</th><th>Current</th></tr>" +
+                    "<tr><td>Decoded</td><td>" + decodedFrames + "</td><td>" + decodedFPSavg.toFixed() + "</td><td>" + currentDecodedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>Dropped</td><td>" + droppedFrames + "</td><td>" + droppedFPSavg.toFixed() + "</td><td>" + currentDroppedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>All</td><td>" + (decodedFrames + droppedFrames) + "</td><td>" + (decodedFPSavg + droppedFPSavg).toFixed() + "</td><td>" + (currentDecodedFPS + currentDroppedFPS).toFixed() + "</td></tr></table>" +
+                    "Camera resolution: " + video.videoWidth + " x " + video.videoHeight;
+            }
+        }, 1000);
+    }
+
+    video.addEventListener('loadeddata', (event) => {
+        console.log(`Actual stream height: ${video.videoHeight}`);
+        calculateStats();
+    });
 
     // getCam();
 

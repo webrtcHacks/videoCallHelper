@@ -95,7 +95,6 @@ storage.addListener('presence', (newValue) => {
 /************ START selfView  ************/
 
 // Hide self view
-// ToDo: move this into a module?
 const selfViewCheckbox = document.querySelector("input#hide_self_view_check");
 const selfViewStatus = document.querySelector("span#self_view_status");
 
@@ -128,3 +127,63 @@ storage.addListener('selfView', () => {
 });
 
 /************ END selfView  ************/
+
+
+/************ START badConnection ************/
+
+const bcsSelect = document.querySelector("input#bcs_level");
+const bcsEnabledCheck = document.querySelector("input#bcs_enabled_check");
+
+bcsEnabledCheck.checked = storage.contents['badConnection'].enabled;
+
+bcsEnabledCheck.onclick = async ()=> {
+    const enabled = bcsEnabledCheck.checked;
+    // debug(`set badConnection enabled to ${enabled}`);
+    await storage.update('badConnection', {enabled: enabled});
+}
+
+function updateBcsSlider(){
+    let bcsSliderVal = 3;
+
+    switch(storage.contents['badConnection'].level){
+        case "none": bcsSliderVal = 0; break;
+        case "moderate": bcsSliderVal = 1; break;
+        case "severe": bcsSliderVal = 2; break;
+        default: bcsSliderVal = 0;
+    }
+
+    bcsSelect.value = bcsSliderVal;
+
+    if(storage.contents['badConnection'].active)
+        bcsSelect.classList.add("form-range");
+    else
+        bcsSelect.classList.remove("form-range");
+}
+
+bcsSelect.onclick = async (e) => {
+    let command;
+    switch (Number(e.target.value)) {
+        case 0:
+            command = 'passthrough';
+            break;
+        case 1:
+            command = 'moderate';
+            break;
+        case 2:
+            command = 'severe';
+            break;
+        default:
+            console.log("invalid selection");
+    }
+    debug(`Bad Connection Simulator: ${command} selected`);
+    await storage.update('badConnection', {level: command});
+}
+
+// initial settings
+updateBcsSlider();
+
+storage.addListener('badConnection', () => {
+    updateSelfViewUI();
+});
+
+/************ END badConnection ************/

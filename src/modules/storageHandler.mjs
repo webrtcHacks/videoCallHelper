@@ -6,6 +6,10 @@
 
 let instance;
 
+// singleton messing up debug function here - hack to use the first one for now
+//  until I figure out a better global debug function
+let storageDebug = Function.prototype.bind.call(console.debug, console, `vch 🗄️`);
+
 export class StorageHandler {
 
     area = "local";
@@ -18,15 +22,18 @@ export class StorageHandler {
     constructor(area = "local", debug = () => {}) {
         // singleton pattern
         if (instance) {
+            storageDebug = typeof storageDebug === "object" ? storageDebug :  debug;
             // console.info("existing instance");
             return instance;
         }
         instance = this;
-        // console.info("new instance");
+
 
         this.storage = chrome.storage[area];
         this.area = area;
-        this.debug = debug;
+        this.debug = storageDebug || debug;
+
+        this.debug("new instance");
 
 
         return (async () => {
