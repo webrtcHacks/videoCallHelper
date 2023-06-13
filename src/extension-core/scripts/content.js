@@ -324,7 +324,9 @@ async function gumStreamStart(data) {
 
     // self-view
     // this works as long as I reuse the streamID?
-    await new selfViewElementModifier(origStream);
+    // await new selfViewElementModifier(origStream);
+    new selfViewElementModifier(origStream, storage);
+
 
 }
 

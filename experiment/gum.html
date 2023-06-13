@@ -11,23 +11,27 @@
             width: 1280px;
              */
         }
+
         table, th, td {
             border: 1px solid grey;
             border-collapse: collapse;
             text-align: right;
         }
+
         td:first-child {
             text-align: left;
         }
     </style>
 </head>
 <body>
-<video id="source"autoplay playsinline muted controls></video>
-<video id="cloneVid"autoplay playsinline muted controls></video>
+<video id="source" autoplay playsinline muted controls></video>
+<video id="cloneVid" autoplay playsinline muted controls hidden="hidden"></video>
 
 <br>
 <button id="start">Start</button>
 <button id="stop">Stop</button>
+<button id="shrink">Shrink</button>
+<button id="grow">Grow</button>
 <button id="clone">Clone</button>
 <br>
 <div id="stats"></div>
@@ -38,12 +42,14 @@
     const stopBtn = document.querySelector('button#stop');
     const stats = document.querySelector('div#stats');
     const cloneBtn = document.querySelector('button#clone');
+    const shrinkBtn = document.querySelector('button#shrink');
+    const growBtn = document.querySelector('button#grow');
 
     const video = document.querySelector('video#source');
     let stream;
 
 
-    function clone(){
+    function clone() {
         const sourceTrack = stream.getVideoTracks()[0];
         const cloneTrack = sourceTrack.clone();
         window.cloneTrack = cloneTrack;
@@ -59,6 +65,7 @@
 
         const cloneVid = document.querySelector('video#cloneVid');
         cloneVid.srcObject = cloneStream;
+        cloneVid.hidden = false;
 
         window.cloneStream = cloneStream;
         console.log("started cloned stream")
@@ -90,11 +97,29 @@
 
     stopBtn.onclick = () => {
         video.pause();
-        stream.getTracks().forEach(track => track.stop());
+        stream?.getTracks().forEach(track => track.stop());
         console.log("stopped all tracks")
     }
 
     cloneBtn.onclick = () => clone();
+
+    shrinkBtn.onclick = () => {
+        const newHeight = video.style.height > 0 ? video.style.height / 2 : video.clientHeight / 2;
+        const newWidth = video.style.width > 0 ? video.style.width / 2 : video.clientWidth / 2;
+
+        video.style.height = `${newHeight}px`;
+        video.style.width = `${newWidth}px`;
+        console.log(`shrunk to ${newHeight} x ${newWidth}`);
+    }
+
+    growBtn.onclick = () => {
+        const newHeight = video.style.height > 0 ? video.style.height * 2 : video.clientHeight * 2;
+        const newWidth = video.style.width > 0 ? video.style.width * 2 : video.clientWidth * 2;
+
+        video.style.height = `${newHeight}px`;
+        video.style.width = `${newWidth}px`;
+        console.log(`grew to ${newHeight} x ${newWidth}`);
+    }
 
     function calculateStats() {
 
@@ -103,7 +128,7 @@
             startTime = new Date().getTime(),
             initialTime = new Date().getTime();
 
-        const interval = setInterval(function() {
+        const interval = setInterval(function () {
 
             //see if webkit stats are available; exit if they aren't
             if (!video.webkitDecodedFrameCount) {
@@ -133,7 +158,8 @@
                     "<tr><td>Decoded</td><td>" + decodedFrames + "</td><td>" + decodedFPSavg.toFixed() + "</td><td>" + currentDecodedFPS.toFixed() + "</td></tr>" +
                     "<tr><td>Dropped</td><td>" + droppedFrames + "</td><td>" + droppedFPSavg.toFixed() + "</td><td>" + currentDroppedFPS.toFixed() + "</td></tr>" +
                     "<tr><td>All</td><td>" + (decodedFrames + droppedFrames) + "</td><td>" + (decodedFPSavg + droppedFPSavg).toFixed() + "</td><td>" + (currentDecodedFPS + currentDroppedFPS).toFixed() + "</td></tr></table>" +
-                    "Camera resolution: " + video.videoWidth + " x " + video.videoHeight;
+                    "Camera resolution: " + video.videoWidth + " x " + video.videoHeight + "<br>" +
+                    "Video element size: " + video.clientWidth + " x " + video.clientHeight;
             }
         }, 1000);
     }
