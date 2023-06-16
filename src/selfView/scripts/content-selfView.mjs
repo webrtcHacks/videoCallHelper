@@ -29,7 +29,7 @@ export class selfViewElementModifier {
 
     static debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️ selfViewElementModifier: `);
 
-    static sleep = (ms)=> new Promise(resolve => setTimeout(resolve, ms));
+    static sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     constructor(stream, storage) {
         return new Promise(async (resolve, reject) => {
@@ -53,12 +53,37 @@ export class selfViewElementModifier {
 
     // Search all videoElements and returns those that have the track
     #findSelfViewElements() {
+
+        /*
+        // ToDo: don't mute screenshares
+        contentHint: ""
+        enabled: true
+        id: "ea534b15-467c-4b2c-90e7-a1c3f3c11661"
+        kind: "video"
+        label: "web-contents-media-stream://614CD638C5FCCEA654A238015CF87178"
+        muted: true
+        oncapturehandlechange: null
+        onended: null
+        onmute: null
+        onunmute: null
+        readyState: "live"
+        [[Prototype]]: BrowserCaptureMediaStreamTrack
+         */
+
+        // Fullscreen and window prototype is MediaStreamTrack
+        // Try Chrome's labels
+        // full screen: "screen:1:0"
+        // window: label: 'window:91088:0'
+        // label: 'web-contents-media-stream://FB553E4E59187A3E97342A8AE65E2CC6
+
         const videoElements = Array.from(document.querySelectorAll('video:not([id^="vch-"])'))
             .filter(ve =>
-                ve.srcObject &&                                             // not a src
-                ve.srcObject.active === true &&                             // still active
-                ve.srcObject.getVideoTracks().length !== 0 &&               // not just audio
-                !remoteTrackIds.has(ve.srcObject.getVideoTracks()[0].id)    // not a remote track
+                ve.srcObject &&                                                     // not a src
+                ve.srcObject.active === true &&                                     // still active
+                ve.srcObject.getVideoTracks().length !== 0 &&                       // not just audio
+                !['screen:', 'window:', 'web-contents-media-stream://']              // not a screen share
+                    .some(prefix => ve.srcObject.getVideoTracks()[0].label.includes(prefix)) &&
+                !remoteTrackIds.has(ve.srcObject.getVideoTracks()[0].id)             // not a remote track
             )
 
         if (videoElements.length === 0) {
@@ -106,16 +131,15 @@ export class selfViewElementModifier {
         this.storage.addListener('selfView', async (newValue) => {
             selfViewElementModifier.debug(`selfView storage changes: `, newValue);
 
-            if(newValue['hideView'].enabled===false) {
+            if (newValue['hideView'].enabled === false) {
                 selfViewElementModifier.debug(`selfView hideView disabled`);
                 this.selfViewElements.forEach(ve => this.#unobsure(ve));
                 await this.storage.update("selfView", {hideView: {enabled: false, active: false}})
-            } else if(newValue['showFraming'].enabled===false) {
+            } else if (newValue['showFraming'].enabled === false) {
                 selfViewElementModifier.debug(`selfView showFraming disabled`);
                 this.selfViewElements.forEach(ve => this.#hideFraming(ve));
                 await this.storage.update("selfView", {showFraming: {enabled: false, active: false}})
-            }
-            else
+            } else
                 await this.#modify();
 
             /*
@@ -155,10 +179,12 @@ export class selfViewElementModifier {
             contents['showFraming'] = {enabled: showFramingEnabled, active: false};
             await this.storage.update("selfView", contents);
 
-            if(this.track.readyState === "ended") {
-                selfViewElementModifier.debug(`self-view track has ended`);
-                // Todo: clean-up
-                return;
+            if (this.track.readyState === "ended") {
+                selfViewElementModifier.debug(`self-view track has ended`, this.track);
+                if(this.selfViewElements.all(ve => ve.srcObject.getVideoTracks().all(t => t.readyState === "ended") )) {
+                    selfViewElementModifier.debug(`all self-view tracks have ended`, this.selfViewElements);
+                    await this.clear();
+                }
             } else {
                 selfViewElementModifier.debug(`No self-view video found in these video elements: `, this.selfViewElements,
                     `\nTrying again in ${this.SELF_VIEW_CHECK_INTERVAL_MS / 1000} seconds`);
@@ -200,19 +226,19 @@ export class selfViewElementModifier {
 
         selfViewElementModifier.debug(`monitoring self-view elements`);
 
-        const checkElements = async ()=> {
-            selfViewElementModifier.debug('checking elements');
-            if (this.storage.contents['selfView']['hideView'].enabled === false && this.storage.contents['selfView']['showFraming'].active === false){
+        const checkElements = async () => {
+            // selfViewElementModifier.debug('checking elements');
+            if (this.storage.contents['selfView']['hideView'].enabled === false && this.storage.contents['selfView']['showFraming'].active === false) {
                 selfViewElementModifier.debug('hideView and showFraming are disabled. Stopping monitoring.');
-                clearInterval(this.selfViewCheckInterval);
-                this.selfViewCheckInterval = false;
-            }
-            else {
+                // clearInterval(this.selfViewCheckInterval);
+                // this.selfViewCheckInterval = false;
+                await this.clear();
+            } else {
                 let missingElement = false;
                 this.selfViewElements.forEach(ve => {
                     if (document.body.contains(ve) && ve?.srcObject?.active) {
                         missingElement = missingElement || false;
-                    } else{
+                    } else {
                         selfViewElementModifier.debug('self-view video removed or ended. ', 'Element: ', ve, 'srcObject: ', ve.srcObject);
                         missingElement = missingElement || true;
                     }
@@ -223,14 +249,14 @@ export class selfViewElementModifier {
                 // this.obscuring = false;
                 // await this.storage.update('selfView', {active: false});
 
-                if(missingElement){
+                if (missingElement) {
                     const newContents = this.storage.contents['selfView'];
                     newContents['hideView'] = {enabled: newContents['hideView'].enabled, active: false};
                     newContents['showFraming'] = {enabled: newContents['showFraming'].enabled, active: false};
                     await this.storage.update("selfView", newContents);
 
                     await this.#modify();
-                    if(!this.selfViewCheckInterval)
+                    if (!this.selfViewCheckInterval)
                         await this.#monitor();
                     // setTimeout(async () => await this.#modify(), this.SELF_VIEW_CHECK_INTERVAL);
                 }
@@ -341,26 +367,31 @@ export class selfViewElementModifier {
         draw();
         videoElement.parentNode.insertBefore(svg, videoElement);
 
+        // ToDo: clear these at some point
 
         // Watch for size changes on the video element
-        const resizeObserver = new ResizeObserver(entries => {
-            for(let entry of entries) {
-                // If the size of the video element changed
-                if(entry.target === videoElement) {
-                    selfViewElementModifier.debug("self-view Video size changed, resizing crosshairs");
-                    draw();
-                }
+        this.resizeObserver = new ResizeObserver(entries => {
+            if (entries.some(entry => entry.target === videoElement)) {
+                // the setTineout technique used for the mutation observer caused this to loop indefinitely
+                selfViewElementModifier.debug("self-view Video size changed, resizing crosshairs", entries);
+                draw();
             }
         });
-        resizeObserver.observe(videoElement);
+        this.resizeObserver.observe(videoElement);
 
         // Watch for changes on the video element
-        const mutationObserver = new MutationObserver(mutations => {
-            selfViewElementModifier.debug("self-view Video changed", mutations);
-            draw();
+        // note: this doesn't work with srcObject changes
+        const mutationOptions = {attributes: true, attributeFilter: ['style', 'class', 'height', 'width', 'srcObject']};
+        this.mutationObserver = new MutationObserver(mutations => {
+            this.mutationObserver.disconnect();
+            setTimeout(() => {
+                selfViewElementModifier.debug("self-view Video attributes changed, redrawing crosshairs", mutations);
+                draw();
+                this.mutationObserver.observe(videoElement, mutationOptions);
+            }, 500);
         });
-        mutationObserver.observe(videoElement, {attributes: true});
-
+        // ToDo: this is causing problems with the Basic peer connection demo between two tabs - it was not updating
+        this.mutationObserver.observe(videoElement, mutationOptions);
     }
 
     #hideFraming(videoElement) {
@@ -369,261 +400,20 @@ export class selfViewElementModifier {
             svg.parentNode.removeChild(svg);
     }
 
-}
-
-
-export class _selfViewElementModifier {
-
-    selfViewElement = null;
-    selfViewCheckInterval = null;
-
-    obscuring = false;
-
-    SELF_VIEW_CHECK_INTERVAL = 3 * 1000;    // how often in ms to see if the self-view element has been removed
-    OBSCURE_DELAY = 4 * 1000;               // wait in ms before obscuring to give time for the video to load
-
-    constructor(stream) {
-        // selfViewModifier.debug("selfViewElementModifier constructor");
-        this.stream = stream;
-
-        // bad pattern to handle async class construction?
-        return (async () => {
-            this.storage = await new StorageHandler('local', selfViewElementModifier.debug);
-            await this.#storageCheck();
-            selfViewElementModifier.debug(`new selfViewElementModifier created on stream: ${this.stream.id}`);
-            return this;
-        })();
-    }
-
-    // standard debug function for content context
-    static debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️ selfViewElementModifier: `);
-
-    // handles initial settings from storage and looks for changes
-    async #storageCheck() {
-        // get the current setting
-        let hideViewEnabled = this.storage.contents['selfView']['hideView'].enabled || false;
-        let hideViewActive = this.storage.contents['selfView']['hideView'].active || false;
-        selfViewElementModifier.debug(`Self View Obscure settings - enabled: ${hideViewEnabled}, active: ${hideViewActive}`);
-
-        // initialize storage if value is not there (like on 1st load)
-        if (hideViewEnabled === undefined || hideViewActive === undefined) {
-            selfViewElementModifier.debug(`self-view settings not found in storage.\n
-                \tupdated - enabled: ${hideViewEnabled}, active: ${hideViewActive}}`);
-            const newContents = this.storage.contents['selfView'];
-            newContents['hideView'] = {enabled: false, active: false};
-            await this.storage.update("selfView", newContents);
-        }
-
-        let showFramingEnabled = this.storage.contents['selfView']['showFraming'].enabled || false;
-        let showFramingActive = this.storage.contents['selfView']['showFraming'].active || false;
-        selfViewElementModifier.debug(`Self View Framing settings - enabled: ${showFramingEnabled}, active: ${showFramingActive}`);
-
-        if (showFramingEnabled === undefined || showFramingActive === undefined) {
-            selfViewElementModifier.debug(`showFraming settings not found in storage.\n
-                \tupdated - enabled: ${showFramingEnabled}, active: ${showFramingActive}}`);
-            const newContents = this.storage.contents['selfView'];
-            newContents['showFraming'] = {enabled: false, active: false};
-            await this.storage.update("selfView", newContents);
-        }
-
-        // obscure if active
-        if (hideViewEnabled || showFramingEnabled)
-            setTimeout(async () => await this.modify(), this.OBSCURE_DELAY);
-
-        // watch for settings changes & respond
-        this.storage.addListener('selfView', async (newValue) => {
-            selfViewElementModifier.debug(`selfView storage changes: `, newValue);
-            // if(newValue.enabled === undefined)
-            //    return;
-
-            // ToDo: do I need to check the stream here?
-            if (this.obscuring === false && newValue.enabled === true) {
-                await this.modify();
-            } else if (!newValue.enabled) {
-                await this.clear();
-            }
-            // this.obscuring = newValue.enabled;
-        });
-
-        /*
-        chrome.storage.onChanged.addListener(async (changes, area) => {
-            if (changes['selfView']) {
-                selfViewElementModifier.debug(`storage area "${area}" changes: `, changes['selfView']);
-                this.enabled = changes['selfView'].newValue;
-                if (this.enabled) {
-                    await this.obscure();
-                } else {
-                    await this.clear();
-                }
-            }
-        });
-
-         */
-    }
-
-    // finds the self-view video element and obscures it
-    async modify() {
-        const videoElements = Array.from(document.querySelectorAll('video:not([id^="vch-"])'))     // all except vch-
-            // videoElements = videoElements.filter(ve => !ve.id.match(/^vch-[0-9]+$/));
-            .filter(ve =>
-                ve.srcObject &&                                             // not a src
-                ve.srcObject.active === true &&                             // still active
-                ve.srcObject.getVideoTracks().length !== 0 &&               // not just audio
-                !remoteTrackIds.has(ve.srcObject.getVideoTracks()[0].id)    // not a remote track
-            );
-
-        if (videoElements.length === 0) {
-            selfViewElementModifier.debug(`No video elements found for stream ${this.stream.id}`);
-            await this.storage.update('selfView', {active: false});
-            return
-        } else
-            selfViewElementModifier.debug('current local videoElements', videoElements);
-
-
-        // make sure there is a valid source
-        const findElement =
-            // Look for matching streams
-            videoElements.find(
-                ve => ve.srcObject?.id === this.stream.id
-                    // or tracks
-                    || ve.srcObject.getVideoTracks()[0].id === this.stream.getVideoTracks()[0].id)
-            // or look for generated videos
-            || videoElements.find(ve => ve.srcObject.active && !ve.srcObject?.getVideoTracks()[0]?.getSettings().groupId);
-
-        if (findElement) {
-            selfViewElementModifier.debug(`Found self-view video: ${findElement.id}`, findElement);
-            if (this.storage.contents['selfView']['hideView'].enabled) {
-                findElement.style.filter += 'blur(10px) grayscale(50%)';
-                this.obscuring = true;
-            }
-            if (this.storage.contents['selfView']['showFraming'].enabled) {
-                this.drawCrosshair(findElement);
-            }
-
-            this.selfViewElement = findElement;
-
-            await this.storage.update('selfView', {active: true});
-            this.#monitorElement();
-        } else {
-            // ToDo: needs to stop looking if there are no tracks
-            selfViewElementModifier.debug(`No self-view video found in these video elements: `, videoElements,
-                `\nTrying again in ${this.OBSCURE_DELAY / 1000} seconds`);
-            // await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
-            this.obscuring = false;
-            if (this.storage.contents['selfView'].enabled)
-                setTimeout(async () => await this.modify(), this.OBSCURE_DELAY);
-        }
-    }
-
-    // polling mechanism to check if the self-view video element is still there & active
-    // note: mutationObserver didn't work reliably
-    #monitorElement() {
-        this.selfViewCheckInterval = setInterval(async () => {
-            if (!this.storage.contents['selfView'].enabled)
-                clearInterval(this.selfViewCheckInterval);
-            else {
-                if (!document.body.contains(this.selfViewElement) || !this.selfViewElement?.srcObject?.active) {
-                    selfViewElementModifier.debug('self-view video removed or ended. ', 'Element: ', this.selfViewElement, 'srcObject: ', this.selfViewElement?.srcObject);
-                    clearInterval(this.selfViewCheckInterval);
-                    // await mh.sendMessage("dash", m.SELF_VIEW, {enabled: false});
-                    this.obscuring = false;
-                    await this.storage.update('selfView', {active: false});
-                    setTimeout(async () => await this.modify(), this.OBSCURE_DELAY);
-                }
-            }
-        }, this.SELF_VIEW_CHECK_INTERVAL);
-    }
-
-    // Draw crosshairs on the self-view video element
-    // ToDo: positioning is off in many cases - samples, jitsi; needs to handle resizing
-    drawCrosshair(video) {
-        // Clear previous drawings
-        // ToDo: multiple SVGs are created
-        const existingSvg = video.parentNode.querySelector(".vch-selfViewCrosshair");
-        if (existingSvg) {
-            video.parentNode.removeChild(existingSvg);
-        }
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-
-        function draw() {
-            svg.style = video.style;
-            svg.style.position = "absolute";
-            // svg.style.top = video.style.top ? video.style.top : "0";
-            // svg.style.left = video.style.left ? video.style.left : "0";
-            svg.style.left = `${video.offsetLeft}px`;
-            svg.style.top = `${video.offsetTop}px`;
-            svg.style.zIndex = video.style.zIndex ? video.style.zIndex + 1 : 1000;
-            svg.style.opacity = "30%";
-            svg.classList.add("vch-selfViewCrosshair");
-
-            // resize
-            svg.setAttribute("width", video.offsetWidth);
-            svg.setAttribute("height", video.offsetHeight);
-
-            let rectHeight = (video.offsetHeight * 0.05).toFixed(0);
-            let rectWidth = rectHeight;
-
-            const vertRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            vertRect.setAttribute("x", (video.offsetWidth / 2 - rectWidth / 2).toFixed(0));
-            vertRect.setAttribute("y", "0");
-            vertRect.setAttribute("width", rectWidth);
-            vertRect.setAttribute("height", video.offsetHeight);
-            vertRect.setAttribute("fill", "red");
-            // vertRect.setAttribute("fill-opacity", "0.5");
-
-            const horzRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            horzRect.setAttribute("x", "0");
-            horzRect.setAttribute("y", (video.offsetHeight / 3 - rectHeight / 2).toFixed(0));
-            horzRect.setAttribute("width", video.offsetWidth);
-            horzRect.setAttribute("height", rectHeight);
-            horzRect.setAttribute("fill", "red");
-            // horzRect.setAttribute("fill-opacity", "0.5");
-
-            svg.appendChild(vertRect);
-            svg.appendChild(horzRect);
-        }
-
-        draw();
-        video.parentNode.insertBefore(svg, video);
-
-        // Watch for size changes on the video element
-        const resizeObserver = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                // If the size of the video element changed
-                if (entry.target === video) {
-                    selfViewElementModifier.debug("self-view Video size changed, resizing crosshairs");
-                    draw();
-                }
-            }
-        });
-        resizeObserver.observe(video);
-
-        // Watch for changes on the video element
-        const mutationObserver = new MutationObserver(mutations => {
-            mutations.forEach(mutation => {
-                if (mutation.type === 'attributes' && (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
-                    // ToDo: merge this with monitorElement? need to check that the video srcObject is still the gUM stream - it changes in meet.jit.si
-                    selfViewElementModifier.debug("self-view Video attributes changed, redrawing crosshairs");
-                    draw();
-                }
-            });
-        });
-        mutationObserver.observe(video, {attributes: true});
-
-    }
-
     // turn off the obscuring filters
     async clear() {
+        this.resizeObserver.disconnect();
+        this.mutationObserver.disconnect();
         clearInterval(this.selfViewCheckInterval);
+        this.selfViewCheckInterval = false;
         this.obscuring = false;
         await this.storage.update('selfView', {active: false});
-        this.selfViewElement.style.filter = 'blur(0) opacity(1) grayscale(0)';
+        this.selfViewElements.forEach(videoElement =>
+            videoElement.style.filter = 'blur(0) opacity(1) grayscale(0)');
     }
-
 }
 
-const mh = new MessageHandler('content', () => {
-});
+const mh = new MessageHandler('content', selfViewElementModifier.debug);
 
 // for self-view replacement
 mh.addListener('remote_track_added', data => {
