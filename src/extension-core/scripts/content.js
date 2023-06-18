@@ -4,7 +4,6 @@ import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
 // import {alterStream} from "../../badConnection/scripts/alterStream.mjs";
 
 
-
 const streams = [];
 let trackInfos = [];
 
@@ -26,6 +25,7 @@ const sendMessage = mh.sendMessage;
 // ToDo - possibly move this into a module
 // Need to relay badConnection updates between inject and dash
 import {StorageHandler} from "../../modules/storageHandler.mjs";
+
 let storage = await new StorageHandler("local", debug);
 
 const bcsInitSettings = {
@@ -222,8 +222,10 @@ async function monitorTrack(track, streamId) {
     track.addEventListener('ended', async () => {
         trackData.readyState = 'ended';
         await sendMessage('background', m.TRACK_ENDED, trackData);
+        await checkActiveStreams();
     });
 
+    // ToDo: should I use this monitor function?
     // use an interval to check if the track has ended
     const monitor = setInterval(async () => {
         if (track.readyState === 'ended') {
@@ -248,8 +250,20 @@ async function monitorTrack(track, streamId) {
      */
 }
 
-window.newStreams = [];
 
+async function checkActiveStreams() {
+    for (const stream of streams) {
+        if (stream.getTracks().length === 0
+            || stream.getTracks().every(track => track.readyState === 'ended')) {
+            await sendMessage('all', m.GUM_STREAM_STOP);
+            // remove the stream
+            const index = streams.findIndex(stream => stream.id === stream.id);
+            if (index !== -1) {
+                streams.splice(index, 1);
+            }
+        }
+    }
+}
 
 // ToDo: count errors back from the worker - cancel modification attempts if too many
 
@@ -278,9 +292,7 @@ async function gumStreamStart(data) {
     // ToDo: should really ignore streams and just monitor tracks
     origStream.addEventListener('removetrack', async (event) => {
         debug(`${event.track.kind} track removed`);
-        if (origStream.getTracks().length === 0) {
-            await sendMessage('all', m.GUM_STREAM_STOP);
-        }
+        await checkActiveStreams();
     });
 
 
@@ -324,7 +336,9 @@ async function gumStreamStart(data) {
 
     // self-view
     // this works as long as I reuse the streamID?
-    await new selfViewElementModifier(origStream);
+    // await new selfViewElementModifier(origStream);
+    new selfViewElementModifier(origStream, storage);
+
 
 }
 

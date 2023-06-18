@@ -209,6 +209,7 @@ if (!window.videoCallHelper) {
     // ToDo: Google Meet doesn't use this
 
     // ToDo: make a switch for this - not sure I need to shim this now
+    /*
     // getDisplayMedia Shim
     const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getDisplayMedia = async (constraints) => {
@@ -219,6 +220,7 @@ if (!window.videoCallHelper) {
         await processTrack(track, "gdm");
         return gdmStream
     }
+     */
 
     // getUserMedia Shim
 
