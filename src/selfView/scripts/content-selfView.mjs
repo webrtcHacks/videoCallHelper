@@ -181,7 +181,7 @@ export class selfViewElementModifier {
 
             if (this.track.readyState === "ended") {
                 selfViewElementModifier.debug(`self-view track has ended`, this.track);
-                if(this.selfViewElements.all(ve => ve.srcObject.getVideoTracks().all(t => t.readyState === "ended") )) {
+                if(this.selfViewElements.every(ve => ve.srcObject.getVideoTracks().every(t => t.readyState === "ended") )) {
                     selfViewElementModifier.debug(`all self-view tracks have ended`, this.selfViewElements);
                     await this.clear();
                 }
