@@ -184,6 +184,10 @@ export const MESSAGE = {
     PEER_CONNECTION_OPEN: 'peer_connection_open',
     PEER_CONNECTION_CLOSED: 'peer_connection_closed',
 
+    PEER_CONNECTION_LOCAL_ADD_TRACK: 'peer_connection_local_add_track',
+    PEER_CONNECTION_LOCAL_REPLACE_TRACK: 'peer_connection_local_replace_track',
+    PEER_CONNECTION_LOCAL_REMOVE_TRACK: 'peer_connection_local_remove_track',
+
     // background.js
     DASH_INIT: 'dash_init',
     FRAME_CAPTURE: 'frame_cap',

@@ -23,6 +23,9 @@ let webhookIsActive = false;
 // ToDo: error checking on these entered values
 export function webhook(state, settings, debug = console.log) {
 
+    // Failed attempt to limit repeated API calls
+    // this was causing the state to get out-of-whack
+    /*
     if(webhookIsActive && state === "on") {
         debug("webhook already on");
         return
@@ -31,6 +34,7 @@ export function webhook(state, settings, debug = console.log) {
         debug("webhook already off");
         return
     }
+     */
 
     debug("webhook settings", settings);
 

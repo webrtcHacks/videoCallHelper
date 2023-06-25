@@ -124,10 +124,11 @@ function updateSelfViewUI() {
         for (let child of selfViewDiv.children) {
             child.disabled = true;
             child.classList.add('text-muted');
+            child.classList.add('fw-lighter');
         }
     }
 
-    try{
+    try {
         // Show Framing
         const showFramingEnabled = storage.contents['selfView']['showFraming'].enabled;
         const showFramingActive = storage.contents['selfView']['showFraming'].active;
@@ -203,13 +204,47 @@ storage.addListener('selfView', () => {
 
 const bcsSelect = document.querySelector("input#bcs_level");
 const bcsEnabledCheck = document.querySelector("input#bcs_enabled_check");
+const bcsSelfieCheck = document.querySelector("input#bcs_selfie_check");
 
 bcsEnabledCheck.checked = storage.contents['badConnection'].enabled;
+bcsSelfieCheck.checked = storage.contents['badConnection'].selfie || true;
+
+
+function disableBcs(){
+    debug("peerConnection not open in time - disabling bad connection simulator");
+    const bcsDiv = document.querySelector("div#bcs");
+    let childElements = bcsDiv.getElementsByTagName('*');
+
+    for (let i = 0; i < childElements.length; i++) {
+        childElements[i].setAttribute('disabled', "true");
+        // childElements[i].classList.add('text-muted');
+        childElements[i].classList.add('fw-lighter');
+    }
+
+    bcsDiv.querySelector("h5").innerText += " (DISABLED UNTIL REFRESH)"
+    // bcsDiv.querySelector("#active").innerText = "enable before connecting";
+}
+
+// Permanently disable the bad connection simulator if there is no peer connection
+if(storage.contents['badConnection'].noPeerOnStart) {
+    disableBcs();
+}
 
 bcsEnabledCheck.onclick = async () => {
     const enabled = bcsEnabledCheck.checked;
     // debug(`set badConnection enabled to ${enabled}`);
+
+    // ToDo: ok to slide this on and before a peerConnection, but after a peerConnection,
+    //  this needs to be fixed to off OR need to do a replaceTrack with a new alterTrack - that could cause issues
     await storage.update('badConnection', {enabled: enabled});
+
+    bcsSelfieCheck.disabled = !enabled;
+}
+
+bcsSelfieCheck.onclick = async ()=> {
+    const selfie = bcsSelfieCheck.checked;
+    // debug(`set badConnection selfie to ${selfie}`);
+    await storage.update('badConnection', {selfie: selfie});
 }
 
 function updateBcsSlider() {
@@ -260,7 +295,12 @@ bcsSelect.onclick = async (e) => {
 updateBcsSlider();
 
 storage.addListener('badConnection', () => {
-    updateSelfViewUI();
+    if (storage.contents['badConnection']?.noPeerOnStart) {
+        disableBcs();
+    } else {
+        updateSelfViewUI();
+    }
 });
+
 
 /************ END badConnection ************/
