@@ -402,8 +402,8 @@ export class selfViewElementModifier {
 
     // turn off the obscuring filters
     async clear() {
-        this.resizeObserver.disconnect();
-        this.mutationObserver.disconnect();
+        this.resizeObserver?.disconnect();
+        this.mutationObserver?.disconnect();
         clearInterval(this.selfViewCheckInterval);
         this.selfViewCheckInterval = false;
         this.obscuring = false;
