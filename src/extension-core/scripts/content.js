@@ -31,7 +31,8 @@ let storage = await new StorageHandler("local", debug);
 const bcsInitSettings = {
     enabled: storage.contents['badConnection']?.enabled ?? false,
     active: false,
-    level: "passthrough"
+    level: "passthrough",
+    noPeerOnStart: null
 }
 
 await storage.update('badConnection', bcsInitSettings);
@@ -42,6 +43,18 @@ await storage.addListener('badConnection', (newValue) => {
 
 mh.addListener(m.GET_BAD_CONNECTION_SETTINGS, () => {
     sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, bcsInitSettings);
+});
+
+// if a peerConnection is open and badConnection is not enabled then permanently disable it
+mh.addListener(m.PEER_CONNECTION_OPEN,  () => {
+    if (!bcsInitSettings.enabled) {
+        storage.update('badConnection', {noPeerOnStart: true})
+            .catch(err => debug("Error updating badConnection settings", err));
+    }
+    else{
+        storage.update('badConnection', {noPeerOnStart: false})
+            .catch(err => debug("Error updating badConnection settings", err));
+    }
 });
 
 /************ END bad connection ************/

@@ -10,13 +10,10 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
 /************ START get settings ************/
 
 const mh = new MessageHandler('inject', debug);
-const sendMessage = mh.sendMessage;
-const addListener = mh.addListener;
-const removeListener = mh.removeListener;
 
 // for reference
 let settings = {
-    enabled: true,
+    enabled: false,
     active: false,
     level: "passthrough"
 }
@@ -62,9 +59,6 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
         this.options = options;
         this._label = sourceTrack.label;
-        // this._contentHint = sourceTrack.contentHint;
-        // this._enabled = sourceTrack.enabled || true;
-        // this._muted = sourceTrack.muted;
 
         this._settings = sourceTrack.getSettings();
         this._constraints = sourceTrack.getConstraints();
@@ -110,16 +104,13 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
 
     set enabled(enabled) {
-        // this._enabled = enabled;
-        // this._muted = enabled;  // ToDo: check the spec for function here
-        // return this._enabled;
-        return super.enabled = enabled;
+        super.enabled = enabled;
+        return enabled
     }
 
 
     // Methods
     async applyConstraints(constraints) {
-        // ToDo:
         debug(`applyConstraints on ${this.kind} track ${this.id}`, constraints)
         this.sourceTrack.applyConstraints(constraints)
             .then(() => {
@@ -212,9 +203,13 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 }
 
 // ToDo: need a way to replace an altered track
-// ToDo: mute / unmute not working
+// ToDo: mute / unmute not working - I think I fixed that in the alteredMediaStreamTrackGenerator, need to verify
 export function alterTrack(track) {
 
+    if(!settings.enabled){
+        debug("Bad connection simulator not enabled - disabling");
+        return track;
+    }
 
     /*
     // ToDo: gMeet audio self mute debugging
@@ -242,8 +237,11 @@ export function alterTrack(track) {
      */
 
     // Don't process audio for google meet
-    if(track.kind === "audio" && window.location.host.includes("google"))
+    // ToDo: process audio for Google Meet
+    if(track.kind === "audio" && window.location.host.includes("google")){
+        debug("alterTrack: google meet audio track, returning original track");
         return track;
+    }
 
     // I used to return the promise which would only resolve after a couple of frames to make sure
     // the track was working. That doesn't work for the clone() method that needs an immediate response
@@ -253,7 +251,6 @@ export function alterTrack(track) {
 
     // keep the promise here in case I need to send a notification on resolve
     new Promise((resolve, reject) => {
-
 
         const processor = new MediaStreamTrackProcessor(track);
         const reader = processor.readable;
@@ -325,11 +322,15 @@ export function alterTrack(track) {
         // do I really need a 2nd listener to communicate with the worker?
         mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, async (newSettings) => {
             debug("badConnection changed to: ", newSettings);
+            worker.postMessage({command: newSettings.level});
+
+            /*
             if (newSettings.enabled === false) {
                 worker.postMessage({command: "passthrough"});
             }
             if (newSettings.level)
                 worker.postMessage({command: newSettings.level});
+             */
         });
 
 
@@ -384,6 +385,7 @@ async function checkGeneratorStreams() {
         settings.active = false;
 }
 
+/*
 // returns a promise that resolves to a MediaStreamTrackGenerator
 export async function alterStream(stream) {
 
@@ -409,7 +411,7 @@ export async function alterStream(stream) {
 
     // Do I need to make sure these work?
     if (newStream.getTracks().filter(track => track.readyState === 'live').length > 0) {
-        window.newStreams.push(newStream);      // ToDo: for debugging
+        window.newStreams.push(newStream);
         settings.active = true;
         mh.sendMessage("content", m.UPDATE_BAD_CONNECTION_SETTINGS, settings);
         return newStream;
@@ -419,3 +421,4 @@ export async function alterStream(stream) {
     }
 
 }
+*/

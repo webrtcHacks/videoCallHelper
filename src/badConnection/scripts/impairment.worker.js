@@ -90,6 +90,7 @@ class Impairment {
         this.trackSettings = settings;   // trackSettings;
         this.impairmentConfig = impairmentConfig;
 
+        // ToDo: **make this a promise so we can cancel if the codec config doesn't work?
         this.#loadConfig();
         this.#setupCodec();
     }
@@ -187,8 +188,9 @@ class Impairment {
                     // debug(`${this.kind} encoder config supported`, this.codecConfig);
                 }
                 else
-                    debug(`${this.kind} decoder config not supported`, this.codecConfig);
+                    debug(`${this.kind} encoder config not supported`, this.codecConfig);
             })
+                // ToDo: Session error here
                 .catch((err) => {debug("encoder config error", err, this.codecConfig, this.trackSettings)});
 
         } else if (this.kind === 'audio') {
@@ -242,6 +244,9 @@ class Impairment {
                 keyInterval: keyFrameInterval,
                  */
 
+                // ToDo: session screen share putting width, height, and frameRate at 'NaN'
+                //  Session is using a MediaStreamTrackGenerator and that doesn't have those properties
+                //  Need to find those settings somewhere else
 
                 codec: 'vp8',
                 width: (width / (widthFactor || 1)).toFixed(0),
@@ -250,6 +255,8 @@ class Impairment {
                 // frameRate: frameRate;
                 frameRate: Math.max(this.impairmentConfig.video.frameRate, codecFrameRate )
             }
+
+            debug("codecConfig", JSON.stringify(this.codecConfig));
 
             // Set up the impairment
             const {loss, payloadSize, delayMs, frameDrop} = this.impairmentConfig.video;
