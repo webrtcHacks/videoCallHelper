@@ -28,7 +28,7 @@ const sendMessage = mh.sendMessage;
 
 // Put the stream in a temp DOM element for transfer to content.js context
 // content.js will swap with a replacement stream
-async function transferStream(stream) {
+async function transferStream(stream, message = m.GUM_STREAM_START) {
     // ToDo: shadow dom?
     const video = document.createElement('video');
     // video.id = stream.id;
@@ -39,7 +39,7 @@ async function transferStream(stream) {
     document.body.appendChild(video);
     video.oncanplay = () => {
         video.oncanplay = null;
-        sendMessage('all', m.GUM_STREAM_START, {id: video.id});
+        sendMessage('all', message, {id: video.id});
     }
 }
 
@@ -312,6 +312,10 @@ if (!window.videoCallHelper) {
         debug("changing addTrack track (source, change)", track, alteredTrack);
 
         arguments[0] = alteredTrack;
+
+        transferStream(new MediaStream([alteredTrack]), m.PEER_CONNECTION_LOCAL_ADD_TRACK)
+            .catch(err => debug("transferStream error", err));
+
         return origAddTrack.apply(this, arguments)
         //return origAddTrack.apply(this, arguments)
     };
@@ -327,6 +331,8 @@ if (!window.videoCallHelper) {
             window.pcTracks.push(track);
         });
         const alteredStream = new MediaStream(alteredTracks);
+        transferStream(alteredStream, m.PEER_CONNECTION_LOCAL_ADD_TRACK)
+            .catch(err => debug("transferStream error", err));
         debug("changing addStream stream (source, change)", stream, alteredStream);
         return origPeerConnAddStream.apply(this, [alteredStream, ...arguments])
 
@@ -351,7 +357,9 @@ if (!window.videoCallHelper) {
         else {
             const alteredTrack = alterTrack(track);
             arguments[0] = alteredTrack;
-            // return origSenderReplaceTrack.apply(this, arguments);
+            transferStream(new MediaStream([alteredTrack]), m.PEER_CONNECTION_LOCAL_REPLACE_TRACK)
+                .catch(err => debug("transferStream error", err));
+
         }
 
         return origSenderReplaceTrack.apply(this, arguments);

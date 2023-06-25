@@ -355,7 +355,21 @@ async function gumStreamStart(data) {
 
 }
 
+async function bcsSelfie(data){
+    const id = data.id;
+    const video = document.querySelector(`video#${id}`);
+    const origStream = video.srcObject;
+
+    // ToDo: need to modify the below?
+    // await new selfViewElementModifier(origStream);
+
+}
+
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
+
+
+mh.addListener(m.PEER_CONNECTION_LOCAL_ADD_TRACK, bcsSelfie);
+mh.addListener(m.PEER_CONNECTION_LOCAL_REPLACE_TRACK, bcsSelfie)
 
 
 // For timing testing

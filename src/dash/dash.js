@@ -204,8 +204,11 @@ storage.addListener('selfView', () => {
 
 const bcsSelect = document.querySelector("input#bcs_level");
 const bcsEnabledCheck = document.querySelector("input#bcs_enabled_check");
+const bcsSelfieCheck = document.querySelector("input#bcs_selfie_check");
 
 bcsEnabledCheck.checked = storage.contents['badConnection'].enabled;
+bcsSelfieCheck.checked = storage.contents['badConnection'].selfie || true;
+
 
 function disableBcs(){
     debug("peerConnection not open in time - disabling bad connection simulator");
@@ -234,6 +237,14 @@ bcsEnabledCheck.onclick = async () => {
     // ToDo: ok to slide this on and before a peerConnection, but after a peerConnection,
     //  this needs to be fixed to off OR need to do a replaceTrack with a new alterTrack - that could cause issues
     await storage.update('badConnection', {enabled: enabled});
+
+    bcsSelfieCheck.disabled = !enabled;
+}
+
+bcsSelfieCheck.onclick = async ()=> {
+    const selfie = bcsSelfieCheck.checked;
+    // debug(`set badConnection selfie to ${selfie}`);
+    await storage.update('badConnection', {selfie: selfie});
 }
 
 function updateBcsSlider() {
