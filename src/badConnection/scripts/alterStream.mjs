@@ -211,6 +211,13 @@ export function alterTrack(track) {
         return track;
     }
 
+    // ToDo: make this work with a Generated Tracks too
+    // Check if the track id sa MediaStreamTrackGenerator
+    if (track instanceof MediaStreamTrackGenerator) {
+        debug("track is MediaStreamTrackGenerator");
+        return track;
+    }
+
     /*
     // ToDo: gMeet audio self mute debugging
     //  The below works for muting, but doesn't send any audio
