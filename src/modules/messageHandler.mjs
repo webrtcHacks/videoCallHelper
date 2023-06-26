@@ -106,7 +106,7 @@ export class MessageHandler {
                 //  Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
                 //  the below is what shows up normally
 
-                this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
+                // this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 
                 // ignore messages to self
                 if (from === this.context) // && (to === this.context || to !== 'all'))

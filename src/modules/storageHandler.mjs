@@ -50,13 +50,18 @@ export class StorageHandler {
                     // A: no, because the class has several instances that are unaware of each other
                     Object.assign(StorageHandler.contents, {[key]: newValue});
 
+                    const changedValues = StorageHandler.#findChangedValues(oldValue, newValue);
+
+                    // Uncomment if needed for debugging
+                    /*
                     this.debug(
                         `Storage key "${key}" in namespace "${namespace}" changed.`,
-                        `\n> Old value was`, oldValue, `\n> New value is`, newValue);
+                        `\n> Old value was`, oldValue, `\n> New value is`, newValue, `\n> Changed values are`, changedValues);
+                     */
 
                     this.#listeners.forEach(listener => {
                         if (listener.key === key)
-                            listener.callback.call(listener.callback, newValue)
+                            listener.callback.call(listener.callback, newValue, changedValues)
                     });
                 }
 
@@ -69,6 +74,24 @@ export class StorageHandler {
         })();
 
     }
+
+    static #findChangedValues(oldValue, newValue) {
+        let changedValues = Array.isArray(newValue) ? [] : {};
+        for (let key in newValue) {
+            if (newValue.hasOwnProperty(key)) {
+                if (typeof newValue[key] === "object" && oldValue[key]) {
+                    let nestedChange = StorageHandler.#findChangedValues(oldValue[key], newValue[key]);
+                    if (Object.keys(nestedChange).length > 0) {
+                        changedValues[key] = nestedChange;
+                    }
+                } else if (oldValue[key] !== newValue[key]) {
+                    changedValues[key] = newValue[key];
+                }
+            }
+        }
+        return changedValues;
+    }
+
 
     async update(key = "", newValue = {}) {
 
