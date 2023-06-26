@@ -55,7 +55,6 @@ export class selfViewElementModifier {
     #findSelfViewElements() {
 
         /*
-        // ToDo: don't mute screenshares
         contentHint: ""
         enabled: true
         id: "ea534b15-467c-4b2c-90e7-a1c3f3c11661"
@@ -128,19 +127,23 @@ export class selfViewElementModifier {
 
         await this.storage.update("selfView", newContents);
 
-        this.storage.addListener('selfView', async (newValue) => {
-            selfViewElementModifier.debug(`selfView storage changes: `, newValue);
+        // ToDo: unobscuring is not working - styles are appending, not replacing
+        //  style="filter: blur(0px) opacity(1) grayscale(0) blur(10px) grayscale(50%);
+        this.storage.addListener('selfView', async (newValue, changedValues) => {
+            selfViewElementModifier.debug(`selfView storage changes: `, changedValues);
 
-            if (newValue['hideView'].enabled === false) {
+            if (changedValues['hideView']?.enabled === false) {
                 selfViewElementModifier.debug(`selfView hideView disabled`);
-                this.selfViewElements.forEach(ve => this.#unobsure(ve));
+                this.selfViewElements.forEach(ve => this.#unobscure(ve));
                 await this.storage.update("selfView", {hideView: {enabled: false, active: false}})
-            } else if (newValue['showFraming'].enabled === false) {
+            } else if (changedValues['showFraming']?.enabled === false) {
                 selfViewElementModifier.debug(`selfView showFraming disabled`);
                 this.selfViewElements.forEach(ve => this.#hideFraming(ve));
                 await this.storage.update("selfView", {showFraming: {enabled: false, active: false}})
-            } else
+            } else{
+                selfViewElementModifier.debug(`selfView enabled: hideView:  ${newValue['hideView'].enabled}, framing: ${newValue['showFraming'].enabled}`);
                 await this.#modify();
+            }
 
             /*
             const hideViewContents = this.storage.contents['selfView']['hideView'];
@@ -230,8 +233,8 @@ export class selfViewElementModifier {
             // selfViewElementModifier.debug('checking elements');
             if (this.storage.contents['selfView']['hideView'].enabled === false && this.storage.contents['selfView']['showFraming'].active === false) {
                 selfViewElementModifier.debug('hideView and showFraming are disabled. Stopping monitoring.');
-                // clearInterval(this.selfViewCheckInterval);
-                // this.selfViewCheckInterval = false;
+                clearInterval(this.selfViewCheckInterval);
+                this.selfViewCheckInterval = false;
                 await this.clear();
             } else {
                 let missingElement = false;
@@ -305,13 +308,45 @@ export class selfViewElementModifier {
 
     }
 
+
+    /*
     #obscure(videoElement) {
-        videoElement.style.filter += 'blur(10px) grayscale(50%)';
+        // ToDo: do I need to check for existing filters? This was +=
+        videoElement.style.filter = ' blur(10px) grayscale(50%) ';
     }
 
     #unobsure(videoElement) {
-        videoElement.style.filter = videoElement.style.filter.replace('blur(10px) grayscale(50%)', '');
+        videoElement.style.filter = videoElement.style.filter.replace('blur(10px)', '');
+        videoElement.style.filter = videoElement.style.filter.replace('grayscale(50%)', '');
     }
+     */
+
+    #getFilters(filterString) {
+        return (filterString.match(/(\w+\([^\)]+\))/g) || []).reduce((filters, filter) => {
+            const [filterName, value] = filter.split('(');
+            filters[filterName] = filter;
+            return filters;
+        }, {});
+    }
+
+    #generateFilterString(filters) {
+        return Object.values(filters).join(' ');
+    }
+
+    #obscure(videoElement) {
+        const filters = this.#getFilters(videoElement.style.filter);
+        filters.blur = 'blur(10px)';
+        filters.grayscale = 'grayscale(50%)';
+        videoElement.style.filter = this.#generateFilterString(filters);
+    }
+
+    #unobscure(videoElement) {
+        const filters = this.#getFilters(videoElement.style.filter);
+        delete filters.blur;
+        delete filters.grayscale;
+        videoElement.style.filter = this.#generateFilterString(filters);
+    }
+
 
     #showFraming(videoElement) {
 
@@ -407,9 +442,8 @@ export class selfViewElementModifier {
         clearInterval(this.selfViewCheckInterval);
         this.selfViewCheckInterval = false;
         this.obscuring = false;
+        this.selfViewElements.forEach(ve => this.#unobscure(ve));
         await this.storage.update('selfView', {active: false});
-        this.selfViewElements.forEach(videoElement =>
-            videoElement.style.filter = 'blur(0) opacity(1) grayscale(0)');
     }
 }
 
