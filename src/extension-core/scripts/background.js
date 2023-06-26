@@ -224,8 +224,9 @@ async function presenceOff(){
     else {
         // Wait to see if another track is enabled within 2 seconds as can happen with device changes
         debug("presenceOff: waiting 2 seconds for changes");
-        setTimeout(async ()=>{
-            if(!trackData.some(td => td.readyState === 'live')){
+
+        await new Promise(resolve => setTimeout(async () => {
+            if (!trackData.some(td => td.readyState === 'live')) {
                 debug("turn presence off here");
                 chrome.action.setIcon({path: "../icons/v_128.png"});
 
@@ -237,12 +238,42 @@ async function presenceOff(){
                     await glow([0,0,0]);
 
                 await storage.update('presence', {active: false});
-
-
             }
-        }, 2000);
+            else
+                debug("presenceOff: some tracks are still live");
+            resolve();
+        }, 2000));
     }
+
 }
+
+// Attempt to debounce didn't have any impact
+/*
+let lastPresenceOnCallTime = 0;
+const debounceDelay = 1000;  // delay in milliseconds
+
+
+async function presenceOn(){
+    const currentTime = Date.now();
+    const shouldCallWebhook = currentTime - lastPresenceOnCallTime > debounceDelay;
+
+    debug("turn presence on here");
+
+    await storage.update("presence", {active: true});
+
+    if(shouldCallWebhook){
+        lastPresenceOnCallTime = currentTime;
+        webhook('on', storage.contents.presence, debug);
+    }
+
+    if(storage.contents.presence?.hid === true)
+        await glow([255,0,0]);
+    await chrome.action.setIcon({path: "../icons/v_rec.png"});
+}
+ */
+
+
+
 
 async function presenceOn(){
     debug("turn presence on here");
@@ -256,9 +287,11 @@ async function presenceOn(){
 
 }
 
+
+
 storage.addListener('presence', async (newValue) => {
 
-    debug(`selfView storage changes: `, newValue);
+    debug(`presence storage changes: `, newValue);
     if (trackData.some(td => td.readyState === 'live') && newValue.enabled === true) {
         await presenceOn();
     } else if (storage.contents.active === true && newValue.enabled === false) {
@@ -271,9 +304,17 @@ storage.addListener('presence', async (newValue) => {
 
 async function handleTabRemoved(tabId){
     trackData = trackData.filter(td => td.tabId !== tabId);
+
+    // something is switching storage.contents.presence.active to false before this point
+    /*
     if(storage.contents.presence && storage.contents.presence.active){
         await presenceOff();
     }
+     */
+
+    // just call presence off everytime - it won't do anything if there is an active track
+    await presenceOff();
+
     // await removeTab(tabId);  // if addTab is used again
 }
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
