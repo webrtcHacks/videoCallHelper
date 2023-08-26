@@ -7,38 +7,8 @@
 <body>
 <div class="vch container-fluid m-0 p-0 overflow-hidden h-100" data-bs-theme="dark">
     <div class="row">
-        <div class="dashBox card col-3 ps-3">
-            <h5>Frame Capture</h5>
-            <div class="form-check form-check-inline form-switch mb-2 w-50">
-                <input class="form-check-input" type="checkbox" id="enable_img_cap_check">
-                <label class="form-check-label" for="enable_img_cap_check">Enable Image Capture</label>
-                <input type="checkbox" id="start_on_pc_check" disabled hidden>
-            </div>
-            <!--div class="form-check form-check-inline form-switch mb-2 w-50">
-                <input class="form-check-input" type="checkbox" id="start_on_pc_check" disabled>
-                <label class="form-check-label" for="start_on_pc_check">Start on peerConnection?</label>
-            </div-->
-            <div class="mb-2">
-                <label for="interval" class="form-label">Time between images in sec:</label>
-                <input id="interval" type="text" value="30" size="8" required pattern="^[0-9]{1,9}$"
-                       class="form-control w-auto d-inline-block"/>
-            </div>
-            <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
-                <button id="apply_settings" class="btn btn-outline-primary btn-sm">Apply</button>
-                <button id="sampling_start" class="btn btn-outline-success btn-sm">Start</button>
-                <button id="sampling_stop" class="btn btn-outline-danger btn-sm">Stop</button>
-                <button id="open_sampling" class="btn btn-outline-secondary btn-small">Open Sampling</button>
-            </div>
-        </div>
-        <!--div class="dashBox card col-3">
-            <h5>Hide Self-view</h5>
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" id="hide_self_view_check">
-                <label class="form-check-label" for="hide_self_view_check">Hide self-view:</label>
-            </div>
-            <p>Status: <span id="self_view_status">Click above to enable</span></p>
-        </div-->
 
+        <!-- Card 1: Self-view modifier -->
         <div class="dashBox card col-3" style="height: 150px;" id="hide_self_view_div">
             <h5 class="p-1 m-1">Modify Self-view</h5>
             <!-- Subsection 1: Obscure Self-view -->
@@ -76,12 +46,12 @@
                         </div>
                         <small class="mb-0">Show Bad Connection Preview</small>
                     </div>
-                    <span id="show_bad_connection_status" class="small">Initializing</span>
+                    <span id="show_bad_connection_status" class="small">Feature coming soon</span>
                 </div>
             </div>
         </div>
 
-
+        <!-- Card 2: Self-view modifier -->
         <div class="dashBox card col-3" id="bcs">
             <h5>Bad Connection Simulator</h5>
             <div class="row">
@@ -99,59 +69,93 @@
                 </div>
             </div>
             <div class="row">
-            <table class="table table-sm align-middle lh-1">
-                <tr>
-                    <td class="text-end"><span id="active">None</span></td>
-                    <td rowspan=3>
-                        <div class="range-slider">
-                            <input id="bcs_level" type="range" min="0" max="2" value="0" step="1"
-                                   list="tick_marks" class="align-middle">
-                            <datalist id="tick_marks">
-                                <option value="none"></option>
-                                <option value="moderate"></option>
-                                <option value="severe"></option>
-                            </datalist>
-                        </div>
-                    </td>
-                    <td><span id="active_desc"
-                              class="small fw-light">Normal - select an option below to start
+                <table class="table table-sm align-middle lh-1">
+                    <tr>
+                        <td class="text-end"><span id="active">None</span></td>
+                        <td rowspan=3>
+                            <div class="range-slider">
+                                <input id="bcs_level" type="range" min="0" max="2" value="0" step="1"
+                                       list="tick_marks" class="align-middle">
+                                <datalist id="tick_marks">
+                                    <option value="none"></option>
+                                    <option value="moderate"></option>
+                                    <option value="severe"></option>
+                                </datalist>
+                            </div>
+                        </td>
+                        <td><span id="active_desc"
+                                  class="small fw-light">Normal - select an option below to start
                     </span></td>
-                </tr>
-                <tr>
-                    <td class="text-end"><span>Moderate</span></td>
-                    <td class="small fw-light">Bad – noticeable video issues and audio clipping</td>
-                </tr>
-                <tr>
-                    <td class="text-end"><span>Severe</span></td>
-                    <td class="small fw-light">Unusable – unintelligible audio and video</td>
-                </tr>
-            </table>
+                    </tr>
+                    <tr>
+                        <td class="text-end"><span>Moderate</span></td>
+                        <td class="small fw-light">Bad – noticeable video issues and audio clipping</td>
+                    </tr>
+                    <tr>
+                        <td class="text-end"><span>Severe</span></td>
+                        <td class="small fw-light">Unusable – unintelligible audio and video</td>
+                    </tr>
+                </table>
             </div>
         </div>
-        <div class="dashBox card col-3">
-            <h5>Presence </h5>
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" id="enable_presence_check">
-                <label class="form-check-label" for="enable_presence_check">Automatic presence update</label>
+
+
+        <!-- Card 3: Developer Tools -->
+        <div class="dashBox card col-3 ps-3">
+            <div class="d-flex align-items-center">
+                <h5 class="mb-0">Developer tools</h5>
+                <ul class="nav nav-tabs ms-auto" id="devTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="frame-tab" data-bs-toggle="tab" href="#frame" role="tab"
+                           aria-controls="frame" aria-selected="true">Frame Capture</a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="presence-tab" data-bs-toggle="tab" href="#presence" role="tab"
+                           aria-controls="presence" aria-selected="false">Presence</a>
+                    </li>
+                </ul>
             </div>
-            <h6>status: <span id="presence_status" class="">Unknown</span></h6>
-            <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
-                <span class="form-label">Manual controls: </span>
-                <button id="busy" class="btn btn-sm btn-outline-danger">Busy</button>
-                <button id="not_busy" class="btn btn-sm btn-outline-success">Not busy</button>
+            <div class="tab-content" id="devTabContent">
+                <!-- Frame Capture Tab -->
+                <div class="tab-pane fade show active" id="frame" role="tabpanel" aria-labelledby="frame-tab">
+                    <div class="form-check form-check-inline form-switch mb-2 w-50">
+                        <input class="form-check-input" type="checkbox" id="enable_img_cap_check">
+                        <label class="form-check-label" for="enable_img_cap_check">Enable Image Capture</label>
+                        <input type="checkbox" id="start_on_pc_check" disabled hidden>
+                    </div>
+                    <div class="mb-2">
+                        <label for="interval" class="form-label">Time between images in sec:</label>
+                        <input id="interval" type="text" value="30" size="8" required pattern="^[0-9]{1,9}$"
+                               class="form-control w-auto d-inline-block"/>
+                    </div>
+                    <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
+                        <button id="apply_settings" class="btn btn-outline-primary btn-sm">Apply</button>
+                        <button id="sampling_start" class="btn btn-outline-success btn-sm">Start</button>
+                        <button id="sampling_stop" class="btn btn-outline-danger btn-sm">Stop</button>
+                        <button id="open_sampling" class="btn btn-outline-secondary btn-small">Open Sampling</button>
+                    </div>
+                </div>
+                <!-- Presence Tab -->
+                <div class="tab-pane fade position-relative" id="presence" role="tabpanel"
+                     aria-labelledby="presence-tab">
+                    <button id="presence_setup" class="btn btn-sm btn-link text-start position-absolute top-0 end-0" data-bs-toggle="tooltip" data-bs-placement="left" title="Update presence settings" style="text-decoration: none;">
+                        <span class="fs-2">⚙️</span>
+                        <!--i class="bi bi-gear"></i-->
+                    </button>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="enable_presence_check">
+                        <label class="form-check-label" for="enable_presence_check">Automatic presence update</label>
+                    </div>
+                    <h6>status: <span id="presence_status" class="">Unknown</span></h6>
+                    <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
+                        <span class="form-label">Manual controls: </span>
+                        <button id="busy" class="btn btn-sm btn-outline-danger">Busy</button>
+                        <button id="not_busy" class="btn btn-sm btn-outline-success">Not busy</button>
+                    </div>
+                    <!--button id="presence_setup" class="btn btn-sm btn-link text-start">Presence Settings</button-->
+                </div>
             </div>
-            <button id="presence_setup" class="btn btn-sm btn-link text-start">Presence Settings</button>
         </div>
-        <!--div class="dashBox card col-3 mb-3 p-3">
-            <h3>Message log</h3>
-            <span id="events"></span>
-        </div-->
-        <!--div class="dashBox card col-3 mb-3 p-3">
-            <p>Remote audio levels</p>
-            <span class="remote_audio_level"></span>
-            <p>Local audio levels:</p>
-            <span class="local_audio_level"></span>
-        </div-->
     </div>
 </div>
 </body>

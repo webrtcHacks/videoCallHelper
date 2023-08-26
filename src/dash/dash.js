@@ -8,7 +8,7 @@ const storage = await new StorageHandler("local", debug);
 window.storage = storage; // for debugging
 
 /*
-// Remnants from post experiments
+// Remnants from past experiments
 
 let currentTabId;
 const remoteAudioLevels = [];

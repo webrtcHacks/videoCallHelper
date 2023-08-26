@@ -14,7 +14,8 @@ module.exports = {
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
         framing: './src/framing/scripts/framingAnalysis.js',
-        presence: './src/presence/scripts/presenceSettings.mjs'
+        presence: './src/presence/scripts/presenceSettings.mjs',
+        bootstrap: './node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
     },
     module: {
         rules: [
@@ -57,7 +58,7 @@ module.exports = {
         }),
         new HtmlWebpackPlugin({
             title: 'Pop-up Dashboard',
-            chunks: ['dash'],
+            chunks: ['bootstrap', 'dash'],
             template: "src/dash/dash.html",
             filename: "../pages/dash.html",
             inject: "body",
