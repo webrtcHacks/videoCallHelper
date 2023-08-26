@@ -32,15 +32,26 @@ export class selfViewElementModifier {
     static sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     constructor(stream, storage) {
+        this.isThrottled = false;
+
+        this.stream = stream;
+        this.track = stream.getVideoTracks()[0];
+        this.storage = storage;
+
         return new Promise(async (resolve, reject) => {
 
-            this.stream = stream;
-            this.track = stream.getVideoTracks()[0];
-            this.storage = storage;
             selfViewElementModifier.debug(`new selfViewElementModifier`);
 
+            // if the supplied stream doesn't include a video track give it a second to add one
+            // Saw Microsoft Teams doing this
             if (!this.track) {
-                reject(new Error("no video track is supplied stream"));
+                setTimeout(() => {
+                    this.track = stream.getVideoTracks()[0];
+                    if(!this.track){
+                        selfViewElementModifier.debug("no video track in supplied stream:", stream);
+                        reject(new Error("no video track in supplied stream"));
+                    }
+                }, 1000);
             }
 
             await this.#initialize();
@@ -127,8 +138,6 @@ export class selfViewElementModifier {
 
         await this.storage.update("selfView", newContents);
 
-        // ToDo: unobscuring is not working - styles are appending, not replacing
-        //  style="filter: blur(0px) opacity(1) grayscale(0) blur(10px) grayscale(50%);
         this.storage.addListener('selfView', async (newValue, changedValues) => {
             selfViewElementModifier.debug(`selfView storage changes: `, changedValues);
 
@@ -308,19 +317,6 @@ export class selfViewElementModifier {
 
     }
 
-
-    /*
-    #obscure(videoElement) {
-        // ToDo: do I need to check for existing filters? This was +=
-        videoElement.style.filter = ' blur(10px) grayscale(50%) ';
-    }
-
-    #unobsure(videoElement) {
-        videoElement.style.filter = videoElement.style.filter.replace('blur(10px)', '');
-        videoElement.style.filter = videoElement.style.filter.replace('grayscale(50%)', '');
-    }
-     */
-
     #getFilters(filterString) {
         return (filterString.match(/(\w+\([^\)]+\))/g) || []).reduce((filters, filter) => {
             const [filterName, value] = filter.split('(');
@@ -368,7 +364,7 @@ export class selfViewElementModifier {
             // svg.style.left = video.style.left ? video.style.left : "0";
             svg.style.left = `${videoElement.offsetLeft}px`;
             svg.style.top = `${videoElement.offsetTop}px`;
-            svg.style.zIndex = videoElement.style.zIndex ? videoElement.style.zIndex + 1 : 1000;
+            svg.style.zIndex = videoElement.style.zIndex ? videoElement.style.zIndex + 1 : 1000; // ToDo:
             svg.style.opacity = "30%";
             svg.classList.add("vch-selfViewCrosshair");
 
@@ -399,19 +395,39 @@ export class selfViewElementModifier {
             svg.appendChild(horzRect);
         }
 
-        draw();
+
+        // Limit drawing to once per second
+        const throttledDraw = () => {
+            if (this.isThrottled) return;
+            this.isThrottled = true;
+            draw();
+            setTimeout(() => { this.isThrottled = false; }, 1000);
+        };
+
+        // draw();
+        throttledDraw();
         videoElement.parentNode.insertBefore(svg, videoElement);
 
         // ToDo: clear these at some point
 
         // Watch for size changes on the video element
+        let isReconnecting = false;
         this.resizeObserver = new ResizeObserver(entries => {
+            if (isReconnecting) {
+                isReconnecting = false;
+                return;
+            }
             if (entries.some(entry => entry.target === videoElement)) {
-                // the setTineout technique used for the mutation observer caused this to loop indefinitely
+                this.resizeObserver.disconnect();
                 selfViewElementModifier.debug("self-view Video size changed, resizing crosshairs", entries);
-                draw();
+                throttledDraw();
+                setTimeout(() => {
+                    isReconnecting = true;
+                    this.resizeObserver.observe(videoElement);
+                }, 1000);
             }
         });
+
         this.resizeObserver.observe(videoElement);
 
         // Watch for changes on the video element
@@ -421,9 +437,9 @@ export class selfViewElementModifier {
             this.mutationObserver.disconnect();
             setTimeout(() => {
                 selfViewElementModifier.debug("self-view Video attributes changed, redrawing crosshairs", mutations);
-                draw();
+                throttledDraw();
                 this.mutationObserver.observe(videoElement, mutationOptions);
-            }, 500);
+            }, 1000);
         });
         // ToDo: this is causing problems with the Basic peer connection demo between two tabs - it was not updating
         this.mutationObserver.observe(videoElement, mutationOptions);

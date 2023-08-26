@@ -231,7 +231,7 @@ async function presenceOff(){
                 chrome.action.setIcon({path: "../icons/v_128.png"});
 
                 if(storage.contents.presence.active)
-                    webhook('off', storage.contents.presence, debug);
+                    webhook('off', storage.contents.presence);
 
                 // ToDo: check HID permissions
                 if(storage.contents.presence?.hid === true)
@@ -280,7 +280,7 @@ async function presenceOn(){
 
     await storage.update("presence", {active: true});
 
-    webhook('on', storage.contents.presence, debug);
+    webhook('on', storage.contents.presence);
     if(storage.contents.presence?.hid === true)
         await glow([255,0,0]);
     await chrome.action.setIcon({path: "../icons/v_rec.png"});

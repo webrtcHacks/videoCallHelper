@@ -20,8 +20,10 @@ export const settingsPrototype = {
 // dont repeat on webhook for each track
 let webhookIsActive = false;
 
+const debug = Function.prototype.bind.call(console.log, console, `👷presence:`);
+
 // ToDo: error checking on these entered values
-export function webhook(state, settings, debug = console.log) {
+function callWebhook(state, settings, debug = console.log) {
 
     // Failed attempt to limit repeated API calls
     // this was causing the state to get out-of-whack
@@ -84,4 +86,27 @@ export function webhook(state, settings, debug = console.log) {
             debug("fetch request failed details:", url, fetchParams, error);
         });
 }
+
+// Throttle helper function
+function throttle(fn, limit) {
+    let lastFunc;
+    let lastRan;
+    return function(...args) {
+        if (!lastRan) {
+            fn(...args);
+            lastRan = Date.now();
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(function() {
+                if ((Date.now() - lastRan) >= limit) {
+                    fn(...args);
+                    lastRan = Date.now();
+                }
+            }, limit - (Date.now() - lastRan));
+            debug(`Throttled a call to function ${fn.name}`);
+        }
+    }
+}
+
+export const webhook = throttle(callWebhook, 5000);
 
