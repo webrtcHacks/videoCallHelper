@@ -204,11 +204,14 @@ function monitorAudio(peerConnection) {
     });
 }
 
-if (!window.videoCallHelper) {
+if (window.videoCallHelper) {
+    debug("shims already loaded");
+}
+// Load shims
+else {
 
-    // ToDo: Google Meet doesn't use this
-
-    // ToDo: make a switch for this - not sure I need to shim this now
+// ToDo: Google Meet doesn't use this
+// ToDo: make a switch for this - not sure I need to shim this now
     /*
     // getDisplayMedia Shim
     const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
@@ -222,7 +225,7 @@ if (!window.videoCallHelper) {
     }
      */
 
-    // getUserMedia Shim
+// getUserMedia Shim
 
     const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
@@ -250,10 +253,25 @@ if (!window.videoCallHelper) {
     }
 
     navigator.mediaDevices.getUserMedia = async (constraints) => {
+        debug("navigator.mediaDevices.getUserMedia called");
+
         if (!appEnabled) {
             return origGetUserMedia(constraints)
         }
-        debug("navigator.mediaDevices.getUserMedia called");
+
+        const useFakeAudio = constraints.audio && constraints.audio.deviceId === "vch-audio";
+        const useFakeVideo = constraints.video && constraints.video.deviceId === "vch-video";
+
+        if(useFakeAudio || useFakeVideo){
+            // debug string that says using fake audio, fake video, or both
+            debug(`using fake ${useFakeAudio ? "audio" : ""} ${useFakeVideo ? "video" : ""} device`);
+            // ToDo: start fake stream
+            //  - send a request to content.js to start a fake stream
+            //  - make a transferStreamIn method like the current transferStream
+            //
+        }
+
+
         return await shimGetUserMedia(constraints);
 
     };
@@ -279,7 +297,7 @@ if (!window.videoCallHelper) {
     navigator.mediaDevices.getUserMedia = shimGetUserMedia;
 
 
-    // This doesn't seem to be used by Google Meet
+// This doesn't seem to be used by Google Meet
     const origMediaStreamAddTrack = MediaStream.prototype.addTrack;
     MediaStream.prototype.addTrack = function (track) {
         debug(`addTrack shimmed on MediaStream`, this, track);
@@ -288,7 +306,7 @@ if (!window.videoCallHelper) {
     }
 
 
-    // peerConnection shims
+// peerConnection shims
 
     window.pcTracks = [];
     window.pcStreams = [];      // streams always empty
@@ -339,11 +357,11 @@ if (!window.videoCallHelper) {
         // return origPeerConnAddStream.apply(this, arguments)
     };
 
-    //  It looks like Google Meet has its own addStream shim that does a track replacement instead of addTrack
-    //  try to shim RTCRtpSender.replaceTrack() - from MDN: https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpSender
-    //    "Attempts to replace the track currently being sent by the RTCRtpSender with another track, without
-    //    performing renegotiation. This method can be used, for example, to toggle between the front- and
-    //    rear-facing cameras on a device.
+//  It looks like Google Meet has its own addStream shim that does a track replacement instead of addTrack
+//  try to shim RTCRtpSender.replaceTrack() - from MDN: https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpSender
+//    "Attempts to replace the track currently being sent by the RTCRtpSender with another track, without
+//    performing renegotiation. This method can be used, for example, to toggle between the front- and
+//    rear-facing cameras on a device.
 
     const origSenderReplaceTrack = RTCRtpSender.prototype.replaceTrack;
     RTCRtpSender.prototype.replaceTrack = function (track) {
@@ -351,10 +369,9 @@ if (!window.videoCallHelper) {
         debug("RTC sender track settings", track.getSettings());
 
         window.pcTracks.push(track);
-        if(track.sourceTrack){
+        if (track.sourceTrack) {
             debug("track already altered");
-        }
-        else {
+        } else {
             const alteredTrack = alterTrack(track);
             arguments[0] = alteredTrack;
             transferStream(new MediaStream([alteredTrack]), m.PEER_CONNECTION_LOCAL_REPLACE_TRACK)
@@ -403,7 +420,7 @@ if (!window.videoCallHelper) {
         }
 
          */
-        else{
+        else {
             debug("addTransceiver no change");
             return origAddTransceiver.apply(this, arguments)
         }
@@ -457,14 +474,108 @@ if (!window.videoCallHelper) {
         return origPeerConnClose.apply(this, arguments)
     };
 
-    window.videoCallHelper = true;
+// Enumerate Devices Shim
 
-} else {
-    debug("shims already loaded")
+    const origEnumerateDevices = navigator.mediaDevices.enumerateDevices.bind(navigator.mediaDevices);
+    navigator.mediaDevices.enumerateDevices = async function () {
+        if (!appEnabled)
+            return origEnumerateDevices();
+
+        debug("navigator.mediaDevices.enumerateDevices called");
+        const devices = await origEnumerateDevices();
+
+        // Only add fake devices if there are other devices
+        // In the future when adding other sources it may make sense to have a device even with no permissions
+        if (devices !== undefined && Array.isArray(devices)) {
+
+            // ToDo: verify proper behavior if there are no browser permissions
+            let noLabel = !devices.find(d => d.label !== "");
+            if (noLabel)
+                debug("no device labels found");
+
+            /*if (devices.filter(d => d.label !== "").length === 0) {
+                return devices
+            }
+             */
+
+            // const fakeVideoDevice = new Input
+
+            // ToDo: adjust these capabilities based on the device selected
+            let fakeVideoDevice = {
+                __proto__: InputDeviceInfo.prototype,
+                deviceId: "vch-video",
+                kind: "videoinput",
+                label: noLabel ? "" : "vch-video",
+                groupId: noLabel ? "" : "video-call-helper",
+                getCapabilities: () => {
+                    debug("fake video capabilities");
+                    return {
+                        aspectRatio: {max: 1920, min: 0.000925925925925926},
+                        deviceId: noLabel ? "" : "vch-video",
+                        facingMode: [],
+                        frameRate: {max: 30, min: 1},
+                        groupId: noLabel ? "" : "vch",
+                        height: {max: 1080, min: 1},
+                        resizeMode: ["none", "crop-and-scale"],
+                        width: {max: 1920, min: 1}
+                    };
+                },
+                toJSON: () => {
+                    return {
+                        __proto__: InputDeviceInfo.prototype,
+                        deviceId: "vch-video",
+                        kind: "videoinput",
+                        label: noLabel ? "" : "vch-video",
+                        groupId: noLabel ? "" : "video-call-helper",
+                    }
+                }
+
+            };
+
+            let fakeAudioDevice = {
+                __proto__: InputDeviceInfo.prototype,
+                deviceId: "vch-audio",
+                kind: "audioinput",
+                label: noLabel ? "" : "vch-audio",
+                groupId: noLabel ? "" : "video-call-helper",
+                getCapabilities: () => {
+                    debug("fake audio capabilities?");
+                    return {
+                        autoGainControl: [true, false],
+                        channelCount: {max: 2, min: 1},
+                        deviceId: noLabel ? "" : "vch-audio",
+                        echoCancellation: [true, false],
+                        groupId: noLabel ? "" : "video-call-helper",
+                        latency: {max: 0.002902, min: 0},
+                        noiseSuppression: [true, false],
+                        sampleRate: {max: 48000, min: 44100},
+                        sampleSize: {max: 16, min: 16}
+                    }
+                },
+                toJSON: () => {
+                    return {
+                        __proto__: InputDeviceInfo.prototype,
+                        deviceId: "vch-audio",
+                        kind: noLabel ? "" : "audioinput",
+                        label: "vch-audio",
+                        groupId: noLabel ? "" : "video-call-helper",
+                    }
+                }
+            };
+
+            // filter "vch-audio" and "vch-video" out of existing devices array
+            devices.filter(d => d.deviceId !== "vch-audio" && d.deviceId !== "vch-video");
+            devices.push(fakeVideoDevice, fakeAudioDevice);
+
+            return devices
+
+        }
+    }
+
+    window.videoCallHelper = true;
 }
 
 /*
  * debugging
  */
-
 debug("injected");
