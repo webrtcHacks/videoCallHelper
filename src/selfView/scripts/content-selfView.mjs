@@ -406,7 +406,18 @@ export class selfViewElementModifier {
 
         // draw();
         throttledDraw();
+
+        // ToDo: getting this error:
+        //  Uncaught (in promise) TypeError: Failed to execute 'insertBefore' on 'Node': parameter 1 is not of type 'Node'.
+        //  -- Seems like a timing issue
+        //  -- trying a catch
+        try {
         videoElement.parentNode.insertBefore(svg, videoElement);
+        } catch (err) {
+            selfViewElementModifier.debug("Error inserting svg", err);
+        }
+        // 27-Aug: Moved from above to see if it fixes the problem - still problems with Jitsi
+        // throttledDraw();
 
         // ToDo: clear these at some point
 

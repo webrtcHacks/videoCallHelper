@@ -188,6 +188,9 @@ export const MESSAGE = {
     PEER_CONNECTION_LOCAL_REPLACE_TRACK: 'peer_connection_local_replace_track',
     PEER_CONNECTION_LOCAL_REMOVE_TRACK: 'peer_connection_local_remove_track',
 
+    // Fake devices
+    GET_STANDBY_STREAM: 'get_standby_stream',
+
     // background.js
     DASH_INIT: 'dash_init',
     FRAME_CAPTURE: 'frame_cap',
