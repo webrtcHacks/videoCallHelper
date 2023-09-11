@@ -1,6 +1,7 @@
 'use strict';
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
+import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -11,8 +12,8 @@ const appEnabled = true;
 let monitorAudioSwitch = false;
 let processTrackSwitch = true;
 
-let lastStream;// needed for fake device
-let lastRealAudioId, lastRealVideoId;  // needed for fake device
+// ForDeviceManager
+const deviceManager = new DeviceManager();
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉 `);
 
@@ -46,101 +47,8 @@ async function transferStream(stream, message = m.GUM_STREAM_START, data= {}){
     }
 }
 
-/*
-async function transferStream(stream){
-
-    // window.vchStreams.push(stream); // for testing
-
-    // only handle streams with video for now
-    if(stream.getVideoTracks().length === 0)
-        return;
-
-    return new Promise((resolve, reject) => {
-        const timeOut = 1500;                               // max time to wait for vch to return a new stream
-        const startTime = new Date().getTime();             // measure time to return new stream
-
-        // ToDo: shadow dom?
-        const video = document.createElement('video');
-        // video.id = stream.id;
-        video.id = `vch-${Math.random().toString().substring(10)}`;
-        video.srcObject = stream;
-        video.hidden = true;
-        video.muted = true;
-        document.body.appendChild(video);
-        video.oncanplay = () => {
-            video.oncanplay = null;
-            sendMessage('all', m.GUM_STREAM_START, {id: video.id});
-        }
-
-        // Cancel if nothing happens before the timeout
-        const timer = setTimeout(() => {
-            debug(`transfer stream failed to return a new stream within ${timeOut} ms`)
-            reject(new Error(`transfer stream failed to return a new stream within ${timeOut} ms`) );
-        }, timeOut);   // 1 second timeout
-
-        function streamTransferComplete(data) {
-            clearTimeout(timer);
-            removeListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
-            removeListener(m.STREAM_TRANSFER_FAILED, streamTransferComplete);
-
-            // resolve();
-
-            try{
-                // const video = document.querySelector(`video#${data.id}`);
-                // ToDo: the returned track is changed
-                debug("returned video track: ", video.srcObject.getVideoTracks()[0]);
-                debug("returned video track settings: ", video.srcObject.getVideoTracks()[0].getSettings());
-                debug("returned video track constraints: ", video.srcObject.getVideoTracks()[0].getConstraints());
-                debug("returned video track capabilities: ", video.srcObject.getVideoTracks()[0].getCapabilities());
-
-                const contentJsStream = video.srcObject;         // ToDo: srcObject coming back as null on Jitsi on change cam preview
-                const alteredTracks = [];
-                for(const track of contentJsStream.getTracks()){
-                    const alteredTrack = new VCHMediaStreamTrack({kind: track.kind}, track);
-                    alteredTracks.push(alteredTrack);
-                }
-                const modifiedStream = new MediaStream(alteredTracks);
-
-                debug("modifiedStream video track: ", modifiedStream.getVideoTracks()[0]);
-                debug("modifiedStream video track settings: ", modifiedStream.getVideoTracks()[0].getSettings());
-                debug("modifiedStream video track constraints: ", modifiedStream.getVideoTracks()[0].getConstraints());
-                debug("modifiedStream video track capabilities: ", modifiedStream.getVideoTracks()[0].getCapabilities());
-
-
-                // video.srcObject = null;
-                // ToDo: put this back after debugging
-                // document.body.removeChild(video);           // Clean-up the DOM
-                debug(`removed video element ${data.id}; new modified stream ${modifiedStream.id} returned within ${new Date().getTime() - startTime} ms`);
-
-                resolve(modifiedStream);
-
-            }
-            catch (e){
-                debug(`Error in streamTransferComplete: `, e);
-                reject(e);
-            }
-
-        }
-
-        function streamTransferFailed(data) {
-            clearTimeout(timer);
-            removeListener(m.STREAM_TRANSFER_FAILED, streamTransferFailed);
-            removeListener(m.STREAM_TRANSFER_COMPLETE, streamTransferFailed);
-            const video = document.querySelector(`video#${data.id}`);
-            document.body.removeChild(video);           // Clean-up the DOM
-
-            debug(`stream transfer failed ${data.error}`, data);
-            reject(new Error(`stream transfer failed: ${data.error}`));
-        }
-
-        addListener(m.STREAM_TRANSFER_COMPLETE, streamTransferComplete);
-        addListener(m.STREAM_TRANSFER_FAILED, streamTransferFailed);
-
-    });
-
-}
-
- */
+// Note - there was a more complicated TransferStream that handled transfer failures;
+//  I guess I removed this because that wasn't necessary anymore
 
 // ToDo: merge this into monitorTrack in content.js?
 // extract and send track event data
@@ -251,9 +159,9 @@ else {
 
         // try to use the last real device ID in place of the vch-(audio|video) if it is there, otherwise use default
         if (useFakeAudio)
-            constraints.audio = lastRealAudioId || "default";
+            constraints.audio = deviceManager.lastRealAudioId;
         if (useFakeVideo)
-            constraints.video = lastRealVideoId || "default";
+            constraints.video = deviceManager.lastRealVideoId;
 
         if (JSON.stringify(constraints) !== constraintsString)
             debug("new constraints", constraints);
@@ -270,8 +178,8 @@ else {
         const alteredStreamTracks = [];
         // If there are no alternated tracks, then return the stream as is
         if (!useFakeAudio && !useFakeVideo) {
-            lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
-            lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
+            deviceManager.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
+            deviceManager.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
             await transferStream(stream);               // transfer the stream to the content script
             return stream;
         } else {
@@ -279,11 +187,11 @@ else {
             if (useFakeAudio && !useFakeVideo) {
                 audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
                 videoTracks.forEach(track => alteredStreamTracks.push(track));
-                lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
+                deviceManager.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
             } else if (!useFakeAudio && useFakeVideo) {
                 audioTracks.forEach(track => alteredStreamTracks.push(track));
                 videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
-                lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
+                deviceManager.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
             } else if (useFakeAudio && useFakeVideo) {
                 audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
                 videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
@@ -526,7 +434,7 @@ else {
 
     const origEnumerateDevices = navigator.mediaDevices.enumerateDevices.bind(navigator.mediaDevices);
     navigator.mediaDevices.enumerateDevices = async function () {
-        if (!appEnabled)
+        if (!appEnabled || !deviceManager.enabled)
             return origEnumerateDevices();
 
         debug("navigator.mediaDevices.enumerateDevices called");
@@ -534,90 +442,8 @@ else {
 
         // Only add fake devices if there are other devices
         // In the future when adding other sources it may make sense to have a device even with no permissions
-        if (devices !== undefined && Array.isArray(devices)) {
-
-            // ToDo: verify proper behavior if there are no browser permissions
-            let noLabel = !devices.find(d => d.label !== "");
-            if (noLabel)
-                debug("no device labels found");
-
-            /*if (devices.filter(d => d.label !== "").length === 0) {
-                return devices
-            }
-             */
-
-            // const fakeVideoDevice = new Input
-
-            // ToDo: adjust these capabilities based on the device selected
-            let fakeVideoDevice = {
-                __proto__: InputDeviceInfo.prototype,
-                deviceId: "vch-video",
-                kind: "videoinput",
-                label: noLabel ? "" : "vch-video",
-                groupId: noLabel ? "" : "video-call-helper",
-                getCapabilities: () => {
-                    debug("fake video capabilities");
-                    return {
-                        aspectRatio: {max: 1920, min: 0.000925925925925926},
-                        deviceId: noLabel ? "" : "vch-video",
-                        facingMode: [],
-                        frameRate: {max: 30, min: 1},
-                        groupId: noLabel ? "" : "vch",
-                        height: {max: 1080, min: 1},
-                        resizeMode: ["none", "crop-and-scale"],
-                        width: {max: 1920, min: 1}
-                    };
-                },
-                toJSON: () => {
-                    return {
-                        __proto__: InputDeviceInfo.prototype,
-                        deviceId: "vch-video",
-                        kind: "videoinput",
-                        label: noLabel ? "" : "vch-video",
-                        groupId: noLabel ? "" : "video-call-helper",
-                    }
-                }
-
-            };
-
-            let fakeAudioDevice = {
-                __proto__: InputDeviceInfo.prototype,
-                deviceId: "vch-audio",
-                kind: "audioinput",
-                label: noLabel ? "" : "vch-audio",
-                groupId: noLabel ? "" : "video-call-helper",
-                getCapabilities: () => {
-                    debug("fake audio capabilities?");
-                    return {
-                        autoGainControl: [true, false],
-                        channelCount: {max: 2, min: 1},
-                        deviceId: noLabel ? "" : "vch-audio",
-                        echoCancellation: [true, false],
-                        groupId: noLabel ? "" : "video-call-helper",
-                        latency: {max: 0.002902, min: 0},
-                        noiseSuppression: [true, false],
-                        sampleRate: {max: 48000, min: 44100},
-                        sampleSize: {max: 16, min: 16}
-                    }
-                },
-                toJSON: () => {
-                    return {
-                        __proto__: InputDeviceInfo.prototype,
-                        deviceId: "vch-audio",
-                        kind: noLabel ? "" : "audioinput",
-                        label: "vch-audio",
-                        groupId: noLabel ? "" : "video-call-helper",
-                    }
-                }
-            };
-
-            // filter "vch-audio" and "vch-video" out of existing devices array
-            devices.filter(d => d.deviceId !== "vch-audio" && d.deviceId !== "vch-video");
-            devices.push(fakeVideoDevice, fakeAudioDevice);
-
-            return devices
-
-        }
+        if (devices !== undefined && Array.isArray(devices))
+            return deviceManager.addFakeDevices(devices);
     }
 
     window.videoCallHelper = true;

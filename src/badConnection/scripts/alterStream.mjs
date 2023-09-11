@@ -243,7 +243,7 @@ export function alterTrack(track) {
     }
      */
 
-    // Don't process audio for google meet
+    // Don't process audio for google meet- it had some issue
     // ToDo: process audio for Google Meet
     if(track.kind === "audio" && window.location.host.includes("google")){
         debug("alterTrack: google meet audio track, returning original track");

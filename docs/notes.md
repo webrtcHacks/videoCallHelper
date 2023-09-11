@@ -1,13 +1,13 @@
-# Saving to disk
 
-`parentDirectoryHandle = await window.showDirectoryPicker();
-`
+# Passing information between contexts
 
-https://web.dev/file-system-access/
+## Doing something in inject.js when the user clicks on something in the dash
+1. dash.js watches for UI actions
+2. dash.js updates storage based on action
+3. content.js has listeners for storage changes
+4. content.js does a sendMessage to 'inject' with the update
+5. inject.js has a listener for messages from content.js
 
-Permissions get reset everytime video.js is opened, so user would need to click 3 confirmations every time.
-
-ToDo: try it from background.js?
 
 # Alterstream
 
@@ -42,8 +42,18 @@ This inturn would cause errors in the apps
 2. clone the generated track
  - Pro: easy
  - Con: won't work with apply contraints
-3. Tee the generator output to a enw stream 
+3. Tee the generator output to a new stream 
  - Pro: no new resources
  - Con: can't do applyContraints
 
 
+# Saving to disk
+
+`parentDirectoryHandle = await window.showDirectoryPicker();
+`
+
+https://web.dev/file-system-access/
+
+Permissions get reset everytime video.js is opened, so user would need to click 3 confirmations every time.
+
+ToDo: try it from background.js?
