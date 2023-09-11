@@ -12,9 +12,6 @@ const appEnabled = true;
 let monitorAudioSwitch = false;
 let processTrackSwitch = true;
 
-// ForDeviceManager
-const deviceManager = new DeviceManager();
-
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉 `);
 
 /*
@@ -28,6 +25,9 @@ const mh = new MessageHandler('inject', debug);
 const sendMessage = mh.sendMessage;
 // const addListener = mh.addListener;
 // const removeListener = mh.removeListener;
+
+// ForDeviceManager
+const deviceManager = new DeviceManager();
 
 
 // Put the stream in a temp DOM element for transfer to content.js context

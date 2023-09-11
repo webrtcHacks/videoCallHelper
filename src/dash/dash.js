@@ -103,7 +103,7 @@ const showFramingCheck = document.querySelector("input#show_framing_check");
 const showFramingStatus = document.querySelector("span#show_framing_status");
 
 const showBadConnectionDiv = document.querySelector("div#show_bad_connection_div");
-const showBadConnectionCheck = document.querySelector("input#show_bad_connection_check");
+// const showBadConnectionCheck = document.querySelector("input#show_bad_connection_check");
 const showBadConnectionStatus = document.querySelector("span#show_bad_connection_status");
 
 function updateSelfViewUI() {
@@ -147,31 +147,18 @@ function updateSelfViewUI() {
         }
     }
 
+    /*
     for (let child of showBadConnectionDiv.children) {
         child.disabled = true;
         child.classList.add('text-muted');
     }
-
-
-    /*
-    // Show Bad Connection
-    const showBadConnectionEnabled = storage.contents['selfView']['showBadConnection'].enabled;
-    const showBadConnectionActive = storage.contents['selfView']['showBadConnection'].active;
-
-    if (showBadConnectionEnabled && showBadConnectionActive)
-        showBadConnectionStatus.innerText = "Showing bad connection";
-    else if (showBadConnectionEnabled && !showBadConnectionActive)
-        showBadConnectionStatus.innerText = "Enable Bad Connection Simulator";
-    else
-        showBadConnectionStatus.innerText = "Click to enable";
-
      */
+
 }
 
 // debug("self-view settings:", storage.contents['selfView']);
 selfViewCheckbox.checked = storage.contents['selfView']['hideView']?.enabled || false;
 showFramingCheck.checked = storage.contents['selfView']['showFraming']?.enabled || false;
-// showBadConnectionCheck.checked = storage.contents['selfView']['showBadConnection']?.enabled || false;
 updateSelfViewUI();
 
 
@@ -207,12 +194,8 @@ bcsEnabledCheck.checked = storage.contents['badConnection'].enabled;
 
 bcsEnabledCheck.onclick = async () => {
     const enabled = bcsEnabledCheck.checked;
-    // debug(`set badConnection enabled to ${enabled}`);
-
-    // No longer relevant? - old ToDo: ok to slide this on and before a peerConnection, but after a peerConnection,
-    //  this needs to be fixed to off OR need to do a replaceTrack with a new alterTrack - that could cause issues
+    debug(`set badConnection enabled to ${enabled}`);
     await storage.update('badConnection', {enabled: enabled});
-
 }
 
 /************ END deviceManager ************/

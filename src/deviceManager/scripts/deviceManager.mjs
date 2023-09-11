@@ -1,7 +1,12 @@
+import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+const mh = new MessageHandler('inject');
+const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️🥸`);
+
 
 export class DeviceManager {
 
     //ToDo: list
+    // 1. send a message asking for settings
     // 1. add a listener for when enabled is changed in the UI
     // 2. emit a deviceChange event when enabled is changed
 
@@ -9,14 +14,28 @@ export class DeviceManager {
         // this.devices = devices;
         this.lastRealAudioId = 'default';
         this.lastRealVideoId = 'default';
+        this.isEnabled = false;
+        this.initialized = false;
+
+        mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
+            debug("bad connection settings updated", data);
+            this.badConnectionSettings = data;
+            this.isEnabled = data.enabled;
+            this.initialized = true;
+        });
+
+        mh.sendMessage('content', m.GET_BAD_CONNECTION_SETTINGS);
+
+        debug("device manager initialized");
+
     }
 
     get enabled(){
-        return true
+        return this.isEnabled;
     }
 
     addFakeDevices(devices) {
-
+        
         // ToDo: verify proper behavior if there are no browser permissions
         let noLabel = !devices.find(d => d.label !== "");
         if (noLabel)
