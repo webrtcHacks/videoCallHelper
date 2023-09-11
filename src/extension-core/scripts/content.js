@@ -344,13 +344,21 @@ async function gumStreamStart(data) {
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
 
-    // image capture
-    await grabFrames(origStream);
+    // Clean-up the DOM since I don't use this anymore
+    document.body.removeChild(video);
 
-    // self-view
-    // this works as long as I reuse the streamID?
-    // await new selfViewElementModifier(origStream);
-    new selfViewElementModifier(origStream, storage);
+    // Video-only processing
+    if(origStream.getVideoTracks().length > 0) {
+
+        // image capture
+        // ToDo: consider passing data to grabFrames so I can filter out bcs
+        await grabFrames(origStream);
+
+        // self-view
+        // this works as long as I reuse the streamID?
+        // await new selfViewElementModifier(origStream);
+        new selfViewElementModifier(origStream, storage);
+    }
 
 
 }

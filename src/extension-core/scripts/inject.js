@@ -1,7 +1,6 @@
 'use strict';
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
-import {getStandbyStream} from "../../modules/simStream.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -32,7 +31,7 @@ const sendMessage = mh.sendMessage;
 
 // Put the stream in a temp DOM element for transfer to content.js context
 // content.js will swap with a replacement stream
-async function transferStream(stream, message = m.GUM_STREAM_START) {
+async function transferStream(stream, message = m.GUM_STREAM_START, data= {}){
     // ToDo: shadow dom?
     const video = document.createElement('video');
     // video.id = stream.id;
@@ -43,7 +42,7 @@ async function transferStream(stream, message = m.GUM_STREAM_START) {
     document.body.appendChild(video);
     video.oncanplay = () => {
         video.oncanplay = null;
-        sendMessage('all', message, {id: video.id});
+        sendMessage('all', message, {id: video.id, ...data});
     }
 }
 
@@ -258,12 +257,10 @@ else {
 
         if (JSON.stringify(constraints) !== constraintsString)
             debug("new constraints", constraints);
-        
+
         // Now get the stream
         const stream = await origGetUserMedia(constraints);
         debug("got new gUM stream", stream);
-        await transferStream(stream);               // transfer the stream to the content script
-
 
         // Run any tracks that should be from vch-(audio|video) through alterTrack
         // Keep track of any non-altered tracks deviceIds for use next call
@@ -275,6 +272,7 @@ else {
         if (!useFakeAudio && !useFakeVideo) {
             lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
             lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
+            await transferStream(stream);               // transfer the stream to the content script
             return stream;
         } else {
             // Create alterTracks where needed and use the existing tracks from the gUM call otherwise
@@ -296,6 +294,7 @@ else {
             // make a new stream with the tracks from above
             const alteredStream = new MediaStream(alteredStreamTracks);
             debug("using alteredStream", alteredStream);
+            await transferStream(stream, m.GUM_STREAM_START, {generated: true});               // transfer the stream to the content script
             return alteredStream;
         }
     }
