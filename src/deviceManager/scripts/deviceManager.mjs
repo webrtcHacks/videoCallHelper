@@ -16,12 +16,23 @@ export class DeviceManager {
         this.lastRealVideoId = 'default';
         this.isEnabled = false;
         this.initialized = false;
+        this.devices = [];
 
         mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
             debug("bad connection settings updated", data);
-            this.badConnectionSettings = data;
-            this.isEnabled = data.enabled;
-            this.initialized = true;
+
+            // set an initial value
+            if(!this.initialized){
+                this.initialized = true;
+                this.isEnabled = data.enabled;
+            }
+            // look for changes; fake the devicechange event if vch-devices should be added or removed
+            else if( data.enabled !== this.isEnabled){
+                navigator.mediaDevices.dispatchEvent(new Event("devicechange"));
+                debug("fake devicechange event dispatched");
+                this.isEnabled = data.enabled;
+            }
+
         });
 
         mh.sendMessage('content', m.GET_BAD_CONNECTION_SETTINGS);
@@ -30,12 +41,13 @@ export class DeviceManager {
 
     }
 
+    // ToDo: be careful of race conditions if this is called before settings are received
     get enabled(){
         return this.isEnabled;
     }
 
     addFakeDevices(devices) {
-        
+
         // ToDo: verify proper behavior if there are no browser permissions
         let noLabel = !devices.find(d => d.label !== "");
         if (noLabel)
@@ -108,6 +120,7 @@ export class DeviceManager {
         devices.filter(d => d.deviceId !== "vch-audio" && d.deviceId !== "vch-video");
         devices.push(fakeVideoDevice, fakeAudioDevice);
 
+        this.devices = devices;
         return devices
     }
 
