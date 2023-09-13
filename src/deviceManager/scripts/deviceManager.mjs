@@ -17,22 +17,29 @@ export class DeviceManager {
         this.isEnabled = false;
         this.initialized = false;
         this.devices = [];
+        this.deviceChangeListeners = [];
 
         mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
+            this.initialized = true;
+
             debug("bad connection settings updated", data);
+            let lastValue = this.isEnabled;
+            this.isEnabled = data.enabled;
 
-            // set an initial value
-            if(!this.initialized){
-                this.initialized = true;
-                this.isEnabled = data.enabled;
-            }
             // look for changes; fake the devicechange event if vch-devices should be added or removed
-            else if( data.enabled !== this.isEnabled){
-                navigator.mediaDevices.dispatchEvent(new Event("devicechange"));
-                debug("fake devicechange event dispatched");
-                this.isEnabled = data.enabled;
-            }
+            if( data.enabled !== lastValue){
+                // Doesn't work :(
+                // navigator.mediaDevices.dispatchEvent(new Event("fakeDevicechange"));
+                // mh.sendMessage('inject', m.FAKE_DEVICE_CHANGE, {action: data.enabled ? 'add' : 'remove'});
 
+                debug(`fake device change: "${data.enabled ? 'add' : 'remove'}", triggering devicechange listeners`);
+                this.deviceChangeListeners.forEach(listener =>{
+                        try {
+                            listener(new Event('devicechange'));
+                        } catch (error) {
+                            debug('Error triggering custom devicechange listener:', error);
+                        }});
+            }
         });
 
         mh.sendMessage('content', m.GET_BAD_CONNECTION_SETTINGS);

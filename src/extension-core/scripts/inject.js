@@ -434,10 +434,11 @@ else {
 
     const origEnumerateDevices = navigator.mediaDevices.enumerateDevices.bind(navigator.mediaDevices);
     navigator.mediaDevices.enumerateDevices = async function () {
+        debug("navigator.mediaDevices.enumerateDevices called");
+
         if (!appEnabled || !deviceManager.enabled)
             return origEnumerateDevices();
 
-        debug("navigator.mediaDevices.enumerateDevices called");
         const devices = await origEnumerateDevices();
 
         // Only add fake devices if there are other devices
@@ -445,6 +446,33 @@ else {
         if (devices !== undefined && Array.isArray(devices))
             return deviceManager.addFakeDevices(devices);
     }
+
+// devicechange shim
+    const originalAddEventListener = navigator.mediaDevices.addEventListener.bind(navigator.mediaDevices);
+
+    navigator.mediaDevices.addEventListener = function(type, listener) {
+        debug(`navigator.mediaDevices.addEventListener called with "${type}" and listener:`, listener);
+
+        if (type === 'devicechange') {
+            // debug('navigator.mediaDevices.addEventListener called with "devicechange"');
+            deviceManager.deviceChangeListeners.push(listener);
+        }
+
+        return originalAddEventListener(type, listener);
+    };
+
+    const originalRemoveEventListener = navigator.mediaDevices.removeEventListener.bind(navigator.mediaDevices);
+    navigator.mediaDevices.removeEventListener = function(type, listener) {
+        if (type === 'devicechange') {
+            debug('navigator.mediaDevices.removeEventListener called with "devicechange"');
+            const index = deviceManager.deviceChangeListeners.indexOf(listener);
+            if (index > -1) {
+                deviceManager.deviceChangeListeners.splice(index, 1); // Remove this listener
+            }
+            return;
+        }
+        return originalRemoveEventListener(type, listener);
+    };
 
     window.videoCallHelper = true;
 }

@@ -222,9 +222,12 @@ function disableBcs(){
 }
 
 // Permanently disable the bad connection simulator if there is no peer connection
+// -- no longer needed with fake device approach
+/*
 if(storage.contents['badConnection'].noPeerOnStart) {
     disableBcs();
 }
+ */
 
 
 function updateBcsSlider() {
@@ -275,11 +278,15 @@ bcsSelect.onclick = async (e) => {
 updateBcsSlider();
 
 storage.addListener('badConnection', () => {
-    if (storage.contents['badConnection']?.noPeerOnStart) {
+    // no longer needed with fake device approach
+    /*if (storage.contents['badConnection']?.noPeerOnStart) {
         disableBcs();
     } else {
         updateSelfViewUI();
     }
+     */
+    updateSelfViewUI();
+
 });
 
 

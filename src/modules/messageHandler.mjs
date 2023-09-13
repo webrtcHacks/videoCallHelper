@@ -219,6 +219,9 @@ export const MESSAGE = {
     // self-view
     SELF_VIEW: 'self_view',
 
+    // device manager
+    FAKE_DEVICE_CHANGE: 'fake_device_change',
+
     // bad connection
     GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
     UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
