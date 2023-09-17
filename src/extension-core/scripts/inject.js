@@ -158,10 +158,14 @@ else {
         debug("original constraints", constraints);
 
         // try to use the last real device ID in place of the vch-(audio|video) if it is there, otherwise use default
+        // - constraints.video.deviceId
+        // - constraints.video.deviceId.exact
+        // - constraints.video.deviceId.ideal
+
         if (useFakeAudio)
-            constraints.audio = deviceManager.lastRealAudioId;
+            constraints.audio.deviceId = deviceManager.lastRealAudioId;
         if (useFakeVideo)
-            constraints.video = deviceManager.lastRealVideoId;
+            constraints.video.deviceId = deviceManager.lastRealVideoId;
 
         if (JSON.stringify(constraints) !== constraintsString)
             debug("new constraints", constraints);
@@ -185,16 +189,16 @@ else {
         } else {
             // Create alterTracks where needed and use the existing tracks from the gUM call otherwise
             if (useFakeAudio && !useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
+                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
                 videoTracks.forEach(track => alteredStreamTracks.push(track));
                 deviceManager.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
             } else if (!useFakeAudio && useFakeVideo) {
                 audioTracks.forEach(track => alteredStreamTracks.push(track));
-                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
+                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
                 deviceManager.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
             } else if (useFakeAudio && useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
-                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
+                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
+                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
             } else {
                 debug("shouldn't be here");
             }

@@ -7,6 +7,10 @@ import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 // import impairmentWorkerScript from '../../badConnection/scripts/impairment.worker.js';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
 
+// A listener is needed to see if AlterTrack/AlterStream is enabled
+//  - settings used skip altering the track
+//  - 'settings' is also used inside the alteredMediaStreamTrackGenerator class for this.settings
+
 /************ START get settings ************/
 
 const mh = new MessageHandler('inject', debug);
@@ -54,7 +58,7 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
     readyState: "live"
      */
 
-    constructor(options, sourceTrack) {
+    constructor(options, sourceTrack, isFakeDevice = false) {
         const track = super(options);
 
         this.options = options;
@@ -66,6 +70,14 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
         this.sourceTrack = sourceTrack;
         this.track = track;
+
+        // Switch the deviceId to a `vch-audio` or `vch-video`
+        if(isFakeDevice){
+            this._settings.deviceId = `vch-${this.kind}`;
+            // ToDo: handle ideal and exact constraints
+            this._constraints.deviceId = `vch-${this.kind}`;
+        }
+
     }
 
     // Getters
@@ -204,7 +216,7 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
 // ToDo: need a way to replace an altered track
 // ToDo: mute / unmute not working - I think I fixed that in the alteredMediaStreamTrackGenerator, need to verify
-export function alterTrack(track) {
+export function alterTrack(track, isFakeDevice = false) {
 
     if(!settings.enabled){
         debug("Bad connection simulator not enabled - disabling");
@@ -254,7 +266,7 @@ export function alterTrack(track) {
     // the track was working. That doesn't work for the clone() method that needs an immediate response
     // so I return the generator and let the generator start when it starts
 
-    const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
+    const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track, isFakeDevice);
 
     // keep the promise here in case I need to send a notification on resolve
     new Promise((resolve, reject) => {
