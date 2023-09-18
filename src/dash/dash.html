@@ -8,6 +8,54 @@
 <div class="vch container-fluid m-0 p-0 overflow-hidden h-100" data-bs-theme="dark">
     <div class="row">
 
+        <!-- New Card: Device Manager -->
+        <div class="dashBox card col-3" style="height: 150px;" id="device_manager_div">
+            <h5 class="p-1 m-1">Device Manager</h5>
+            <!-- Enable/Disable Toggle -->
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="bcs_enabled_check">
+                        <label class="form-check-label" for="bcs_enabled_check">Enable device manager</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Dropdowns -->
+            <div class="d-flex py-0 px-1">
+                <!-- Fake Audio Device Dropdown -->
+                <div class="dropdown" title="Select a fake audio device">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="audioDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-mic"></i> Fake Audio
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="audioDropdown">
+                        <!-- Options populated dynamically -->
+                    </ul>
+                </div>
+
+                <!-- Fake Video Device Dropdown -->
+                <div class="dropdown" title="Select a fake video device">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="videoDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-camera"></i> Fake Video
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="videoDropdown">
+                        <!-- Options populated dynamically -->
+                    </ul>
+                </div>
+
+                <!-- Device Exclusion Dropdown -->
+                <div class="dropdown" title="Select devices to exclude">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="excludeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-x-circle"></i> Exclude Devices
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="excludeDropdown">
+                        <!-- Options populated dynamically -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
         <!-- Card 1: Self-view modifier -->
         <div class="dashBox card col-3" style="height: 150px;" id="hide_self_view_div">
             <h5 class="p-1 m-1">Modify Self-view</h5>
@@ -57,8 +105,8 @@
             <div class="row">
                 <div class="col-6">
                     <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="bcs_enabled_check">
-                        <label class="form-check-label" for="bcs_enabled_check">Enable quality simulation</label>
+                        <input class="form-check-input" type="checkbox" id="bcs_enabled_check_og">
+                        <label class="form-check-label" for="bcs_enabled_check_og">Enable quality simulation</label>
                     </div>
                 </div>
                 <!--div class="col-6">
@@ -138,7 +186,9 @@
                 <!-- Presence Tab -->
                 <div class="tab-pane fade position-relative" id="presence" role="tabpanel"
                      aria-labelledby="presence-tab">
-                    <button id="presence_setup" class="btn btn-sm btn-link text-start position-absolute top-0 end-0" data-bs-toggle="tooltip" data-bs-placement="left" title="Update presence settings" style="text-decoration: none;">
+                    <button id="presence_setup" class="btn btn-sm btn-link text-start position-absolute top-0 end-0"
+                            data-bs-toggle="tooltip" data-bs-placement="left" title="Update presence settings"
+                            style="text-decoration: none;">
                         <span class="fs-2">⚙️</span>
                         <!--i class="bi bi-gear"></i-->
                     </button>

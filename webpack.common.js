@@ -16,6 +16,7 @@ module.exports = {
         framing: './src/framing/scripts/framingAnalysis.js',
         presence: './src/presence/scripts/presenceSettings.mjs',
         bootstrap: './node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
+        bootstrapIcons: './node_modules/bootstrap-icons/font/bootstrap-icons.scss',
     },
     module: {
         rules: [
@@ -40,13 +41,21 @@ module.exports = {
                     },
                     {
                         loader: 'sass-loader'
-                    }
+                    },
                 ]
             },
             {
                 test: /.*impairment\.worker.*\.(js)$/i,
                 type: 'asset/source',
             },
+            {
+                mimetype: 'image/svg+xml',
+                scheme: 'data',
+                type: 'asset/resource',
+                generator: {
+                    filename: 'icons/[hash].svg'
+                }
+            }
         ]
     },
     plugins: [
@@ -58,7 +67,7 @@ module.exports = {
         }),
         new HtmlWebpackPlugin({
             title: 'Pop-up Dashboard',
-            chunks: ['bootstrap', 'dash'],
+            chunks: ['bootstrap', 'bootstrapIcons', 'dash'],
             template: "src/dash/dash.html",
             filename: "../pages/dash.html",
             inject: "body",
