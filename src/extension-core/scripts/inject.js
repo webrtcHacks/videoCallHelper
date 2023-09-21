@@ -155,6 +155,8 @@ else {
         const useFakeAudio = constraintsString.match(/vch-audio/)?.length > 0;
         const useFakeVideo = constraintsString.match(/vch-video/)?.length > 0;
 
+        // ToDo: manage no fake audio for Google Meet or fix that
+
         debug("original constraints", constraints);
 
         // try to use the last real device ID in place of the vch-(audio|video) if it is there, otherwise use default
@@ -440,10 +442,11 @@ else {
     navigator.mediaDevices.enumerateDevices = async function () {
         debug("navigator.mediaDevices.enumerateDevices called");
 
-        if (!appEnabled || !deviceManager.enabled)
+        if (!appEnabled || ! (await deviceManager.enabled()) )
             return origEnumerateDevices();
 
         const devices = await origEnumerateDevices();
+        mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {devices});
 
         // Only add fake devices if there are other devices
         // In the future when adding other sources it may make sense to have a device even with no permissions

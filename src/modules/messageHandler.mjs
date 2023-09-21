@@ -188,11 +188,9 @@ export const MESSAGE = {
     PEER_CONNECTION_LOCAL_REPLACE_TRACK: 'peer_connection_local_replace_track',
     PEER_CONNECTION_LOCAL_REMOVE_TRACK: 'peer_connection_local_remove_track',
 
-    // Fake devices
-    GET_STANDBY_STREAM: 'get_standby_stream',
-
     // background.js
     DASH_INIT: 'dash_init',
+    // DASH_OPEN: 'dash_open',
     FRAME_CAPTURE: 'frame_cap',
     // GUM_STREAM_START: 'gum_stream_start',
     GUM_STREAM_STOP: 'gum_stream_stop',
@@ -220,7 +218,11 @@ export const MESSAGE = {
     SELF_VIEW: 'self_view',
 
     // device manager
-    FAKE_DEVICE_CHANGE: 'fake_device_change',
+    GET_DEVICE_SETTINGS: 'get_device_settings',
+    UPDATE_DEVICE_SETTINGS: 'update_device_settings',
+    DEVICE_CHANGE: 'device_change',
+
+    // GET_STANDBY_STREAM: 'get_standby_stream',
 
     // bad connection
     GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',

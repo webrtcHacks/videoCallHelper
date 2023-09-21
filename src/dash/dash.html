@@ -15,8 +15,8 @@
             <div class="row">
                 <div class="col-6">
                     <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="bcs_enabled_check">
-                        <label class="form-check-label" for="bcs_enabled_check">Enable device manager</label>
+                        <input class="form-check-input" type="checkbox" id="dm_enabled_check">
+                        <label class="form-check-label" for="dm_enabled_check">Enable device manager</label>
                     </div>
                 </div>
             </div>
@@ -28,7 +28,7 @@
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="audioDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-mic"></i> Fake Audio
                     </button>
-                    <ul class="dropdown-menu" aria-labelledby="audioDropdown">
+                    <ul class="dropdown-menu" aria-labelledby="audioDropdown" id="audio_devices_list">
                         <!-- Options populated dynamically -->
                     </ul>
                 </div>
@@ -38,17 +38,17 @@
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="videoDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-camera"></i> Fake Video
                     </button>
-                    <ul class="dropdown-menu" aria-labelledby="videoDropdown">
+                    <ul class="dropdown-menu" aria-labelledby="videoDropdown" id="video_devices_list">
                         <!-- Options populated dynamically -->
                     </ul>
                 </div>
 
                 <!-- Device Exclusion Dropdown -->
                 <div class="dropdown" title="Select devices to exclude">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="excludeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle disabled" type="button" id="excludeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-x-circle"></i> Exclude Devices
                     </button>
-                    <ul class="dropdown-menu" aria-labelledby="excludeDropdown">
+                    <ul class="dropdown-menu" aria-labelledby="excludeDropdown" id="all_devices_list">
                         <!-- Options populated dynamically -->
                     </ul>
                 </div>
@@ -105,8 +105,8 @@
             <div class="row">
                 <div class="col-6">
                     <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="bcs_enabled_check_og">
-                        <label class="form-check-label" for="bcs_enabled_check_og">Enable quality simulation</label>
+                        <input class="form-check-input" type="checkbox" id="bcs_enabled_check">
+                        <label class="form-check-label" for="bcs_enabled_check">Enable quality simulation</label>
                     </div>
                 </div>
                 <!--div class="col-6">

@@ -104,6 +104,14 @@ chrome.runtime.onInstalled.addListener(async () => {
         await storage.update('imageCapture', imageCaptureSettings);
     }
 
+    // device manager settings
+    if(!storage.contents['deviceManager']) {
+        const deviceManagerSettings = {
+            enabled: false,
+        }
+        await storage.set('deviceManager', deviceManagerSettings);
+    }
+
     // self-view settings
     const selfViewSettings = {
         active: false,
@@ -118,7 +126,6 @@ chrome.runtime.onInstalled.addListener(async () => {
         level: "passthrough"
     }
     await storage.set('badConnection', badConnectionSettings);
-
 
 
     // Testing

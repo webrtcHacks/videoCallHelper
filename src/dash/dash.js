@@ -187,7 +187,84 @@ storage.addListener('selfView', () => {
 /************ END selfView  ************/
 
 /************ START deviceManager ************/
-// take from bacConnection until I made a new panel for this
+
+const dmEnabledCheck = document.querySelector("input#dm_enabled_check");
+dmEnabledCheck.checked = storage.contents['deviceManager']['enabled'] || false;
+
+dmEnabledCheck.onclick = async () => {
+    const enabled = dmEnabledCheck.checked;
+    debug(`set deviceManager enabled to ${enabled}`);
+    await storage.update('deviceManager', {enabled: enabled});
+}
+
+// import {deviceManager} from "../deviceManager/scripts/_deviceManager.mjs";
+// const dm = new deviceManager();
+
+const audioMenu = document.getElementById('audio_devices_list');
+const videoMenu = document.getElementById('video_devices_list');
+const excludeMenu = document.getElementById('all_devices_list');
+
+// Finding: device enumeration permissions are not shared with the extension context
+//  only default devices are returned
+// ToDo: need to send the list of devices from inject to dash
+// ToDo: handle permissions changes
+async function populateDeviceDropdowns(devices) {
+
+    // Clear previous options
+    audioMenu.innerHTML = '';
+    videoMenu.innerHTML = '';
+    excludeMenu.innerHTML = '';
+
+    try {
+        // const devices = await navigator.mediaDevices.enumerateDevices();
+        debug(devices);
+        devices.forEach((device) => {
+
+            // improve the label text in the case where permissions don't provide labels
+            let betterLabel = device.label;
+            if(device.label === ""){
+                let betterKind = device.kind
+                    .replace('videoinput', 'camera')
+                    .replace('audioinput', 'microphone')
+                    .replace('audiooutput', 'speaker');
+                betterLabel = `default ${betterKind}`;
+            }
+
+            let option = document.createElement('li');
+            option.className = 'dropdown-item';
+            option.textContent = betterLabel;
+            option.dataset.deviceId = device.deviceId;
+
+            if (device.kind === 'audioinput') {
+                audioMenu.appendChild(option);
+            } else if (device.kind === 'videoinput') {
+                videoMenu.appendChild(option);
+            }
+
+            // Add option to Exclude Devices dropdown
+            excludeMenu.appendChild(option.cloneNode(true));
+        });
+    } catch (error) {
+        console.error('Error enumerating devices:', error);
+    }
+}
+
+// Initial population
+// await populateDeviceDropdowns();
+
+// Optionally, update when devices are added/removed
+navigator.mediaDevices.ondevicechange = () => async () =>{
+    debug("device change detected - populate dropdowns here");
+    // await populateDeviceDropdowns();
+};
+
+
+/************ END deviceManager ************/
+
+
+
+/************ START badConnection ************/
+
 const bcsEnabledCheck = document.querySelector("input#bcs_enabled_check");
 
 bcsEnabledCheck.checked = storage.contents['badConnection'].enabled;
@@ -198,14 +275,10 @@ bcsEnabledCheck.onclick = async () => {
     await storage.update('badConnection', {enabled: enabled});
 }
 
-/************ END deviceManager ************/
-
-
-
-/************ START badConnection ************/
-
 const bcsSelect = document.querySelector("input#bcs_level");
 
+// Permanently disable the bad connection simulator if there is no peer connection
+// -- no longer needed with fake device approach
 function disableBcs(){
     debug("peerConnection not open in time - disabling bad connection simulator");
     const bcsDiv = document.querySelector("div#bcs");
@@ -221,8 +294,7 @@ function disableBcs(){
     // bcsDiv.querySelector("#active").innerText = "enable before connecting";
 }
 
-// Permanently disable the bad connection simulator if there is no peer connection
-// -- no longer needed with fake device approach
+
 /*
 if(storage.contents['badConnection'].noPeerOnStart) {
     disableBcs();

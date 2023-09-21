@@ -20,13 +20,63 @@ const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
 // await sendMessage('all', 'hello there', {foo: 'bar'});
 
+import {StorageHandler} from "../../modules/storageHandler.mjs";
+let storage = await new StorageHandler("local", debug);
+// ToDo: trying to pass initial storage settings direct to inject so messageHandler isn't needed for initialization
+const settings = storage.contents;
+debug("storage contents: ", settings);
+
+/************ START deviceManager ************/
+
+// Set initial device manager values
+const deviceSettings = {
+    enabled: storage.contents['deviceManager']?.enabled ?? false,   // UI switch
+    permission: {                           // browser permission
+        audio: await navigator.permissions.query({name: 'microphone'}) ?? null,
+        video: await navigator.permissions.query({name: 'camera'}) ?? null
+    },
+    currentDevices: null,
+    preferredDeviceLabels: {            // UI selections
+        audio: storage.contents['deviceManager']?.preferredDeviceLabels?.audio ?? "",
+        video: storage.contents['deviceManager']?.preferredDeviceLabels?.video ?? ""
+    }
+}
+
+
+// Dash UI enabled change should be propagated to inject
+await storage.addListener('deviceManager', (newValue) => {
+    debug("deviceManager settings changed", newValue);
+    sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, newValue);
+});
+
+// Inject (fakeDeviceManager) should ask for these settings when it loads
+mh.addListener(m.GET_DEVICE_SETTINGS, () => {
+    sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, storage.contents['deviceManager']);
+});
+
+// Inject should send content UPDATE_DEVICE_SETTINGS on any deviceChange or permission change
+mh.addListener(m.UPDATE_DEVICE_SETTINGS, async (data) => {
+    let settings = storage.contents['deviceManager'];
+    debug("deviceManager settings updated", data);
+    settings.currentDevices = data.devices;
+    settings.permission = {
+        audio: (await navigator.permissions.query({name: 'microphone'}))?.state,
+        video: (await navigator.permissions.query({name: 'camera'    }))?.state,
+    }
+    await storage.update('deviceManager', settings);
+});
+
+
+// reset storage values on start
+await storage.update('deviceManager', deviceSettings);
+
+
+/************ END deviceManager ************/
+
 
 /************ START bad connection ************/
 // ToDo - possibly move this into a module
 // Need to relay badConnection updates between inject and dash
-import {StorageHandler} from "../../modules/storageHandler.mjs";
-
-let storage = await new StorageHandler("local", debug);
 
 const bcsInitSettings = {
     enabled: storage.contents['badConnection']?.enabled ?? false,
@@ -46,6 +96,8 @@ mh.addListener(m.GET_BAD_CONNECTION_SETTINGS, () => {
 });
 
 // if a peerConnection is open and badConnection is not enabled then permanently disable it
+//  - no longer needed with device manager
+/*
 mh.addListener(m.PEER_CONNECTION_OPEN,  () => {
     if (!bcsInitSettings.enabled) {
         storage.update('badConnection', {noPeerOnStart: true})
@@ -56,6 +108,7 @@ mh.addListener(m.PEER_CONNECTION_OPEN,  () => {
             .catch(err => debug("Error updating badConnection settings", err));
     }
 });
+ */
 
 /************ END bad connection ************/
 
@@ -389,13 +442,21 @@ document.addEventListener('readystatechange', async (event) => {
 });
  */
 
+// learning: can't inject variables due to unsafe inline policy restrictions
+//  I tried this:
+/*
+    let code = await fetch(chrome.runtime.getURL(path)).then(r => r.text());
+    code +=`\nlet initSettings = ${JSON.stringify(settings)};`;
+    script.textContent = code;
+ */
+
 // inject inject script
-function addScript(path) {
+async function addScript(path) {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL(path);
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
 }
 
-addScript('/scripts/inject.js');
+await addScript('/scripts/inject.js');
 // debug("inject injected");
