@@ -206,8 +206,8 @@ const excludeMenu = document.getElementById('all_devices_list');
 
 // Finding: device enumeration permissions are not shared with the extension context
 //  only default devices are returned
-// ToDo: need to send the list of devices from inject to dash
 // ToDo: handle permissions changes
+// ToDo: handle if devices array is empty
 async function populateDeviceDropdowns(devices) {
 
     // Clear previous options
@@ -242,6 +242,7 @@ async function populateDeviceDropdowns(devices) {
             }
 
             // Add option to Exclude Devices dropdown
+            // Future: update selected items in dropdown
             excludeMenu.appendChild(option.cloneNode(true));
         });
     } catch (error) {
@@ -250,7 +251,17 @@ async function populateDeviceDropdowns(devices) {
 }
 
 // Initial population
-// await populateDeviceDropdowns();
+const devices = storage.contents['deviceManager']['currentDevices'] || [];
+await populateDeviceDropdowns(devices);
+
+storage.addListener('deviceManager', async (newValue) => {
+    dmEnabledCheck.checked = storage.contents['deviceManager']['enabled'] || false;
+
+    if(newValue.currentDevices)
+        await populateDeviceDropdowns(newValue.currentDevices);
+
+});
+
 
 // Optionally, update when devices are added/removed
 navigator.mediaDevices.ondevicechange = () => async () =>{
