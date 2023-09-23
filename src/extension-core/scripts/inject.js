@@ -14,13 +14,6 @@ let processTrackSwitch = true;
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉 `);
 
-/*
-const {send, listen} = new MessageHandler('inject', debug);
-const sendMessage = send;
-const addListener = listen;
- */
-
-
 const mh = new MessageHandler('inject', debug);
 const sendMessage = mh.sendMessage;
 
@@ -28,7 +21,10 @@ const sendMessage = mh.sendMessage;
 async function getSettings() {
     return new Promise((resolve, reject) => {
 
-        let timeout;
+        const timeout = setTimeout(() => {
+            debug("get initial settings timeout");
+            reject("get initial settings timeout")
+        }, 1000);
 
         mh.addListener(m.ALL_SETTINGS, (data) => {
             debug("settings updated", data);
@@ -37,10 +33,7 @@ async function getSettings() {
         });
 
         mh.sendMessage('content', m.GET_ALL_SETTINGS);
-        timeout = setTimeout(() => {
-            debug("get initial settings timeout");
-            reject("get initial settings timeout")
-        }, 1000);
+
     });
 
 }
@@ -49,6 +42,7 @@ async function getSettings() {
 const settings = await getSettings().catch(err => debug("error getting initial settings", err));
 debug("initial settings", settings);
 
+// ToDo: use the settings to initialize any other inject context modules
 
 // ForDeviceManager
 const deviceManager = new DeviceManager({enabled: settings?.deviceManager?.enabled});
