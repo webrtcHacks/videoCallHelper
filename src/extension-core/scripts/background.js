@@ -116,6 +116,8 @@ chrome.runtime.onInstalled.addListener(async () => {
     const selfViewSettings = {
         active: false,
         enabled: storage.contents['selfView']?.enabled || false,
+        hideView: false,
+        showFraming: false,
     }
     await storage.set('selfView', selfViewSettings);
 
@@ -163,39 +165,6 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 });
 
-async function dashInit(data){
-
-    // not sure what this was all about. Maybe tab specific settings?
-
-    const tabId = data.tabId;
-
-    /*
-    const tabDataObj = await chrome.storage.local.get(['tabData']);
-        if(!tabDataObj.tabData){
-            debug("no tabData in storage");
-            return;
-        }
-
-        debug("loaded data", tabDataObj.tabData);
-
-        let responseData = tabDataObj.tabData.filter(data=>data?.sourceId===tabId);
-        responseData.tabId = tabId;
-
-     */
-
-        const messageToSend = {
-            from: 'background',
-            to: 'content',
-            message: 'dash_open',
-            // data: responseData.,
-            tabId: tabId,
-        }
-
-        // ToDo: populate this
-        mh.sendMessage('dash', m.DASH_OPEN, messageToSend);
-
-        debug("sent dash init data", data);
-}
 
 async function frameCap(data){
     const imageBlob = await fetch(data.blobUrl).then(response => response.blob());
@@ -237,11 +206,11 @@ async function presenceOff(){
                 debug("turn presence off here");
                 chrome.action.setIcon({path: "../icons/v_128.png"});
 
-                if(storage.contents.presence.active)
+                if(storage.contents?.presence?.active)
                     webhook('off', storage.contents.presence);
 
                 // ToDo: check HID permissions
-                if(storage.contents.presence?.hid === true)
+                if(storage.contents?.presence?.hid === true)
                     await glow([0,0,0]);
 
                 await storage.update('presence', {active: false});
