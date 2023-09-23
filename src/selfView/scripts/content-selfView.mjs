@@ -8,7 +8,6 @@
 // NOTES:
 // uses storage changes to toggle on/off
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
-import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 // Keep track of remote tracks so we don't alter them
 const remoteTrackIds = new Set();
@@ -229,7 +228,7 @@ export class selfViewElementModifier {
 
 
     async #monitor() {
-        if (this.track.readyState === "ended") {
+        if (this.track?.readyState === "ended") {
             selfViewElementModifier.debug(`track.readyState === "ended"`);
             clearInterval(this.selfViewCheckInterval);
             this.selfViewCheckInterval = false;

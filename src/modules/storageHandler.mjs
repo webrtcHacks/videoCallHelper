@@ -79,6 +79,8 @@ export class StorageHandler {
         let changedValues = Array.isArray(newValue) ? [] : {};
         for (let key in newValue) {
             if (newValue.hasOwnProperty(key)) {
+                if(!oldValue || !oldValue[key])  // handle if the key didn't exist
+                    changedValues[key] = newValue[key];
                 if (typeof newValue[key] === "object" && oldValue[key]) {
                     let nestedChange = StorageHandler.#findChangedValues(oldValue[key], newValue[key]);
                     if (Object.keys(nestedChange).length > 0) {
@@ -101,15 +103,20 @@ export class StorageHandler {
         }
 
         try {
-            const updatedValue = Object.assign(StorageHandler.contents[key], newValue);
-            Object.assign(StorageHandler.contents, {[key]: updatedValue});
+            if(StorageHandler.contents[key]){
+                const updatedValue = Object.assign(StorageHandler.contents[key], newValue);
+                Object.assign(StorageHandler.contents, {[key]: updatedValue});
+            }
+            else
+                StorageHandler.contents[key] = newValue;
+
             await this.storage.set(StorageHandler.contents)
             return StorageHandler.contents[key];
         } catch (error) {
             this.debug("error updating storage", error);
-            this.debug("key", key, "newValue", newValue);
+            this.debug("key", key ?? null, "newValue", newValue ?? null);
             this.debug("contents", StorageHandler.contents);
-            this.debug("storage", this.storage.get());
+            this.debug("storage", await this.storage.get());
         }
     }
 

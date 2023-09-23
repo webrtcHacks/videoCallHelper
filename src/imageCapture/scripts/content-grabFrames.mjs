@@ -174,13 +174,13 @@ storage.addListener('imageCapture', async (newValue) => {
     debug(`imageCapture storage changes: `, newValue);
 
     // Stop sampling
-    if (storage.contents['imageCapture'].active === true && newValue?.active === false) {
+    if (storage.contents['imageCapture']?.active === true && newValue?.active === false) {
         debug("Stopping image capture");
         clearInterval(captureInterval);
         await storage.update('imageCapture', {active: false});
     }
     // Start sampling
-    else if (storage.contents['imageCapture'].enabled && newValue?.active && !running){ //} && currentStream?.active) {
+    else if (storage.contents['imageCapture']?.enabled && newValue?.active && !running){ //} && currentStream?.active) {
         debug("Starting image capture");
         await grabFrames();
     }
@@ -188,7 +188,7 @@ storage.addListener('imageCapture', async (newValue) => {
     else if (newValue.captureIntervalMs) {
         debug(`Changing image capture interval to ${newValue.captureIntervalMs}`);
         clearInterval(captureInterval);
-        if(storage.contents['imageCapture'].active)
+        if(storage.contents['imageCapture']?.active)
             await grabFrames();
     }
 
