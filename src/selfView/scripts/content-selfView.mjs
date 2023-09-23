@@ -26,7 +26,7 @@ export class selfViewElementModifier {
 
     START_UP_DELAY_MS = 3 * 1000;               // wait in ms before starting to give time for the video to load
 
-    static debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️ selfViewElementModifier: `);
+    static debug = Function.prototype.bind.call(console.debug, console, `vch 🕵️🤳`);
 
     static sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -473,7 +473,7 @@ export class selfViewElementModifier {
     }
 }
 
-const mh = new MessageHandler('content', selfViewElementModifier.debug);
+const mh = new MessageHandler('content'); //, selfViewElementModifier.debug);
 
 // for self-view replacement
 mh.addListener('remote_track_added', data => {

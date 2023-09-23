@@ -13,7 +13,7 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
 
 /************ START get settings ************/
 
-const mh = new MessageHandler('inject', debug);
+const mh = new MessageHandler('inject'); //, debug);
 
 // for reference
 let settings = {
