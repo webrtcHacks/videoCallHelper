@@ -27,23 +27,39 @@
  */
 
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
-const mh = new MessageHandler('inject');
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️🥸`);
+const mh = new MessageHandler('inject', debug);
 
 
 export class DeviceManager {
 
-    constructor() {
-        this.isEnabled = false;
-        this.initialized = false;
-        this.devices = [];
-        this.deviceChangeListeners = [];
+    settings = {
+        enabled: false,
+        currentDevices: [],
+        selectedDeviceLabels: {
+            audio: null,
+            video: null,
+        },
+        preferredDeviceLabels: {
+            audio: null,
+            video: null,
+        }
+    }
 
-        // Setup listener to:
-        //  1. set initialized if settings are received
-        //  2. simulate a devicechange event if enabled is changed
+    devices = [];
+    deviceChangeListeners = [];
+
+    constructor(settings) {
+
+        // singleton pattern
+        if (DeviceManager.instance) {
+            debug("existing DeviceManager instance");
+            return DeviceManager.instance;
+        }
+        DeviceManager.instance = this;
+
+        // Setup listener to simulate a devicechange event if enabled is changed
         mh.addListener(m.UPDATE_DEVICE_SETTINGS, (data) => {
-            this.initialized = true;
 
             let lastValue = this.isEnabled;
             this.isEnabled = data.enabled;
@@ -55,32 +71,17 @@ export class DeviceManager {
             }
         });
 
-        mh.sendMessage('content', m.GET_DEVICE_SETTINGS);
+        // mh.sendMessage('content', m.GET_DEVICE_SETTINGS);
 
-        debug("device manager initialized");
+        Object.assign(this.settings, settings);
+        debug(`device manager initialized and is ${this.settings.enabled ? 'enabled' : 'disabled'}`);
 
     }
 
-    // Race conditions if this is called before settings are received
-    /*
     get enabled(){
-        return this.isEnabled;
+        return this.settings.enabled;
     }
-     */
 
-    // Crappy work-around to make sure we know if deviceManager is enabled before returning
-    //  my attempts to delay the constructor didn't work since it has to be synchronous
-    async enabled(){
-        // wait if not initialized
-        if(!this.initialized) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            if (!this.initialized) {
-                debug("device manager not initialized after 0.5 second, disabling it");
-                this.initialized = true;    // set this to true so we don't delay other calls to enumerateDevices
-            }
-        }
-        return this.isEnabled;
-    }
 
     #simulateDeviceChangeEvent() {
         debug(`fake device change: "${this.isEnabled ? 'add' : 'remove'}", triggering devicechange listeners`);

@@ -10,7 +10,7 @@ export class MessageHandler {
     // context;
     tabId;
 
-    // ToDo: default debug to no logqing
+    // ToDo: make this a singleton per context&debug
     constructor(context, debug = ()=>{}, listen = true) {
         this.context = context;
         this.debug = debug; // debug function
@@ -35,8 +35,8 @@ export class MessageHandler {
 
     }
 
-    // Learning - use arrow function if you want to inherit the class's `this`
-    sendMessage = (to = 'all', message, data = {}, responseCallBack = null) => {
+    // Reminder: use arrow function if you want to inherit the class's `this`
+    sendMessage = (to = 'all', message, data = {}) => {
         if (this.context === to)
             return;
 
@@ -134,6 +134,11 @@ export class MessageHandler {
     // This is only for content from inject
     #documentListener() {
         document.addEventListener('vch', async e => {
+            if(!e.detail){
+               this.debug('ERROR: no e.detail', e)
+               return
+            }
+
             const {to, from, message, data} = e.detail;
 
             // if (from !== 'inject')
@@ -159,6 +164,7 @@ export class MessageHandler {
     }
 
     addListener = (message = "", callback = null, tabId = null) => {
+        // ToDo: return an error if the listener isn't active
         this.#listeners.push({message, callback, tabId});
         this.debug(`added listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
     }
@@ -174,6 +180,8 @@ export class MessageHandler {
 
 export const MESSAGE = {
     // used in inject.js
+    GET_ALL_SETTINGS: 'get_all_settings',
+
     STREAM_TRANSFER_COMPLETE: 'stream_transfer_complete',
     STREAM_TRANSFER_FAILED: 'stream_transfer_failed',
     GUM_STREAM_START: 'gum_stream_start',
@@ -202,6 +210,7 @@ export const MESSAGE = {
 
     // content.js
     TOGGLE_DASH: 'toggle_dash',
+    ALL_SETTINGS: 'settings',
     // GUM_STREAM_START: 'gum_stream_start',
     // UNLOAD: 'unload',
     // TRACK_TRANSFER_COMPLETE: 'track_transfer_complete',  // should have been STREAM_TRANSFER_COMPLETE

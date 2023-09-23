@@ -1,7 +1,7 @@
 'use strict';
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
-import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
+import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -23,16 +23,40 @@ const addListener = listen;
 
 const mh = new MessageHandler('inject', debug);
 const sendMessage = mh.sendMessage;
-// const addListener = mh.addListener;
-// const removeListener = mh.removeListener;
+
+// get settings from storage
+async function getSettings() {
+    return new Promise((resolve, reject) => {
+
+        let timeout;
+
+        mh.addListener(m.ALL_SETTINGS, (data) => {
+            debug("settings updated", data);
+            clearTimeout(timeout);
+            resolve(data);
+        });
+
+        mh.sendMessage('content', m.GET_ALL_SETTINGS);
+        timeout = setTimeout(() => {
+            debug("get initial settings timeout");
+            reject("get initial settings timeout")
+        }, 1000);
+    });
+
+}
+
+// Call the function
+const settings = await getSettings().catch(err => debug("error getting initial settings", err));
+debug("initial settings", settings);
+
 
 // ForDeviceManager
-const deviceManager = new DeviceManager();
+const deviceManager = new DeviceManager({enabled: settings?.deviceManager?.enabled});
 
 
 // Put the stream in a temp DOM element for transfer to content.js context
 // content.js will swap with a replacement stream
-async function transferStream(stream, message = m.GUM_STREAM_START, data= {}){
+async function transferStream(stream, message = m.GUM_STREAM_START, data = {}) {
     // ToDo: shadow dom?
     const video = document.createElement('video');
     // video.id = stream.id;
@@ -442,7 +466,7 @@ else {
     navigator.mediaDevices.enumerateDevices = async function () {
         debug("navigator.mediaDevices.enumerateDevices called");
 
-        if (!appEnabled || ! (await deviceManager.enabled()) )
+        if (!appEnabled || !deviceManager.enabled)
             return origEnumerateDevices();
 
         const devices = await origEnumerateDevices();
@@ -457,7 +481,7 @@ else {
 // devicechange shim
     const originalAddEventListener = navigator.mediaDevices.addEventListener.bind(navigator.mediaDevices);
 
-    navigator.mediaDevices.addEventListener = function(type, listener) {
+    navigator.mediaDevices.addEventListener = function (type, listener) {
         debug(`navigator.mediaDevices.addEventListener called with "${type}" and listener:`, listener);
 
         if (type === 'devicechange') {
@@ -469,7 +493,7 @@ else {
     };
 
     const originalRemoveEventListener = navigator.mediaDevices.removeEventListener.bind(navigator.mediaDevices);
-    navigator.mediaDevices.removeEventListener = function(type, listener) {
+    navigator.mediaDevices.removeEventListener = function (type, listener) {
         if (type === 'devicechange') {
             debug('navigator.mediaDevices.removeEventListener called with "devicechange"');
             const index = deviceManager.deviceChangeListeners.indexOf(listener);

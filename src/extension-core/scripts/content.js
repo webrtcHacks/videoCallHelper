@@ -1,8 +1,6 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
-// import {alterStream} from "../../badConnection/scripts/alterStream.mjs";
-
 
 const streams = [];
 let trackInfos = [];
@@ -18,7 +16,6 @@ debug(`content.js loaded on ${window.location.href}`);
 
 const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
-// await sendMessage('all', 'hello there', {foo: 'bar'});
 
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 let storage = await new StorageHandler("local", debug);
@@ -26,16 +23,20 @@ let storage = await new StorageHandler("local", debug);
 const settings = storage.contents;
 debug("storage contents: ", settings);
 
+mh.addListener(m.GET_ALL_SETTINGS, async() => {
+    await mh.sendMessage('inject', m.ALL_SETTINGS, storage.contents);
+});
+
 /************ START deviceManager ************/
 
 // Set initial device manager values
 const deviceSettings = {
     enabled: storage.contents['deviceManager']?.enabled ?? false,   // UI switch
-    permission: {                           // browser permission
-        audio: await navigator.permissions.query({name: 'microphone'}) ?? null,
-        video: await navigator.permissions.query({name: 'camera'}) ?? null
-    },
-    currentDevices: null,
+    /*permission: {                           // browser permission
+        audio: null, // await navigator.permissions.query({name: 'microphone'}) ?? null,
+        video: null // await navigator.permissions.query({name: 'camera'}) ?? null
+    },*/
+    currentDevices: [],
     preferredDeviceLabels: {            // UI selections
         audio: storage.contents['deviceManager']?.preferredDeviceLabels?.audio ?? "",
         video: storage.contents['deviceManager']?.preferredDeviceLabels?.video ?? ""
@@ -60,8 +61,8 @@ mh.addListener(m.UPDATE_DEVICE_SETTINGS, async (data) => {
     debug("deviceManager settings updated", data);
     settings.currentDevices = data.devices;
     settings.permission = {
-        audio: (await navigator.permissions.query({name: 'microphone'}))?.state,
-        video: (await navigator.permissions.query({name: 'camera'    }))?.state,
+        audio:  null, //(await navigator.permissions.query({name: 'microphone'}))?.state,
+        video: null //(await navigator.permissions.query({name: 'camera'    }))?.state,
     }
     await storage.update('deviceManager', settings);
 });
