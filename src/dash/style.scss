@@ -41,3 +41,8 @@ h5 {
 #bcs-level .active {
   $form-range-thumb-bg: $component-active-bg;
 }
+
+.scrollable-dropdown {
+  max-height: 120px; /* Set a max height for the dropdown */
+  overflow-y: auto; /* Enable vertical scrolling */
+}

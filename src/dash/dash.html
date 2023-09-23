@@ -22,39 +22,43 @@
             </div>
 
             <!-- Device Dropdowns -->
-            <div class="d-flex py-0 px-1">
-                <!-- Fake Audio Device Dropdown -->
-                <div class="dropdown" title="Select a fake audio device">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="audioDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-mic"></i> Fake Audio
-                    </button>
-                    <ul class="dropdown-menu" aria-labelledby="audioDropdown" id="audio_devices_list">
-                        <!-- Options populated dynamically -->
-                    </ul>
-                </div>
+            <div class="row align-items-end h-100">
+                <div class="d-flex py-0 px-1 ">
+                    <!-- Fake Audio Device Dropdown -->
+                    <div class="dropup" title="Select a fake audio device">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                id="audioDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-mic"></i> Fake Audio
+                        </button>
+                        <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="audioDropdown" id="audio_devices_list">
+                            <!-- Options populated dynamically -->
+                        </ul>
+                    </div>
 
-                <!-- Fake Video Device Dropdown -->
-                <div class="dropdown" title="Select a fake video device">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="videoDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-camera"></i> Fake Video
-                    </button>
-                    <ul class="dropdown-menu" aria-labelledby="videoDropdown" id="video_devices_list">
-                        <!-- Options populated dynamically -->
-                    </ul>
-                </div>
+                    <!-- Fake Video Device Dropdown -->
+                    <div class="dropup" title="Select a fake video device">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                id="videoDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-camera"></i> Fake Video
+                        </button>
+                        <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="videoDropdown" id="video_devices_list">
+                            <!-- Options populated dynamically -->
+                        </ul>
+                    </div>
 
-                <!-- Device Exclusion Dropdown -->
-                <div class="dropdown" title="Select devices to exclude">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle disabled" type="button" id="excludeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-x-circle"></i> Exclude Devices
-                    </button>
-                    <ul class="dropdown-menu" aria-labelledby="excludeDropdown" id="all_devices_list">
-                        <!-- Options populated dynamically -->
-                    </ul>
+                    <!-- Device Exclusion Dropdown -->
+                    <div class="dropup" title="Select devices to exclude">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle disabled" type="button"
+                                id="excludeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-x-circle"></i> Exclude Devices
+                        </button>
+                        <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="excludeDropdown" id="all_devices_list">
+                            <!-- Options populated dynamically -->
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
-
 
         <!-- Card 1: Self-view modifier -->
         <div class="dashBox card col-3" style="height: 150px;" id="hide_self_view_div">

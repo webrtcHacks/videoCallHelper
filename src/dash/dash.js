@@ -157,8 +157,8 @@ function updateSelfViewUI() {
 }
 
 // debug("self-view settings:", storage.contents['selfView']);
-selfViewCheckbox.checked = storage.contents['selfView']['hideView']?.enabled || false;
-showFramingCheck.checked = storage.contents['selfView']['showFraming']?.enabled || false;
+selfViewCheckbox.checked = storage.contents['selfView']?.hideView?.enabled || false;
+showFramingCheck.checked = storage.contents['selfView']?.showFraming?.enabled || false;
 updateSelfViewUI();
 
 
@@ -188,7 +188,13 @@ storage.addListener('selfView', () => {
 
 /************ START deviceManager ************/
 
+// UI elements
 const dmEnabledCheck = document.querySelector("input#dm_enabled_check");
+const audioMenu = document.getElementById('audio_devices_list');
+const videoMenu = document.getElementById('video_devices_list');
+const excludeMenu = document.getElementById('all_devices_list');
+// ToDo: guidance text
+
 dmEnabledCheck.checked = storage.contents['deviceManager']['enabled'] || false;
 
 dmEnabledCheck.onclick = async () => {
@@ -200,14 +206,9 @@ dmEnabledCheck.onclick = async () => {
 // import {deviceManager} from "../deviceManager/scripts/_deviceManager.mjs";
 // const dm = new deviceManager();
 
-const audioMenu = document.getElementById('audio_devices_list');
-const videoMenu = document.getElementById('video_devices_list');
-const excludeMenu = document.getElementById('all_devices_list');
-
 // Finding: device enumeration permissions are not shared with the extension context
 //  only default devices are returned
-// ToDo: handle permissions changes
-// ToDo: handle if devices array is empty
+
 async function populateDeviceDropdowns(devices) {
 
     // Clear previous options
@@ -254,6 +255,8 @@ async function populateDeviceDropdowns(devices) {
 const devices = storage.contents['deviceManager']['currentDevices'] || [];
 await populateDeviceDropdowns(devices);
 
+// ToDo: handle permissions changes
+// ToDo: handle if devices array is empty
 storage.addListener('deviceManager', async (newValue) => {
     dmEnabledCheck.checked = storage.contents['deviceManager']['enabled'] || false;
 
