@@ -10,8 +10,23 @@ export class MessageHandler {
     // context;
     tabId;
 
-    // ToDo: default debug to no logqing
+    // Attempt to make this a singleton stopped the extension from loading
+    // Static map to store instances to make this a singleton
+    // static _instances = new Map();
+
     constructor(context, debug = ()=>{}, listen = true) {
+
+        /*
+        // Generate a unique key for the combination of context and debug reference
+        const key = `${context}_${debug.toString()}`;
+        // If there's an existing instance in the map, return that
+        if (MessageHandler._instances.has(key)) {
+            // return MessageHandler._instances.get(key);
+            debug(`instance already exists for ${key}`);
+        }
+         */
+
+
         this.context = context;
         this.debug = debug; // debug function
         if(listen){
@@ -29,11 +44,11 @@ export class MessageHandler {
                 this.debug(`invalid context for listener ${context}`);
         }
 
-
-        // ToDo: is this better than returning the class?
-        // return {send: this.sendMessage, listen: this.addListener}
+        // Store the new instance in the map
+        // MessageHandler._instances.set(key, this);
 
     }
+
 
     // Learning - use arrow function if you want to inherit the class's `this`
     sendMessage = (to = 'all', message, data = {}, responseCallBack = null) => {

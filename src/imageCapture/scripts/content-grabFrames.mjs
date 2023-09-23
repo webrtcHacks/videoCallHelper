@@ -1,15 +1,14 @@
+// Image capture module for content.js
+
 // ToDo: running multiple intervals at once
 // ToDo: refactor this to grab images out of the worker?
 
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
-// Image capture module for content.js
-const debug = function () {
-    return Function.prototype.bind.call(console.debug, console, `vch 🕵️ imageCapture: `);
-}();
+const debug = Function.prototype.bind.call(console.debug, console, `vch️ 🕵📸️`);
 
-const sendMessage = new MessageHandler('content', debug, false).sendMessage;
+const sendMessage = new MessageHandler('content', null , false).sendMessage;
 let storage = await new StorageHandler("local", debug);
 
 let captureInterval;

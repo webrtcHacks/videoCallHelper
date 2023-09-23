@@ -9,9 +9,8 @@ let trackInfos = [];
 
 window.vchStreams = streams;
 
-const debug = function () {
-    return Function.prototype.bind.call(console.debug, console, `vch 🕵️‍ `);
-}();
+const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵`);
+
 
 debug(`content.js loaded on ${window.location.href}`);
 // debug('content.js URL: ', chrome.runtime.getURL('content.js'));

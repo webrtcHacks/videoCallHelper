@@ -28,12 +28,11 @@ export class StorageHandler {
         }
         instance = this;
 
-
         this.storage = chrome.storage[area];
         this.area = area;
         this.debug = storageDebug || debug;
 
-        this.debug("new instance");
+        // this.debug("new instance");
 
 
         return (async () => {
