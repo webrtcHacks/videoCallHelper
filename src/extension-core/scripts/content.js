@@ -36,9 +36,9 @@ const deviceSettings = {
         video: null // await navigator.permissions.query({name: 'camera'}) ?? null
     },*/
     currentDevices: [],
-    preferredDeviceLabels: {            // UI selections
-        audio: storage.contents['deviceManager']?.preferredDeviceLabels?.audio ?? "",
-        video: storage.contents['deviceManager']?.preferredDeviceLabels?.video ?? ""
+    selectedDeviceLabels: {            // UI selections
+        audio: storage.contents['deviceManager']?.selectedDeviceLabels?.audio ?? "",
+        video: storage.contents['deviceManager']?.selectedDeviceLabels?.video ?? ""
     }
 }
 

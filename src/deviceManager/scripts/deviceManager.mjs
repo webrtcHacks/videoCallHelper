@@ -6,8 +6,11 @@
     Message Flows:
 
     Initialization
-    1. DeviceManager sends GET_DEVICE_SETTINGS to content.js
-    2. content.js gets 'deviceManager' values from storage and sends them in UPDATE_DEVICE_SETTINGS to inject.js
+    ~1. DeviceManager sends GET_DEVICE_SETTINGS to content.js~
+    ~2. content.js gets 'deviceManager' values from storage and sends them in UPDATE_DEVICE_SETTINGS to inject.js~
+
+    inject.js now sends a `GET_ALL_SETTINGS` and waits for a `ALL_SETTINGS` from content.js (which grabs this from storage)
+    This initial value is passed to the constructor
 
     UI changes
     1. dash.js updates storage under 'deviceManager'
@@ -24,6 +27,11 @@
     * Dash.js will need to send selected devices back to inject.js
     * dash.js dropdown selection shouldn't trigger a simulated devicechange
 
+    // ToDo:
+        What happens when what is saved in storage is no longer available?
+        When default devices are used when there are no permissions?
+
+
  */
 
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
@@ -37,10 +45,6 @@ export class DeviceManager {
         enabled: false,
         currentDevices: [],
         selectedDeviceLabels: {
-            audio: null,
-            video: null,
-        },
-        preferredDeviceLabels: {
             audio: null,
             video: null,
         }
@@ -63,6 +67,9 @@ export class DeviceManager {
 
             let lastValue = this.isEnabled;
             this.isEnabled = data.enabled;
+
+            Object.assign(this.settings, data);
+            debug(`device manager settings updated. vch device labels: `, data.selectedDeviceLabels);
 
             // simulate a devicechange event if enabled is changed
             if( data.enabled !== lastValue){
@@ -175,5 +182,19 @@ export class DeviceManager {
         this.devices = devices;
         return devices
     }
+
+    // ToDo: move the shimUserMedia logic here
+    // ToDo: should I also handle the case when deviceManager is disabled but the page has vch-* cached?
+    /* if the constraints contain vch-audio or vch-video then need to decide
+        Use real audio-only
+        use real video-only
+        use fake audio-only
+        use fake video-only
+        use real audio and real video
+        use fake audio and fake video
+        use fake audio and real video
+        use real audio and fake video
+
+     */
 
 }

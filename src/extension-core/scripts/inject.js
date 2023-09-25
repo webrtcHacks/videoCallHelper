@@ -12,7 +12,7 @@ const appEnabled = true;
 let monitorAudioSwitch = false;
 let processTrackSwitch = true;
 
-const debug = Function.prototype.bind.call(console.debug, console, `vch 💉 `);
+const debug = Function.prototype.bind.call(console.debug, console, `vch 💉`);
 
 const mh = new MessageHandler('inject', debug);
 const sendMessage = mh.sendMessage;
@@ -21,6 +21,7 @@ const sendMessage = mh.sendMessage;
 async function getSettings() {
     return new Promise((resolve, reject) => {
 
+       debug("get initial settings timer started");
         const timeout = setTimeout(() => {
             debug("get initial settings timeout");
             reject("get initial settings timeout")
@@ -467,7 +468,7 @@ else {
         mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {devices});
 
         // Only add fake devices if there are other devices
-        // In the future when adding other sources it may make sense to have a device even with no permissions
+        // In the future when adding generated sources w/o gUM, it may make sense to have a device even with no permissions
         if (devices !== undefined && Array.isArray(devices))
             return deviceManager.addFakeDevices(devices);
     }
