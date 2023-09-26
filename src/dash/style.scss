@@ -46,3 +46,21 @@ h5 {
   max-height: 120px; /* Set a max height for the dropdown */
   overflow-y: auto; /* Enable vertical scrolling */
 }
+
+.device-dropdown {
+  font-size: 12px;
+  padding-left: 25px;  /* Enough space to fit the checkmark icon */
+  position: relative;  /* Enables absolute positioning of child elements */
+}
+
+.device-dropdown .bi-check {
+  position: absolute;
+  left: 5px;  /* Adjust based on your needs */
+  top: 50%;
+  transform: translateY(-50%);  /* Center the checkmark vertically */
+  display: none;  /* By default, the checkmark is hidden */
+}
+
+.device-dropdown.selected .bi-check {
+  display: inline;  /* Show the checkmark when the item is selected */
+}
