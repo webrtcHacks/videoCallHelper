@@ -46,7 +46,7 @@ debug("initial settings", settings);
 // ToDo: use the settings to initialize any other inject context modules
 
 // ForDeviceManager
-const deviceManager = new DeviceManager({enabled: settings?.deviceManager?.enabled});
+const deviceManager = new DeviceManager(settings['deviceManager'] ?? null);
 
 
 // Put the stream in a temp DOM element for transfer to content.js context
@@ -470,7 +470,7 @@ else {
         // Only add fake devices if there are other devices
         // In the future when adding generated sources w/o gUM, it may make sense to have a device even with no permissions
         if (devices !== undefined && Array.isArray(devices))
-            return deviceManager.addFakeDevices(devices);
+            return deviceManager.modifyDevices(devices);
     }
 
 // devicechange shim

@@ -300,14 +300,16 @@ async function populateDeviceDropdowns() {
         option.appendChild(textNode);
 
         option.dataset.deviceId = device.deviceId;
+        option.dataset.kind = device.kind;
+        option.dataset.label = device.label;
 
         /*** END common menu item processing ***/
 
-            // make a copy for the exclude Menu
+        // make a copy for the exclude Menu
         const excludeMenuOption = option.cloneNode(true)
 
         /**** START audio & video menus ****/
-            // Create the span for the checkmark & prepend it
+        // Create the span for the checkmark & prepend it
         let checkmarkSpan = document.createElement('span');
         checkmarkSpan.className = 'bi bi-check';
         option.prepend(checkmarkSpan);  // Add the checkmark to the option
@@ -338,7 +340,7 @@ async function populateDeviceDropdowns() {
         checkbox.type = 'checkbox';
         checkbox.className = 'me-2'; // Bootstrap's margin-end
         // ToDo: logic to tell if it should be checked
-        checkbox.checked = true;
+        checkbox.checked = !storage.contents?.deviceManager?.excludedDevices?.some(d => d.label === device.label);
         excludeMenuOption.prepend(checkbox);
 
         // Does this need to be cloned?
@@ -437,29 +439,29 @@ excludeDropdown.addEventListener('click', () => {
 });
 
 // apply exclude menu changes
-function handleExcludeMenuClose() {
+async function handleExcludeMenuClose() {
     const allItems = document.querySelectorAll('#all_devices_list .device-dropdown');
 
     const excludedDevices = [];
-    const includedDevices = [];
 
     allItems.forEach(item => {
         const checkbox = item.querySelector('input[type="checkbox"]');
-        const deviceId = item.dataset.deviceId;
         if (!checkbox.checked) {
-            excludedDevices.push(deviceId);
-        } else {
-            includedDevices.push(deviceId);
+            excludedDevices.push({
+                deviceId: item.dataset.deviceId,
+                kind: item.dataset.kind,
+                label: item.dataset.label
+            });
         }
     });
 
     debug('Excluded devices:', excludedDevices);
-    debug('Included devices:', includedDevices);
+    await storage.update('deviceManager', {excludedDevices});
 }
 
 // document.querySelector('.dropup').addEventListener('hide.bs.dropdown'
 // document.addEventListener('click', function(event) {
-document.addEventListener('click', function (event) {
+document.addEventListener('click', async function (event) {
     let excludeMenu = document.getElementById('exclude_devices_menu');
 
     let isClickInsideMenu = excludeMenu.contains(event.target);
@@ -467,12 +469,12 @@ document.addEventListener('click', function (event) {
 
     // If the click was neither inside the menu nor the dropdown button, handle it
     if (!isClickInsideMenu && !isClickOnDropdownBtn) {
-        handleExcludeMenuClose();
+        await handleExcludeMenuClose();
     }
 });
 
 document.querySelectorAll('.applyExclusions').forEach(
-    btn => btn.addEventListener('click', handleExcludeMenuClose)
+    async btn => btn.addEventListener('click', await handleExcludeMenuClose)
 );
 
 // Optionally, update when devices are added/removed
