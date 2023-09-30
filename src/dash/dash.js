@@ -283,13 +283,15 @@ async function populateDeviceDropdowns() {
 
         /*** START common menu item processing ***/
 
+            // ToDo: display a message if "default" device is the only option
+
             // improve the label text in the case where permissions don't provide labels
         let betterLabel = device.label;
         if (device.label === "") {
             let betterKind = device.kind
-                .replace('video input', 'camera')
-                .replace('audio input', 'microphone')
-                .replace('audio output', 'speaker');
+                .replace('videoinput', 'camera')
+                .replace('audioinput', 'microphone')
+                .replace('audiooutput', 'speaker');
             betterLabel = `default ${betterKind}`;
         }
 
@@ -301,15 +303,15 @@ async function populateDeviceDropdowns() {
 
         option.dataset.deviceId = device.deviceId;
         option.dataset.kind = device.kind;
-        option.dataset.label = device.label;
+        option.dataset.label = betterLabel;
 
         /*** END common menu item processing ***/
 
-        // make a copy for the exclude Menu
+            // make a copy for the exclude Menu
         const excludeMenuOption = option.cloneNode(true)
 
         /**** START audio & video menus ****/
-        // Create the span for the checkmark & prepend it
+            // Create the span for the checkmark & prepend it
         let checkmarkSpan = document.createElement('span');
         checkmarkSpan.className = 'bi bi-check';
         option.prepend(checkmarkSpan);  // Add the checkmark to the option
@@ -329,24 +331,31 @@ async function populateDeviceDropdowns() {
 
         /**** START exclude menu ****/
 
-        // Check if device kind changed
-        if (lastKind !== device.kind) {
-            addSegmentLabelAndDivider(device.kind);
-            lastKind = device.kind;
+        // ToDo: exclude "default audio" and "default video"
+
+        if (device.label !== '') {
+
+            // Check if device kind changed
+            if (lastKind !== device.kind) {
+                addSegmentLabelAndDivider(device.kind);
+                lastKind = device.kind;
+            }
+
+            // Add checkmark
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'me-2'; // Bootstrap's margin-end
+            // ToDo: logic to tell if it should be checked
+            checkbox.checked = !storage.contents?.deviceManager?.excludedDevices?.some(d => d.label === device.label);
+            excludeMenuOption.prepend(checkbox);
+
+            // Does this need to be cloned?
+            excludeMenu.appendChild(excludeMenuOption);
         }
-
-        // Add checkmark
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'me-2'; // Bootstrap's margin-end
-        // ToDo: logic to tell if it should be checked
-        checkbox.checked = !storage.contents?.deviceManager?.excludedDevices?.some(d => d.label === device.label);
-        excludeMenuOption.prepend(checkbox);
-
-        // Does this need to be cloned?
-        excludeMenu.appendChild(excludeMenuOption);
         /**** END exclude menu ****/
+
     });
+
 }
 
 // Initial population

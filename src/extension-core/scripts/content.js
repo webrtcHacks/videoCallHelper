@@ -450,6 +450,7 @@ document.addEventListener('readystatechange', async (event) => {
     script.textContent = code;
  */
 
+// ToDo: scenarios like webcam-framing mediaaquisition.html where the page JS loads before inject is injected
 // inject inject script
 async function addScript(path) {
     const script = document.createElement('script');

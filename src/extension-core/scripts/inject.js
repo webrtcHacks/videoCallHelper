@@ -461,6 +461,7 @@ else {
     navigator.mediaDevices.enumerateDevices = async function () {
         debug("navigator.mediaDevices.enumerateDevices called");
 
+        // ToDo: there is a race condition here where enumerateDevices can be called before the settings are loaded
         if (!appEnabled || !deviceManager.enabled)
             return origEnumerateDevices();
 
