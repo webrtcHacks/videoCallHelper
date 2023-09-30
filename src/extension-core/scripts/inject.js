@@ -1,7 +1,7 @@
 'use strict';
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
-import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
+// import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -165,71 +165,19 @@ else {
         //  it was already created - do I force the stop of the old one and start a new worker? Reuse?
         //  Does track.stop() even stop the worker?
 
-        // First see if we need to change any devices
-
-        // convert constraints to a string and see if it contains "vch-*"
-        const constraintsString = JSON.stringify(constraints);
-
-        // regex match to see if the string contains "vch-audio" or "vch-video"
-        const useFakeAudio = constraintsString.match(/vch-audio/)?.length > 0;
-        const useFakeVideo = constraintsString.match(/vch-video/)?.length > 0;
-
-        // ToDo: manage no fake audio for Google Meet or fix that
-
-        debug("original constraints", constraints);
-
-        // try to use the last real device ID in place of the vch-(audio|video) if it is there, otherwise use default
-        // - constraints.video.deviceId
-        // - constraints.video.deviceId.exact
-        // - constraints.video.deviceId.ideal
-
-        if (useFakeAudio)
-            constraints.audio.deviceId = deviceManager.lastRealAudioId;
-        if (useFakeVideo)
-            constraints.video.deviceId = deviceManager.lastRealVideoId;
-
-        if (JSON.stringify(constraints) !== constraintsString)
-            debug("new constraints", constraints);
-
-        // Now get the stream
-        const stream = await origGetUserMedia(constraints);
-        debug("got new gUM stream", stream);
-
-        // Run any tracks that should be from vch-(audio|video) through alterTrack
-        // Keep track of any non-altered tracks deviceIds for use next call
-        const audioTracks = stream.getAudioTracks();
-        const videoTracks = stream.getVideoTracks();
-
-        const alteredStreamTracks = [];
-        // If there are no alternated tracks, then return the stream as is
-        if (!useFakeAudio && !useFakeVideo) {
-            deviceManager.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
-            deviceManager.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
-            await transferStream(stream);               // transfer the stream to the content script
-            return stream;
-        } else {
-            // Create alterTracks where needed and use the existing tracks from the gUM call otherwise
-            if (useFakeAudio && !useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-                videoTracks.forEach(track => alteredStreamTracks.push(track));
-                deviceManager.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
-            } else if (!useFakeAudio && useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(track));
-                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-                deviceManager.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
-            } else if (useFakeAudio && useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-            } else {
-                debug("shouldn't be here");
-            }
-
-            // make a new stream with the tracks from above
-            const alteredStream = new MediaStream(alteredStreamTracks);
-            debug("using alteredStream", alteredStream);
-            await transferStream(stream, m.GUM_STREAM_START, {generated: true});               // transfer the stream to the content script
-            return alteredStream;
+        if(deviceManager.useFakeDevices(constraints)) {
+            const fakeStream = await deviceManager.fakeDeviceStream(constraints, origGetUserMedia);
+            await transferStream(deviceManager.unalteredStream);
+            // await transferStream(fakeStream);
+            return fakeStream;
         }
+        else {
+            debug("gUM with no fakeDevices using constraints:", constraints);
+            const stream = await origGetUserMedia(constraints);
+            await transferStream(stream);
+            return stream;
+        }
+
     }
 
     navigator.mediaDevices.getUserMedia = async (constraints) => {

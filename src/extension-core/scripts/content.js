@@ -59,10 +59,12 @@ mh.addListener(m.UPDATE_DEVICE_SETTINGS, async (data) => {
     let settings = storage.contents['deviceManager'];
     debug("deviceManager settings updated", data);
     settings.currentDevices = data.devices;
-    settings.permission = {
+    Object.assign(settings.lastDeviceIds, data.lastDeviceIds);
+    /*settings.permission = {
         audio:  null, //(await navigator.permissions.query({name: 'microphone'}))?.state,
         video: null //(await navigator.permissions.query({name: 'camera'    }))?.state,
-    }
+    }*/
+
     await storage.update('deviceManager', settings);
 });
 

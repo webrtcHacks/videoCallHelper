@@ -13,6 +13,8 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
 
 /************ START get settings ************/
 
+// ToDo: move these initialization settings into the constructor
+
 const mh = new MessageHandler('inject'); //, debug);
 
 // for reference
@@ -27,6 +29,8 @@ mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
     settings = data;
 });
 mh.sendMessage('content', m.GET_BAD_CONNECTION_SETTINGS);
+
+
 
 /************ END get settings  ************/
 
@@ -58,7 +62,7 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
     readyState: "live"
      */
 
-    constructor(options, sourceTrack, isFakeDevice = false) {
+    constructor(options, sourceTrack, isFakeDevice = true) {
         const track = super(options);
 
         this.options = options;
