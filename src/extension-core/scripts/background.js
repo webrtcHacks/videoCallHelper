@@ -352,7 +352,7 @@ mh.addListener('alter_stream', async data=>{
 
 // ToDo: change to pageAction?
 chrome.action.onClicked.addListener(async (tab)=>{
-    debug(`icon clicked on tab ${tab.id}`);
+    // debug(`icon clicked on tab ${tab.id}`);
     const messageToSend = {
         to: 'content',
         from: 'background',

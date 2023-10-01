@@ -69,18 +69,18 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
         this._label = sourceTrack.label;
 
         this._settings = sourceTrack.getSettings();
+        this._settings.deviceId = `vch-${this.kind}`;
+        this._settings.groupId = 'video-call-helper';
+
+
         this._constraints = sourceTrack.getConstraints();
+        this._constraints.deviceId = `vch-${this.kind}`;
+
         this._capabilities = sourceTrack.getCapabilities();
 
         this.sourceTrack = sourceTrack;
         this.track = track;
 
-        // Switch the deviceId to a `vch-audio` or `vch-video`
-        if(isFakeDevice){
-            this._settings.deviceId = `vch-${this.kind}`;
-            // ToDo: handle ideal and exact constraints
-            this._constraints.deviceId = `vch-${this.kind}`;
-        }
 
     }
 
@@ -193,7 +193,7 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
     }
 
     getSettings() {
-        // debug(`getSettings on ${this.kind} track ${this.id}`, this._settings);
+        debug(`getSettings on ${this.kind} track ${this.id}`, this._settings);
         return this._settings;
     }
 

@@ -197,7 +197,7 @@ const excludeDropdown = document.getElementById('excludeDropdown');
 
 // ToDo: guidance text
 
-dmEnabledCheck.checked = storage.contents['deviceManager']['enabled'] || false;
+dmEnabledCheck.checked = storage.contents['deviceManager']?.enabled || false;
 
 dmEnabledCheck.onclick = async () => {
     const enabled = dmEnabledCheck.checked;
@@ -218,7 +218,7 @@ async function populateDeviceDropdowns() {
     videoMenu.innerHTML = '';
     excludeMenu.innerHTML = '';
 
-    const devices = storage.contents['deviceManager']['currentDevices'] || [];
+    const devices = storage.contents['deviceManager']?.currentDevices || [];
 
     // Sort devices - needed for exclude menu
     // ToDo: check spec - is this needed? Does enumerateDevices always sort?
@@ -268,6 +268,7 @@ async function populateDeviceDropdowns() {
         applyButton.className = 'applyExclusions btn btn-primary btn-sm';
         applyButton.innerText = 'Apply All';
         flexContainer.appendChild(applyButton);
+        applyButton.onclick = handleExcludeMenuClose;
 
         excludeMenu.appendChild(flexContainer);
 

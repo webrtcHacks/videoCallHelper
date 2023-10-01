@@ -31,17 +31,20 @@ mh.addListener(m.GET_ALL_SETTINGS, async() => {
 // Set initial device manager values
 const deviceSettings = {
     enabled: storage.contents['deviceManager']?.enabled ?? false,   // UI switch
-    /*permission: {                           // browser permission
-        audio: null, // await navigator.permissions.query({name: 'microphone'}) ?? null,
-        video: null // await navigator.permissions.query({name: 'camera'}) ?? null
-    },*/
-    currentDevices: [],
+    currentDevices: storage.contents['deviceManager']?.currentDevices ?? [],
     selectedDeviceLabels: {            // UI selections
         audio: storage.contents['deviceManager']?.selectedDeviceLabels?.audio ?? "",
         video: storage.contents['deviceManager']?.selectedDeviceLabels?.video ?? ""
-    }
+    },
+    excludedDevices: storage.contents['deviceManager']?.excludedDevices ?? [],
+    lastDeviceIds: {            // UI selections
+        audio: storage.contents['deviceManager']?.lastDeviceIds?.audio ?? "",
+        video: storage.contents['deviceManager']?.lastDeviceIds?.video ?? ""
+    },
 }
-
+// ToDo: I shouldn't really need to initialize values here if I have proper checking elsewhere (which I don't)
+// set storage values on start if they are not populated
+await storage.update('deviceManager', deviceSettings);
 
 // Dash UI enabled change should be propagated to inject
 await storage.addListener('deviceManager', (newValue) => {
@@ -56,21 +59,13 @@ mh.addListener(m.GET_DEVICE_SETTINGS, () => {
 
 // Inject should send content UPDATE_DEVICE_SETTINGS on any deviceChange or permission change
 mh.addListener(m.UPDATE_DEVICE_SETTINGS, async (data) => {
-    let settings = storage.contents['deviceManager'];
+    let deviceSettings = storage.contents['deviceManager'];
     debug("deviceManager settings updated", data);
-    settings.currentDevices = data.devices;
-    Object.assign(settings.lastDeviceIds, data.lastDeviceIds);
-    /*settings.permission = {
-        audio:  null, //(await navigator.permissions.query({name: 'microphone'}))?.state,
-        video: null //(await navigator.permissions.query({name: 'camera'    }))?.state,
-    }*/
-
-    await storage.update('deviceManager', settings);
+    Object.assign(deviceSettings, data);
+    await storage.update('deviceManager', deviceSettings);
 });
 
 
-// reset storage values on start
-await storage.update('deviceManager', deviceSettings);
 
 
 /************ END deviceManager ************/

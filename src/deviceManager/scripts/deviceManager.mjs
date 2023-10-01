@@ -9,10 +9,8 @@ import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
     Message Flows:
 
     Initialization
-    ~1. DeviceManager sends GET_DEVICE_SETTINGS to content.js~
-    ~2. content.js gets 'deviceManager' values from storage and sends them in UPDATE_DEVICE_SETTINGS to inject.js~
 
-    inject.js now sends a `GET_ALL_SETTINGS` and waits for a `ALL_SETTINGS` from content.js (which grabs this from storage)
+    * inject.js now sends a `GET_ALL_SETTINGS` and waits for a `ALL_SETTINGS` from content.js (which grabs this from storage)
     This initial value is passed to the constructor
 
     UI changes
@@ -33,7 +31,6 @@ import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
     // ToDo:
         What happens when what is saved in storage is no longer available?
         When default devices are used when there are no permissions?
-
 
  */
 
@@ -72,7 +69,6 @@ export class DeviceManager {
         }
     }
 
-    devices = [];
     deviceChangeListeners = [];
     unalteredStream; /** @type {MediaStream} */
     originalConstraints = {};
@@ -165,6 +161,9 @@ export class DeviceManager {
 
             Object.assign(this.settings, data);
             debug(`device manager settings updated. vch device labels: `, data.selectedDeviceLabels);
+            // ToDo: how do I change a stream that is using a fake device after it has started
+            //  - can do this from the generator, need to feed the generator the new tracks
+            //  - can't do that from a non-generator without stopping the stream which would cause problems
 
             // simulate a devicechange event if enabled is changed or excludedDevices has changed
             if (data.enabled !== lastValue || excludedDevicesChanged) {
@@ -201,6 +200,7 @@ export class DeviceManager {
     // The returns the real deviceId DeviceManager should use
     get vchVideoId() {
         if(this.settings.selectedDeviceLabels.video) {
+            // ToDo: this.settings.currentDevices is empty here but populated in storage
             // return the device ID if the label is in this.settings.currentDevices
             const selectedId = this.settings.currentDevices
                 .find(device => device.kind === 'videoinput' && device.label === this.settings.selectedDeviceLabels.video)?.deviceId;
@@ -257,7 +257,7 @@ export class DeviceManager {
         // try to look-up the deviceId from dash, if that's not there, then check the last one that was used;
         //  if that's not there, then remove so a default device is used
         if (useFakeAudio){
-            const audioDeviceId = this.vchAudioId || this.lastRealAudioId || "default";
+            const audioDeviceId = this.vchAudioId || this.settings.lastDeviceIds.audio || "default";
             /*if(!audioDeviceId)
                 delete(constraints.audio.deviceId)
             else{ */
@@ -267,7 +267,7 @@ export class DeviceManager {
             // }
         }
         if (useFakeVideo) {
-            const videoDeviceId = this.vchVideoId || this.lastRealVideoId || "default";
+            const videoDeviceId = this.vchVideoId || this.settings.lastDeviceIds.video || "default";
            /*if(!videoDeviceId)
                 delete(constraints.video.deviceId)
             else{*/
@@ -303,11 +303,11 @@ export class DeviceManager {
         if (useFakeAudio && !useFakeVideo) {
             audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
             videoTracks.forEach(track => alteredStreamTracks.push(track));
-            this.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
+            this.settings.lastDeviceIds.video = videoTracks[0]?.getSettings()?.deviceId;
         } else if (!useFakeAudio && useFakeVideo) {
             audioTracks.forEach(track => alteredStreamTracks.push(track));
             videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
-            this.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
+            this.settings.lastDeviceIds.audio = audioTracks[0]?.getSettings()?.deviceId;
         } else if (useFakeAudio && useFakeVideo) {
             audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
             videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));

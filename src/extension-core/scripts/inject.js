@@ -28,7 +28,7 @@ async function getSettings() {
         }, 1000);
 
         mh.addListener(m.ALL_SETTINGS, (data) => {
-            debug("settings updated", data);
+            debug("initial settings from content", data);
             clearTimeout(timeout);
             resolve(data);
         });
@@ -414,7 +414,7 @@ else {
             return origEnumerateDevices();
 
         const devices = await origEnumerateDevices();
-        mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {devices});
+        mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {currentDevices: devices});
 
         // Only add fake devices if there are other devices
         // In the future when adding generated sources w/o gUM, it may make sense to have a device even with no permissions
