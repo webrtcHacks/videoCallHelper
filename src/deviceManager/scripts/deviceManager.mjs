@@ -1,6 +1,7 @@
 // Manages the devices returned by navigator.mediaDevices.enumerateDevices() and inserts fake vch devices
 
 import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
+import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 
 
 /*
@@ -46,8 +47,6 @@ function arraysOfObjectsAreEqual(arr1, arr2) {
 }
 
 
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
-
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️🥸`);
 const mh = new MessageHandler('inject', debug);
 
@@ -62,19 +61,49 @@ export class DeviceManager {
             video: null,
         },
         excludedDevices: [],
-        lastDeviceIds:{
+        lastDeviceIds: {
             audio: null,
             video: null,
         }
     }
 
     deviceChangeListeners = [];
-    unalteredStream; /** @type {MediaStream} */
+    /** @type {MediaStream} */
+    unalteredStream;
     originalConstraints = {};
     modifiedConstraints = {};
     devices = []
 
+    /** @type {InputDeviceInfo} */
+    static defaultVideoCapabilities = {
+        __proto__: InputDeviceInfo.prototype,
+        aspectRatio: {max: 1920, min: 0.000925925925925926},
+        deviceId: "vch-video",
+        facingMode: [],
+        frameRate: {max: 30, min: 1},
+        groupId: "video-call-helper",
+        height: {max: 1080, min: 1},
+        resizeMode: ["none", "crop-and-scale"],
+        width: {max: 1920, min: 1}
+    }
+
+    /** @type {InputDeviceInfo} */
+    static defaultAudioCapabilities = {
+        __proto__: InputDeviceInfo.prototype,
+        autoGainControl: [true, false],
+        channelCount: {max: 2, min: 1},
+        deviceId: "vch-audio",
+        echoCancellation: [true, false],
+        groupId: "video-call-helper",
+        latency: {max: 0.002902, min: 0},
+        noiseSuppression: [true, false],
+        sampleRate: {max: 48000, min: 44100},
+        sampleSize: {max: 16, min: 16}
+    }
+
+
     // ToDo: adjust these capabilities based on the device selected
+    /** @type {InputDeviceInfo} */
     static fakeVideoDevice = {
         __proto__: InputDeviceInfo.prototype,
         deviceId: "vch-video",
@@ -83,29 +112,21 @@ export class DeviceManager {
         groupId: "video-call-helper",
         getCapabilities: () => {
             debug("fake video capabilities");
-            return {
-                aspectRatio: {max: 1920, min: 0.000925925925925926},
-                deviceId: "vch-video",
-                facingMode: [],
-                frameRate: {max: 30, min: 1},
-                groupId: "video-call-helper",
-                height: {max: 1080, min: 1},
-                resizeMode: ["none", "crop-and-scale"],
-                width: {max: 1920, min: 1}
-            };
+            return DeviceManager.defaultVideoCapabilities;
         },
         toJSON: () => {
             return {
                 __proto__: InputDeviceInfo.prototype,
                 deviceId: "vch-video",
                 kind: "videoinput",
-                label:  "vch-video",
-                groupId:  "video-call-helper",
+                label: "vch-video",
+                groupId: "video-call-helper",
             }
         }
 
     };
 
+    /** @type {InputDeviceInfo} */
     static fakeAudioDevice = {
         __proto__: InputDeviceInfo.prototype,
         deviceId: "vch-audio",
@@ -114,17 +135,7 @@ export class DeviceManager {
         groupId: "video-call-helper",
         getCapabilities: () => {
             debug("fake audio capabilities?");
-            return {
-                autoGainControl: [true, false],
-                channelCount: {max: 2, min: 1},
-                deviceId: "vch-audio",
-                echoCancellation: [true, false],
-                groupId: "video-call-helper",
-                latency: {max: 0.002902, min: 0},
-                noiseSuppression: [true, false],
-                sampleRate: {max: 48000, min: 44100},
-                sampleSize: {max: 16, min: 16}
-            }
+            return DeviceManager.defaultAudioCapabilities;
         },
         toJSON: () => {
             return {
@@ -138,7 +149,6 @@ export class DeviceManager {
     };
 
 
-
     constructor(settings) {
 
         // singleton pattern
@@ -148,8 +158,45 @@ export class DeviceManager {
         }
         DeviceManager.instance = this;
 
-        // this.fakeVideoDevice = DeviceManager.fakeVideoDevice;
-        // this.fakeAudioDevice = DeviceManager.fakeAudioDevice;
+        this.fakeVideoDevice = DeviceManager.fakeVideoDevice;
+        this.fakeAudioDevice = DeviceManager.fakeAudioDevice;
+
+        // ToDo: I could transmit the devices here
+        // Setup the fake devices with capabilities - some apps check this before calling getUserMedia
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+
+            const findSelectedDevice = (kind) => {
+                const key = kind === 'videoinput' ? 'video' : 'audio';
+
+                return this.settings.currentDevices
+                        .find(device => device.kind === kind && device.label === this.settings.selectedDeviceLabels[kind]) ||
+                    // Try the last device IDs next
+                    devices.find(device => device.kind === kind && device.deviceId === this.settings.lastDeviceIds[key]) ||
+                    // If it doesn't exist, use the default device of that kind
+                    devices.find(device => device.kind === kind && device.deviceId !== "default");
+            };
+
+            const getCapabilitiesForDevice = (kind, defaultCapabilities) => {
+                const selected = findSelectedDevice(kind);
+                const key = kind === 'videoinput' ? 'video' : 'audio';
+                const selectedDevice = devices.find(device => device.kind === kind && device.deviceId === selected?.deviceId);
+
+                if (selectedDevice) {
+                    const capabilities = selectedDevice.getCapabilities();
+                    capabilities.deviceId = `vch-${key}`;
+                    capabilities.groupId = "video-call-helper";
+                    return { ...defaultCapabilities, ...capabilities }; // Using the spread operator instead of Object.assign
+                }
+
+                return defaultCapabilities;
+            };
+
+            this.fakeVideoDevice.getCapabilities = () => getCapabilitiesForDevice('videoinput', DeviceManager.defaultVideoCapabilities);
+            this.fakeAudioDevice.getCapabilities = () => getCapabilitiesForDevice('audioinput', DeviceManager.defaultAudioCapabilities);
+
+        }).catch(error => debug("error mapping fake devices to real device", error));
+
+
 
         // Setup listener to simulate a devicechange event if enabled is changed
         mh.addListener(m.UPDATE_DEVICE_SETTINGS, (data) => {
@@ -185,7 +232,7 @@ export class DeviceManager {
     // The returns the real deviceId DeviceManager should use
     get vchAudioId() {
 
-        if(this.settings.selectedDeviceLabels.audio) {
+        if (this.settings.selectedDeviceLabels.audio) {
             // return the device ID if the label is in this.settings.currentDevices
             const selectedId = this.settings.currentDevices
                 .find(device => device.kind === 'audioinput' && device.label === this.settings.selectedDeviceLabels.audio)?.deviceId;
@@ -199,7 +246,7 @@ export class DeviceManager {
 
     // The returns the real deviceId DeviceManager should use
     get vchVideoId() {
-        if(this.settings.selectedDeviceLabels.video) {
+        if (this.settings.selectedDeviceLabels.video) {
             // return the device ID if the label is in this.settings.currentDevices
             const selectedId = this.settings.currentDevices
                 .find(device => device.kind === 'videoinput' && device.label === this.settings.selectedDeviceLabels.video)?.deviceId;
@@ -228,7 +275,7 @@ export class DeviceManager {
         - constraints - original constraints passed to getUserMedia by the app
         - getUserMedia - the original, unshimmed getUserMedia function
      */
-    async fakeDeviceStream(constraints, getUserMedia){
+    async fakeDeviceStream(constraints, getUserMedia) {
 
         let settingsChanged = false;
 
@@ -240,7 +287,7 @@ export class DeviceManager {
 
         // try to look-up the deviceId from dash, if that's not there, then check the last one that was used;
         //  if that's not there, then remove so a default device is used
-        if (useFakeAudio){
+        if (useFakeAudio) {
             const audioDeviceId = this.vchAudioId || this.settings.lastDeviceIds.audio || "default";
             constraints.audio.deviceId = audioDeviceId;
             this.settings.lastDeviceIds.audio = audioDeviceId;
@@ -258,23 +305,21 @@ export class DeviceManager {
 
         }
 
-        debug("gUM with fake devices removed using constraints:", constraints);
+        //debug("gUM with fake devices removed using constraints:", constraints);
         // when constraints include vch-audio|video but deviceManager is not enabled
-        this.unalteredStream = await getUserMedia(constraints);
-        if(this.unalteredStream){
-            // this.unalteredStream.getVideoTracks().forEach(track => this.);
-        }
+        /** @type {MediaStream} */
+        this.unalteredStream = await getUserMedia(constraints)
+            .catch(error => Promise.reject(error));
 
-        // const noAltering = (!this.settings.enabled || this.settings.currentDevices.length === 0)
-
-        if(this.unalteredStream){
+        if (this.unalteredStream) {
             this.modifiedConstraints = constraints;
-            debug("gUM stream with modified constraints", constraints,  this.unalteredStream);
-            if(settingsChanged)
+            debug("gUM stream with modified constraints", constraints, this.unalteredStream);
+            if (settingsChanged)
                 mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {lastDeviceIds: this.settings.lastDeviceIds})
         }
+        // ToDo: what if unalteredStream is null?
 
-        if(!this.settings.enabled)
+        if (!this.settings.enabled)
             return this.unalteredStream;
 
         // Run any tracks that should be from vch-(audio|video) through alterTrack
@@ -300,10 +345,13 @@ export class DeviceManager {
             debug("shouldn't be here");
         }
 
-            // make a new stream with the tracks from above
-            const alteredStream = new MediaStream(alteredStreamTracks);
-            debug("created alteredStream", alteredStream);
-            return alteredStream;
+        // ToDo: Debug - not getting here
+
+        // make a new stream with the tracks from above
+        /** @type {MediaStream} */
+        const alteredStream = new MediaStream(alteredStreamTracks);
+        debug("created alteredStream", alteredStream);
+        return alteredStream;
     }
 
 
