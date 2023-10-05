@@ -17,8 +17,7 @@ export class StorageHandler {
 
     static contents = {};
 
-    // ToDo: singleton is messing up Extension contexts.
-    //  Add a context check - i.e. "background", "dash", etc.
+    //  Add a context check to manage different contexts? - i.e. "background", "dash", etc.
     constructor(area = "local", debug = () => {}) {
         // singleton pattern
         if (instance) {
@@ -142,7 +141,15 @@ export class StorageHandler {
         return StorageHandler.contents;
     }
 
-    // ToDo: removeListener
+    // ToDo: removeListener test
+    removeListener = (key) => {
+        if(!key){
+            debug("no key provided - can't remove listener");
+            return;
+        }
 
+        this.#listeners = this.#listeners.filter(listener => listener.key !== key);
+        this.debug(`removed storage listener "${key}"`);
+    }
 
 }

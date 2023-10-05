@@ -18,7 +18,6 @@ const sendMessage = mh.sendMessage;
 
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 let storage = await new StorageHandler("local", debug);
-// ToDo: trying to pass initial storage settings direct to inject so messageHandler isn't needed for initialization
 const settings = storage.contents;
 debug("storage contents: ", settings);
 
@@ -88,6 +87,7 @@ await storage.addListener('badConnection', (newValue) => {
     sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, newValue);
 });
 
+// ToDo: initialize badConnection settings on start like deviceManager
 mh.addListener(m.GET_BAD_CONNECTION_SETTINGS, () => {
     sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, bcsInitSettings);
 });
@@ -126,7 +126,7 @@ async function toggleDash() {
         iframe.style.cssText = dashStyle;
         iframe.src = chrome.runtime.getURL("/pages/dash.html");
         iframe.id = "vch_dash";
-        // iframe.sandbox;      // ToDo: turn this on with the right settings for prod
+        // iframe.sandbox;      // ToDo: turn iframe.sandbox on with the right settings for prod
         iframe.classList.add('dashOpen');
         document.body.appendChild(iframe);
         iframe.style.visibility = "visible";
@@ -202,7 +202,7 @@ async function syncTrackInfo() {
     };
 
 
-    // ToDo: find out if a gUM stream can ever have more than 1 video track
+    // ToDo: spec check: find out if a gUM stream can ever have more than 1 video track
     const settings = videoTrack.getSettings();
     debug("syncTrackInfo:: settings: ", settings);
 
@@ -222,11 +222,9 @@ async function syncTrackInfo() {
     /*
     streams.forEach( stream => {
 
-        // ToDo: stream event handlers
         stream.onremovetrack = async (track) => {
             debug("track removed", track);
             await sendMessage('video', 'tab', 'remove_track', track.id)
-            // ToDo: take it out of the list
         };
 
         const [videoTrack] = stream.getVideoTracks();
@@ -246,7 +244,6 @@ async function syncTrackInfo() {
         };
 
 
-        // ToDo: find out if a gUM stream can ever have more than 1 video track
         const settings = videoTrack.getSettings();
         debug("settings: ", settings);
 
@@ -337,14 +334,12 @@ async function gumStreamStart(data) {
     streams.push(origStream);
     debug("current streams", streams);
 
-    // ToDo: handle this
     // debug("Transferred video track settings: ", origStream.getVideoTracks()[0].getSettings());
     // debug("Transferred video track constraints: ", origStream.getVideoTracks()[0].getConstraints());
     // debug("Transferred video track capabilities: ", origStream.getVideoTracks()[0].getCapabilities());
 
     if (video.srcObject.getTracks().length === 0) {
         debug("no tracks found in stream", video.srcObject);
-        // ToDo: handle this
         await sendMessage('inject', m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
         return;
     }
@@ -357,39 +352,6 @@ async function gumStreamStart(data) {
         debug(`${event.track.kind} track removed`);
         await checkActiveStreams();
     });
-
-
-    // BadConnection simulator
-    // the stream used by inject.js is a different object due to context switch; this messed up some services
-   /*
-    try{
-        const modifiedStream = await alterStream(origStream);
-        // video.srcObject = new VCHMediaStreamTrack(modifiedStream, origStream);
-        debug("Modified video track: ", modifiedStream.getVideoTracks()[0]);
-        debug("Modified video track settings: ", modifiedStream.getVideoTracks()[0].getSettings());
-        debug("Modified video track constraints: ", modifiedStream.getVideoTracks()[0].getConstraints());
-        debug("Modified video track capabilities: ", modifiedStream.getVideoTracks()[0].getCapabilities());
-
-
-        debug(`new modifiedStream: `, modifiedStream);
-        debug(`new modifiedStream tracks: `, modifiedStream.getTracks());
-        video.srcObject = modifiedStream;
-        debug("added modified stream to video element", video);
-
-        debug("Attached video track: ", video.srcObject.getVideoTracks()[0]);
-        debug("Attached video track settings: ", video.srcObject.getVideoTracks()[0].getSettings());
-        debug("Attached video track constraints: ", video.srcObject.getVideoTracks()[0].getConstraints());
-        debug("Attached video track capabilities: ", video.srcObject.getVideoTracks()[0].getCapabilities());
-
-    }
-    catch (err) {
-        debug("alterStream error: ", err);
-    }
-    */
-
-    // instead of the above
-    // video.srcObject = origStream;
-
 
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
@@ -418,8 +380,8 @@ async function bcsSelfie(data){
     const video = document.querySelector(`video#${id}`);
     const origStream = video.srcObject;
 
-    // ToDo: need to modify the below?
-    // await new selfViewElementModifier(origStream);
+    // ToDo: re-enable self-view modifier?
+    await new selfViewElementModifier(origStream);
 
 }
 

@@ -102,10 +102,6 @@ const showFramingDiv = document.querySelector("div#show_framing_div");
 const showFramingCheck = document.querySelector("input#show_framing_check");
 const showFramingStatus = document.querySelector("span#show_framing_status");
 
-const showBadConnectionDiv = document.querySelector("div#show_bad_connection_div");
-// const showBadConnectionCheck = document.querySelector("input#show_bad_connection_check");
-const showBadConnectionStatus = document.querySelector("span#show_bad_connection_status");
-
 function updateSelfViewUI() {
 
     // Hide/Obscure Self-View
@@ -146,14 +142,6 @@ function updateSelfViewUI() {
             child.classList.add('text-muted');
         }
     }
-
-    /*
-    for (let child of showBadConnectionDiv.children) {
-        child.disabled = true;
-        child.classList.add('text-muted');
-    }
-     */
-
 }
 
 // debug("self-view settings:", storage.contents['selfView']);

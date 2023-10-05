@@ -408,10 +408,11 @@ export class selfViewElementModifier {
 
         // ToDo: getting this error:
         //  Uncaught (in promise) TypeError: Failed to execute 'insertBefore' on 'Node': parameter 1 is not of type 'Node'.
-        //  -- Seems like a timing issue
-        //  -- trying a catch
+        //  -- Seems like a timing issue if the page isn't ready - trying a catch
+        // -- 4-Oct-23: aded the if videoElement.parentNode check
         try {
-        videoElement.parentNode.insertBefore(svg, videoElement);
+            if(videoElement.parentNode)
+                videoElement.parentNode.insertBefore(svg, videoElement);
         } catch (err) {
             selfViewElementModifier.debug("Error inserting svg", err);
         }

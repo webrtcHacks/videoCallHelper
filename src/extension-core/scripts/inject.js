@@ -7,7 +7,7 @@ import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
 
 const LOCAL_AUDIO_SAMPLES_PER_SECOND = 5;
 
-// ToDo: find a better way to do these
+// ToDo: find a better way to do these - like feature flags
 const appEnabled = true;
 let monitorAudioSwitch = false;
 let processTrackSwitch = true;
@@ -232,26 +232,13 @@ else {
         let streams = [...arguments].slice(1);
         debug(`addTrack shimmed on peerConnection`, this, track, ...streams);
         debug("peerConnection local track settings", track.getSettings());
-        // ToDo: debugging
-        window.pcTracks.push(track);
+        // window.pcTracks.push(track);
         processTrack(track, "local").catch(err => debug("processTrack error", err));
 
         // ToDo: handle if the switch is changed
         // ToDo: no check to see if this is an audio track?
         if (monitorAudioSwitch)
             monitorAudio(this);
-
-        // ToDo: clean old alterTrack / alterStream
-        // I shouldn't need to do this anymore if using vch-devices
-        /*
-        const alteredTrack = alterTrack(track);
-        debug("changing addTrack track (source, change)", track, alteredTrack);
-
-        arguments[0] = alteredTrack;
-
-        transferStream(new MediaStream([alteredTrack]), m.PEER_CONNECTION_LOCAL_ADD_TRACK)
-            .catch(err => debug("transferStream error", err));
-         */
 
         return origAddTrack.apply(this, arguments)
     };
@@ -368,7 +355,6 @@ else {
             this.getReceivers().forEach(receiver => {
                 const {track: {id, kind, label}, transport} = receiver;
                 // const {id, kind, label} = track;
-                // ToDo: Uncaught TypeError: Cannot read properties of null (reading 'state') - added a `?` to fix, did it work?
                 if (transport?.state !== 'connected') {
                     // debug("not connected", transport.state);
                     clearInterval(interval);
@@ -409,7 +395,6 @@ else {
     navigator.mediaDevices.enumerateDevices = async function () {
         debug("navigator.mediaDevices.enumerateDevices called");
 
-        // ToDo: there is a race condition here where enumerateDevices can be called before the settings are loaded
         if (!appEnabled || !deviceManager.enabled)
             return origEnumerateDevices();
 

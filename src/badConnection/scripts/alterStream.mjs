@@ -228,6 +228,7 @@ export function alterTrack(track, isFakeDevice = false) {
     }
 
     // ToDo: make this work with a Generated Tracks too
+    //  - but I should only be grabbing gUM streams and wny would they be generated?
     // Check if the track id sa MediaStreamTrackGenerator
     if (track instanceof MediaStreamTrackGenerator) {
         debug("track is MediaStreamTrackGenerator");

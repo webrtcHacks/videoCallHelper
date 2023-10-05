@@ -62,7 +62,6 @@ export class DeviceManager {
             video: null,
         },
         excludedDevices: [],
-        // ToDo: take care of onInstall defaults for this
         lastDeviceIds:{
             audio: null,
             video: null,
@@ -73,8 +72,9 @@ export class DeviceManager {
     unalteredStream; /** @type {MediaStream} */
     originalConstraints = {};
     modifiedConstraints = {};
+    devices = []
 
-
+    // ToDo: adjust these capabilities based on the device selected
     static fakeVideoDevice = {
         __proto__: InputDeviceInfo.prototype,
         deviceId: "vch-video",
@@ -148,8 +148,8 @@ export class DeviceManager {
         }
         DeviceManager.instance = this;
 
-        this.fakeVideoDevice = DeviceManager.fakeVideoDevice;
-        this.fakeAudioDevice = DeviceManager.fakeAudioDevice;
+        // this.fakeVideoDevice = DeviceManager.fakeVideoDevice;
+        // this.fakeAudioDevice = DeviceManager.fakeAudioDevice;
 
         // Setup listener to simulate a devicechange event if enabled is changed
         mh.addListener(m.UPDATE_DEVICE_SETTINGS, (data) => {
@@ -200,7 +200,6 @@ export class DeviceManager {
     // The returns the real deviceId DeviceManager should use
     get vchVideoId() {
         if(this.settings.selectedDeviceLabels.video) {
-            // ToDo: this.settings.currentDevices is empty here but populated in storage
             // return the device ID if the label is in this.settings.currentDevices
             const selectedId = this.settings.currentDevices
                 .find(device => device.kind === 'videoinput' && device.label === this.settings.selectedDeviceLabels.video)?.deviceId;
@@ -216,8 +215,6 @@ export class DeviceManager {
     // Checks if  deviceManager is enabled and if the constraints contain vch-audio or vch-video
     useFakeDevices(constraints) {
 
-
-
         // convert constraints to a string and see if it contains "vch-*"
         const constraintsString = JSON.stringify(constraints);
         // Test if the string contains "vch-audio" or "vch-video"
@@ -225,19 +222,6 @@ export class DeviceManager {
         return useFakeDevices;
 
     }
-
-    /*
-    set lastRealAudioId(id){
-        this.settings.lastDeviceIds.audio = id;
-        mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {lastDeviceIds: {audio: this.lastRealAudioId}})
-    }
-
-    set lastRealVideoId(id){
-        this.settings.lastDeviceIds.video = id;
-        mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {lastDeviceIds: {video: this.lastRealVideoId}})
-    }
-
-     */
 
     /* returns a stream with one or more altered tracks
         arguments:
@@ -258,28 +242,29 @@ export class DeviceManager {
         //  if that's not there, then remove so a default device is used
         if (useFakeAudio){
             const audioDeviceId = this.vchAudioId || this.settings.lastDeviceIds.audio || "default";
-            /*if(!audioDeviceId)
-                delete(constraints.audio.deviceId)
-            else{ */
-                constraints.audio.deviceId = audioDeviceId;
-                this.settings.lastDeviceIds.audio = audioDeviceId;
-                settingsChanged = true;
-            // }
+            constraints.audio.deviceId = audioDeviceId;
+            this.settings.lastDeviceIds.audio = audioDeviceId;
+            settingsChanged = true;
+            this.devices.push(DeviceManager.fakeAudioDevice);
+
+
         }
         if (useFakeVideo) {
             const videoDeviceId = this.vchVideoId || this.settings.lastDeviceIds.video || "default";
-           /*if(!videoDeviceId)
-                delete(constraints.video.deviceId)
-            else{*/
-                constraints.video.deviceId = videoDeviceId;
-                this.settings.lastDeviceIds.video = videoDeviceId;
-                settingsChanged = true;
-            // }
+            constraints.video.deviceId = videoDeviceId;
+            this.settings.lastDeviceIds.video = videoDeviceId;
+            settingsChanged = true;
+            this.devices.push(DeviceManager.fakeVideoDevice);
+
         }
 
         debug("gUM with fake devices removed using constraints:", constraints);
         // when constraints include vch-audio|video but deviceManager is not enabled
         this.unalteredStream = await getUserMedia(constraints);
+        if(this.unalteredStream){
+            // this.unalteredStream.getVideoTracks().forEach(track => this.);
+        }
+
         // const noAltering = (!this.settings.enabled || this.settings.currentDevices.length === 0)
 
         if(this.unalteredStream){
@@ -319,71 +304,6 @@ export class DeviceManager {
             const alteredStream = new MediaStream(alteredStreamTracks);
             debug("created alteredStream", alteredStream);
             return alteredStream;
-
-        /*
-
-
-        // regex match to see if the string contains "vch-audio" or "vch-video"
-        const useFakeAudio = constraintsString.match(/vch-audio/)?.length > 0;
-        const useFakeVideo = constraintsString.match(/vch-video/)?.length > 0;
-
-        // ToDo: manage no fake audio for Google Meet or fix that
-
-        debug("original constraints", constraints);
-
-        // try to use the last real device ID in place of the vch-(audio|video) if it is there, otherwise use default
-        // - constraints.video.deviceId
-        // - constraints.video.deviceId.exact
-        // - constraints.video.deviceId.ideal
-
-        if (useFakeAudio)
-            constraints.audio.deviceId = deviceManager.lastRealAudioId;
-        if (useFakeVideo)
-            constraints.video.deviceId = deviceManager.lastRealVideoId;
-
-        if (JSON.stringify(constraints) !== constraintsString)
-            debug("new constraints", constraints);
-
-        // Now get the stream
-        const stream = await origGetUserMedia(constraints);
-        debug("got new gUM stream", stream);
-
-        // Run any tracks that should be from vch-(audio|video) through alterTrack
-        // Keep track of any non-altered tracks deviceIds for use next call
-        const audioTracks = stream.getAudioTracks();
-        const videoTracks = stream.getVideoTracks();
-
-        const alteredStreamTracks = [];
-        // If there are no alternated tracks, then return the stream as is
-        if (!useFakeAudio && !useFakeVideo) {
-            deviceManager.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
-            deviceManager.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
-            await transferStream(stream);               // transfer the stream to the content script
-            return stream;
-        } else {
-            // Create alterTracks where needed and use the existing tracks from the gUM call otherwise
-            if (useFakeAudio && !useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-                videoTracks.forEach(track => alteredStreamTracks.push(track));
-                deviceManager.lastRealVideoId = videoTracks[0]?.getSettings()?.deviceId;
-            } else if (!useFakeAudio && useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(track));
-                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-                deviceManager.lastRealAudioId = audioTracks[0]?.getSettings()?.deviceId;
-            } else if (useFakeAudio && useFakeVideo) {
-                audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-                videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track, true)));
-            } else {
-                debug("shouldn't be here");
-            }
-
-            // make a new stream with the tracks from above
-            const alteredStream = new MediaStream(alteredStreamTracks);
-            debug("using alteredStream", alteredStream);
-            await transferStream(stream, m.GUM_STREAM_START, {generated: true});               // transfer the stream to the content script
-            return alteredStream;
-        }
-         */
     }
 
 
@@ -448,100 +368,5 @@ export class DeviceManager {
 
         return filteredDevices;
     }
-
-    /*
-    addFakeDevices(devices) {
-
-        // ToDo: verify proper behavior if there are no browser permissions
-        // ToDo: always add a label- ignore the nolabel code
-        let noLabel = !devices.find(d => d.label !== "");
-        if (noLabel)
-            debug("no device labels found");
-
-        // ToDo: adjust these capabilities based on the device selected
-        let fakeVideoDevice = {
-            __proto__: InputDeviceInfo.prototype,
-            deviceId: "vch-video",
-            kind: "videoinput",
-            label: noLabel ? "" : "vch-video",
-            groupId: noLabel ? "" : "video-call-helper",
-            getCapabilities: () => {
-                debug("fake video capabilities");
-                return {
-                    aspectRatio: {max: 1920, min: 0.000925925925925926},
-                    deviceId: noLabel ? "" : "vch-video",
-                    facingMode: [],
-                    frameRate: {max: 30, min: 1},
-                    groupId: noLabel ? "" : "vch",
-                    height: {max: 1080, min: 1},
-                    resizeMode: ["none", "crop-and-scale"],
-                    width: {max: 1920, min: 1}
-                };
-            },
-            toJSON: () => {
-                return {
-                    __proto__: InputDeviceInfo.prototype,
-                    deviceId: "vch-video",
-                    kind: "videoinput",
-                    label: noLabel ? "" : "vch-video",
-                    groupId: noLabel ? "" : "video-call-helper",
-                }
-            }
-
-        };
-
-        let fakeAudioDevice = {
-            __proto__: InputDeviceInfo.prototype,
-            deviceId: "vch-audio",
-            kind: "audioinput",
-            label: noLabel ? "" : "vch-audio",
-            groupId: noLabel ? "" : "video-call-helper",
-            getCapabilities: () => {
-                debug("fake audio capabilities?");
-                return {
-                    autoGainControl: [true, false],
-                    channelCount: {max: 2, min: 1},
-                    deviceId: noLabel ? "" : "vch-audio",
-                    echoCancellation: [true, false],
-                    groupId: noLabel ? "" : "video-call-helper",
-                    latency: {max: 0.002902, min: 0},
-                    noiseSuppression: [true, false],
-                    sampleRate: {max: 48000, min: 44100},
-                    sampleSize: {max: 16, min: 16}
-                }
-            },
-            toJSON: () => {
-                return {
-                    __proto__: InputDeviceInfo.prototype,
-                    deviceId: "vch-audio",
-                    kind: noLabel ? "" : "audioinput",
-                    label: "vch-audio",
-                    groupId: noLabel ? "" : "video-call-helper",
-                }
-            }
-        };
-
-        // filter "vch-audio" and "vch-video" out of existing devices array
-        devices.filter(d => d.deviceId !== "vch-audio" && d.deviceId !== "vch-video");
-        devices.push(fakeVideoDevice, fakeAudioDevice);
-
-        this.devices = devices;
-        return devices
-    }
-     */
-
-    // ToDo: move the shimUserMedia logic here
-    // ToDo: should I also handle the case when deviceManager is disabled but the page has vch-* cached?
-    /* if the constraints contain vch-audio or vch-video then need to decide
-        Use real audio-only
-        use real video-only
-        use fake audio-only
-        use fake video-only
-        use real audio and real video
-        use fake audio and fake video
-        use fake audio and real video
-        use real audio and fake video
-
-     */
 
 }

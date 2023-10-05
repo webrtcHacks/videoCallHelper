@@ -108,6 +108,16 @@ chrome.runtime.onInstalled.addListener(async () => {
     if(!storage.contents['deviceManager']) {
         const deviceManagerSettings = {
             enabled: false,
+            currentDevices: [],
+            selectedDeviceLabels: {
+                audio: null,
+                video: null,
+            },
+            excludedDevices: [],
+            lastDeviceIds: {
+                audio: null,
+                video: null,
+            }
         }
         await storage.set('deviceManager', deviceManagerSettings);
     }
