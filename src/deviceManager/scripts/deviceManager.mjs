@@ -1,6 +1,6 @@
 // Manages the devices returned by navigator.mediaDevices.enumerateDevices() and inserts fake vch devices
 
-import {alterTrack} from "../../badConnection/scripts/alterStream.mjs";
+import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 
 
@@ -148,6 +148,14 @@ export class DeviceManager {
         }
     };
 
+
+    // ToDo: get these somehow
+    bcsSettings = {
+        enabled: true,
+        active: false,
+        level: "passthrough"
+
+    }
 
     constructor(settings) {
 
@@ -329,18 +337,19 @@ export class DeviceManager {
 
         const alteredStreamTracks = [];
 
+
         // Create alterTracks where needed and use the existing tracks from the gUM call otherwise
         if (useFakeAudio && !useFakeVideo) {
-            audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
+            audioTracks.forEach(track => alteredStreamTracks.push( new AlterTrack(track, this.bcsSettings)));
             videoTracks.forEach(track => alteredStreamTracks.push(track));
             this.settings.lastDeviceIds.video = videoTracks[0]?.getSettings()?.deviceId;
         } else if (!useFakeAudio && useFakeVideo) {
             audioTracks.forEach(track => alteredStreamTracks.push(track));
-            videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
+            videoTracks.forEach(track => alteredStreamTracks.push(new AlterTrack(track, this.bcsSettings)));
             this.settings.lastDeviceIds.audio = audioTracks[0]?.getSettings()?.deviceId;
         } else if (useFakeAudio && useFakeVideo) {
-            audioTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
-            videoTracks.forEach(track => alteredStreamTracks.push(alterTrack(track)));
+            audioTracks.forEach(track => alteredStreamTracks.push(new AlterTrack(track, this.bcsSettings)));
+            videoTracks.forEach(track => alteredStreamTracks.push(new AlterTrack(track, this.bcsSettings)));
         } else {
             debug("shouldn't be here");
         }
