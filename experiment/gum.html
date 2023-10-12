@@ -76,7 +76,7 @@
     }
 
     async function getCam() {
-        stream = await navigator.mediaDevices.getUserMedia({video: {height: {exact: 720}, aspectRatio: 1.7777777778}});
+        stream = await navigator.mediaDevices.getUserMedia({video: {height: {exact: 720}, aspectRatio: 1.7777777778, deviceId: "vch-video"}});
         const [track] = stream.getVideoTracks();
         console.log("Source track:", track);
         console.log("Source track settings:", track.getSettings());

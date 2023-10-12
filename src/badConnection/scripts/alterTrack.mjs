@@ -9,18 +9,23 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
 
 const mh = new MessageHandler('inject'); //, debug);
 
-export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
+export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 
     generator;
     processor;
     reader;
     writer;
     worker;
-    clones = [];
+
+    static settings = {
+        enabled: false,
+        level: "passthrough",
+        active: false,
+    }
 
     constructor(track, settings) {
         // super();
-        this.settings = settings;
+        AlterTrack.settings = settings;
         /** @type {MediaStreamTrack} */
         this.sourceTrack = track;
 
@@ -31,7 +36,7 @@ export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
         }
 
         /** type {MediaStreamTrackGenerator} */
-        const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
+        const generator = new AlteredMediaStreamTrackGenerator({kind: track.kind}, track);
 
         this.#startWorker(generator).then((generator) => {
             debug(`generator started on worker ${this.worker.name}`, generator);
@@ -82,8 +87,13 @@ export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
 
             const trackDone = () => {
                 this.worker.postMessage({command: "stop"});  // clean-up resources?
-                this.generator.stop();
-                this.worker.terminate();
+
+                // terminate the worker after 500ms to give it time to clean-up resources (should this be a worker event listener?)
+                setTimeout(() => {
+                    this.worker.terminate();
+                }, 500);
+
+                generator.stop();
                 this.sourceTrack.stop();
             }
 
@@ -101,7 +111,7 @@ export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
             });
 
             // Remember this only works when the track is ended not by the user
-            this.sourceTrack.addEventListener('ended', () => {
+            generator.addEventListener('ended', () => {
                 debug(`track ${this.sourceTrack.id} ended event, stopping worker ${this.worker.name}`);
                 trackDone();
             });
@@ -110,6 +120,7 @@ export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
             mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, async (newSettings) => {
                 debug("badConnection changed to: ", newSettings);
                 this.worker.postMessage({command: newSettings.level});
+                AlterTrack.settings = newSettings;
 
                 /*
                 if (newSettings.enabled === false) {
@@ -151,7 +162,7 @@ export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
                 id: this.sourceTrack.id,
                 kind: this.sourceTrack.kind,
                 settings: this.sourceTrack.getSettings(),
-                impairmentState: this.settings.level,
+                impairmentState: AlterTrack.settings.level,
             }, [this.reader, this.writer]);
 
         }).catch((err) => {
@@ -159,6 +170,7 @@ export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
         });
     }
 
+    /*
     // ToDo: start a new worker and generator
     clone() {
 
@@ -173,39 +185,9 @@ export class AlterTrack  { // extends MediaStreamTrack {  // Illegal constructor
 
     }
 
+     */
+
 }
-
-
-
-// A listener is needed to see if AlterTrack/AlterStream is enabled
-//  - settings used skip altering the track
-//  - 'settings' is also used inside the alteredMediaStreamTrackGenerator class for this.settings
-
-/************ START get settings ************
-
-// ToDo: move these initialization settings into the constructor
-
-const mh = new MessageHandler('inject'); //, debug);
-
-// for reference
-let settings = {
-    enabled: false,
-    active: false,
-    level: "passthrough"
-}
-
-mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
-    debug("got new settings", data)
-    settings = data;
-});
-mh.sendMessage('content', m.GET_BAD_CONNECTION_SETTINGS);
-
-
-/************ END get settings  ************/
-
-window.newStreams = [];
-const alteredTracks = [];
-window.alteredTracks = alteredTracks;
 
 // Learning: I was not able to transfer a modified writer to the worker
 // My goal is to wait until something is written to the track before returning the new stream
@@ -214,7 +196,7 @@ window.alteredTracks = alteredTracks;
 //  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
 // ToDo: see if I can extend the writer in the worker and have that message back here
 
-class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
+class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
     /*
     // MediaStreamTrack
@@ -234,6 +216,17 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
     constructor(options, sourceTrack) {
         const track = super(options);
 
+        /*
+        // Make sure all generated tracks have a see if AlterMediaStreamTrackGenerator.tracks has a track with the same id
+        if (AlteredMediaStreamTrackGenerator.generators.length > 0) {
+            const lastId = AlteredMediaStreamTrackGenerator.generators[AlteredMediaStreamTrackGenerator.generators.length - 1].id;
+            const lastNum = lastId.match(/vch-.*-([0-9]{1,2})/)[0] || 0;
+            this.deviceId = `vch-${this.kind}-${parseInt(lastNum) + 1}`;
+        } else {
+            this.deviceId = `vch-${this.kind}`;
+        }
+         */
+
         this.options = options;
         this._label = sourceTrack.label;
 
@@ -245,9 +238,13 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
         this._constraints.deviceId = `vch-${this.kind}`;
 
         this._capabilities = sourceTrack.getCapabilities();
+        this._capabilities.deviceId = `vch-${this.kind}`;
+        this._capabilities.groupId = 'video-call-helper';
 
         this.sourceTrack = sourceTrack;
         this.track = track;
+
+        return track;
 
     }
 
@@ -295,7 +292,12 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
         this.sourceTrack.applyConstraints(constraints)
             .then(() => {
                 this._settings = this.sourceTrack.getSettings();
+                this._settings.deviceId = `vch-${this.kind}`;
+                this._settings.groupId = 'video-call-helper';
+
                 this._constraints = this.sourceTrack.getConstraints();
+                this._constraints.deviceId = `vch-${this.kind}`;
+
                 debug(`new settings on ${this.kind} track ${this.id}`, this._settings)
 
             })
@@ -303,12 +305,11 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
     }
 
-    // ToDo: move this method into AlterTrack
-    /*
     clone() {
 
-        // Failed tests and learnings
         /*
+        // Failed tests and learnings:
+
         // clone is stripped of all its properties - might need to live with that unless I start a new generator
         // const clone =  this.sourceTrack.clone();
 
@@ -342,13 +343,11 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
          */
 
-    /*
-        const generator = alterTrack(this.track);
-
+        const clone = this.sourceTrack.clone();
+        const generator = new AlterTrack(clone, AlterTrack.settings);
         debug("clone track", generator);
         return generator;
     }
-    */
 
     getCapabilities() {
         debug(`getCapabilities on ${this.kind} track ${this.id}`, this._capabilities);
@@ -368,6 +367,8 @@ class alteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
     stop() {
         debug(`stopping track source track ${this.label}`);
         this.sourceTrack.stop();
+        // emit an ended event
+        // this.dispatchEvent(new Event('ended'));
     }
 
     // From chatGPT:
@@ -439,7 +440,7 @@ export function alterTrack(track) {
     // the track was working. That doesn't work for the clone() method that needs an immediate response
     // so I return the generator and let the generator start when it starts
 
-    const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track, isFakeDevice);
+    const generator = new AlteredMediaStreamTrackGenerator({kind: track.kind}, track, isFakeDevice);
 
     // keep the promise here in case I need to send a notification on resolve
     new Promise((resolve, reject) => {
@@ -567,8 +568,9 @@ export function alterTrack(track) {
 }
 
 /* Pseudo-code*/
+
 // ToDo: need to make this all a class so I can expose this.worker
-async function changeInputTrack(track){
+async function changeInputTrack(track) {
     const processor = new MediaStreamTrackProcessor(track);
     const reader = processor.readable;
 
