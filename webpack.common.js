@@ -2,7 +2,24 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
 
-module.exports = {
+// build the worker file first since it needs to be referenced by the extension
+const workerConfig = {
+    mode: 'development',
+    entry: './src/injectWorker/scripts/worker.js',
+    output: {
+        filename: 'worker-bundle.js',
+        path: path.resolve(__dirname, 'temp') // Updated to an absolute path
+    },
+    optimization: {
+        splitChunks: false,
+        runtimeChunk: false
+    },
+    // stats: 'verbose',
+};
+
+
+// This is for all other extension files
+const extensionConfig = {
     experiments: {
         topLevelAwait: true,
     },
@@ -45,7 +62,7 @@ module.exports = {
                 ]
             },
             {
-                test: /.*impairment\.worker.*\.(js)$/i,
+                test: /^worker-bundle.*\.(js)$/i,
                 type: 'asset/source',
             },
             {
@@ -102,9 +119,18 @@ module.exports = {
         }),
         new CopyPlugin({
             patterns: [
+                // The extension manifeet
                 {from: "src/manifest.json", to: "../manifest.json"},
-                {from: "src/static/icons", to: "../icons"}
+                // Icons
+                {from: "src/static/icons", to: "../icons"},
+                // The worker so it is inlined
+                // { from: path.resolve(__dirname, 'temp/worker-bundle.js'), to: 'worker-bundle.js' }
+                // { from: 'temp/worker-bundle.js', to: 'worker-bundle.js' }
+
+
             ],
         }),
     ],
 };
+
+module.exports = [workerConfig, extensionConfig];

@@ -1,10 +1,10 @@
 // bad connection simulator
 // one worker per track for processing and altering
 
-import impairmentWorkerScript from "./impairment.worker.js";
+import worker from "!!raw-loader!../../../temp/worker-bundle.js";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 
-// import impairmentWorkerScript from '../../badConnection/scripts/impairment.worker.js';
+// import impairmentWorkerScript from '../../badConnection/scripts/worker.js';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
 
 const mh = new MessageHandler('inject'); //, debug);
@@ -69,11 +69,11 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                     createScriptURL: (url) => url,
                 });
                 const workerBlobURL = URL.createObjectURL(
-                    new Blob([impairmentWorkerScript], {type: 'application/javascript'})
+                    new Blob([worker], {type: 'application/javascript'})
                 );
                 this.worker = new Worker(policy.createScriptURL(workerBlobURL), {name: workerName});
             } else {
-                const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
+                const workerBlobURL = URL.createObjectURL(new Blob([worker], {type: 'application/javascript'}));
                 this.worker = new Worker(workerBlobURL, {name: workerName});
             }
 
@@ -466,13 +466,13 @@ export function alterTrack(track) {
                 createScriptURL: (url) => url,
             });
             const workerBlobURL = URL.createObjectURL(
-                new Blob([impairmentWorkerScript], {type: 'application/javascript'})
+                new Blob([worker], {type: 'application/javascript'})
             );
             worker = new Worker(policy.createScriptURL(workerBlobURL), {
                 name: workerName,
             });
         } else {
-            const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
+            const workerBlobURL = URL.createObjectURL(new Blob([worker], {type: 'application/javascript'}));
             worker = new Worker(workerBlobURL, {name: workerName});
         }
 

@@ -1,6 +1,8 @@
 // Import not workinng when this whole file is loaded inline
 // import {Impairment} from "../../badConnection/scripts/impairment.mjs";
 
+import {test} from "../../badConnection/scripts/test.mjs";
+console.info(`from worker ${test}`);
 
 /*
  * Class that sets up a transform stream that can add an impairment
@@ -404,7 +406,7 @@ class Impairment {
     }
 }
 
-const debug = Function.prototype.bind.call(console.debug, console, `vch 😈${this.name}👷 `);
+const debug = Function.prototype.bind.call(console.debug, console, `vch 😈${self.name}👷 `);
 // Impairment.#debug = debug;   // ToDo: pass a debug function to the class
 debug("I am a worker");
 let impairment;

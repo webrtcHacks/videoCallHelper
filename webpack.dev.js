@@ -1,6 +1,7 @@
 const { merge } = require('webpack-merge');
-const commonConfig = require('./webpack.common.js');
+const commonConfigs = require('./webpack.common.js');
 const path = require("path");
+
 
 //
 class BuildTimePlugin {
@@ -11,12 +12,13 @@ class BuildTimePlugin {
                 date.setMilliseconds(date.getMilliseconds() - 500);
                 const buildTime = date.toLocaleTimeString();
                 console.log(`Build completed at ${buildTime}`);
+                console.log("===========================================")
             }, 500);
         });
     }
 }
 
-module.exports = merge(commonConfig, {
+const devConfig = {
     mode: 'development',
     devtool: 'inline-source-map',
     output: {
@@ -26,4 +28,14 @@ module.exports = merge(commonConfig, {
         clean: true
     },
     plugins: [new BuildTimePlugin()]
-});
+};
+
+const [workerConfig, extensionConfig] = commonConfigs;
+
+workerConfig.mode = 'development';
+
+// Only merge the devConfig with the extensionConfig
+module.exports = [
+    workerConfig, // keep the workerConfig as is
+    merge(extensionConfig, devConfig) // apply the devConfig only to the extensionConfig
+];
