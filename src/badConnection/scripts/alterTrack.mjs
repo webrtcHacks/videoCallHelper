@@ -111,6 +111,11 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
             });
 
             // Remember this only works when the track is ended not by the user
+            this.sourceTrack.addEventListener('ended', () => {
+                debug(`track ${this.sourceTrack.id} ended event, stopping worker ${this.worker.name}`);
+                trackDone();
+            });
+
             generator.addEventListener('ended', () => {
                 debug(`track ${this.sourceTrack.id} ended event, stopping worker ${this.worker.name}`);
                 trackDone();
@@ -194,7 +199,6 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 // it seems there is some typechecking and Chrome doesn't allow an extended object
 // I always get the error:
 //  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
-// ToDo: see if I can extend the writer in the worker and have that message back here
 
 class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
@@ -387,6 +391,64 @@ class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
 }
 
+/* Pseudo-code*/
+
+// ToDo: need to make this all a class so I can expose this.worker
+async function changeInputTrack(track) {
+    const processor = new MediaStreamTrackProcessor(track);
+    const reader = processor.readable;
+
+    // No kind checking
+    worker.postMessage({command: "changeInputTrack", track, settings: track.getSettings()}, [reader]);
+}
+
+// Sets the GUI to active=false if there are no generated streams
+async function checkGeneratorStreams() {
+    // ToDo: do better than use window below
+    const active = window.newStreams.find(stream => stream.active);
+    if (active === undefined)
+        // await storage.update('badConnection', {active: false});
+        settings.active = false;
+}
+
+/*
+// returns a promise that resolves to a MediaStreamTrackGenerator
+export async function alterStream(stream) {
+
+    if (!settings.enabled) {
+        return new Error("Bad connection is not enabled");
+    }
+
+    const tracks = stream.getTracks();
+
+    // ToDo: need to close the worker when the stream is closed
+
+    const alteredTracks = tracks.map((track) => {
+        const alteredTrack = alterTrack(track);
+
+        debug("alteredTrack: ", alteredTrack);
+        // debug("alteredTrack settings: ", alteredTrack.getSettings());
+        // debug("alteredTrack constraints: ", alteredTrack.getConstraints());
+        // debug("alteredTrack capabilities: ", alteredTrack.getCapabilities());
+        return alteredTrack;
+    });
+
+    const newStream = new MediaStream(alteredTracks);
+
+    // Do I need to make sure these work?
+    if (newStream.getTracks().filter(track => track.readyState === 'live').length > 0) {
+        window.newStreams.push(newStream);
+        settings.active = true;
+        mh.sendMessage("content", m.UPDATE_BAD_CONNECTION_SETTINGS, settings);
+        return newStream;
+    } else {
+        debug("alterStream error, returning original stream. No active tracks", newStream, newStream.getTracks());
+        return stream;
+    }
+
+}
+*/
+
 // ToDo: need a way to replace an altered track
 // ToDo: mute / unmute not working - I think I fixed that in the alteredMediaStreamTrackGenerator, need to verify
 export function alterTrack(track) {
@@ -566,61 +628,3 @@ export function alterTrack(track) {
     return generator;
 
 }
-
-/* Pseudo-code*/
-
-// ToDo: need to make this all a class so I can expose this.worker
-async function changeInputTrack(track) {
-    const processor = new MediaStreamTrackProcessor(track);
-    const reader = processor.readable;
-
-    // No kind checking
-    worker.postMessage({command: "changeInputTrack", track, settings: track.getSettings()}, [reader]);
-}
-
-// Sets the GUI to active=false if there are no generated streams
-async function checkGeneratorStreams() {
-    // ToDo: do better than use window below
-    const active = window.newStreams.find(stream => stream.active);
-    if (active === undefined)
-        // await storage.update('badConnection', {active: false});
-        settings.active = false;
-}
-
-/*
-// returns a promise that resolves to a MediaStreamTrackGenerator
-export async function alterStream(stream) {
-
-    if (!settings.enabled) {
-        return new Error("Bad connection is not enabled");
-    }
-
-    const tracks = stream.getTracks();
-
-    // ToDo: need to close the worker when the stream is closed
-
-    const alteredTracks = tracks.map((track) => {
-        const alteredTrack = alterTrack(track);
-
-        debug("alteredTrack: ", alteredTrack);
-        // debug("alteredTrack settings: ", alteredTrack.getSettings());
-        // debug("alteredTrack constraints: ", alteredTrack.getConstraints());
-        // debug("alteredTrack capabilities: ", alteredTrack.getCapabilities());
-        return alteredTrack;
-    });
-
-    const newStream = new MediaStream(alteredTracks);
-
-    // Do I need to make sure these work?
-    if (newStream.getTracks().filter(track => track.readyState === 'live').length > 0) {
-        window.newStreams.push(newStream);
-        settings.active = true;
-        mh.sendMessage("content", m.UPDATE_BAD_CONNECTION_SETTINGS, settings);
-        return newStream;
-    } else {
-        debug("alterStream error, returning original stream. No active tracks", newStream, newStream.getTracks());
-        return stream;
-    }
-
-}
-*/
