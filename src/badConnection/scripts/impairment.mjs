@@ -1,3 +1,5 @@
+//import {VideoFrameScaler} from './webGLresize.mjs';
+
 /*
  * Class that sets up a transform stream that can add an impairment
  * The constructor and takes a track settings object and an  impairment config object
@@ -90,6 +92,14 @@ export class Impairment {
         this.impairmentConfig = impairmentConfig;
         this.debug = debug;
 
+        if(this.kind === 'video'){
+            // this.scaler = new VideoFrameScaler(impairmentConfig.video.widthFactor || 1);
+            this.canvas = new OffscreenCanvas(settings.width, settings.height);
+            this.ctx = this.canvas.getContext('bitmaprenderer');
+
+
+        }
+
         // ToDo: **make this a promise so we can cancel if the codec config doesn't work?
         this.#loadConfig();
         this.#setupCodec();
@@ -134,22 +144,26 @@ export class Impairment {
 
     // WebCodecs setup
     #setupCodec() {
-        const handleDecodedFrame = frame => {
+        const handleDecodedFrame = async frame => {
             if (this.operation === 'kill') {
                 frame.close();
             } else {
                 try {
-                    // ToDo: finish up scaling here
+                    // ToDo: this scaler isn't working - neither the canvas one or the webGL one
                     /*
                     if(this.kind === 'video'){
-                        const resizedFrame = resizeFrame(frame, this.impairmentConfig.video.widthFactor || 1);
-                        this.#controller.enqueue(resizedFrame)
+                        // const scaledFrame = await this.scaler.resizeVideoFrame(frame, this.impairmentConfig.video.widthFactor || 1);
+                        this.canvas.width = 1280; // frame.displayWidth;
+                        this.canvas.height = 720; // frame.displayHeight;
+                        const bitmap = await createImageBitmap(this.canvas);
+                        const scaledFrame = new VideoFrame(bitmap, {timestamp: frame.timestamp});
+                        frame.close();
+                        this.#controller.enqueue(scaledFrame);
                     } else {
                         this.#controller.enqueue(frame);
                     }
                      */
-
-                    this.#controller.enqueue(frame)
+                    this.#controller.enqueue(frame);
                 } catch (err) {
                     this.debug("controller enqueue error", err);
                 }
