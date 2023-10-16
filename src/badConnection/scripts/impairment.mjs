@@ -1,102 +1,3 @@
-// Helper function to resize a video frame using WebGL
-async function resizeFrame(videoFrame, scaleFactor) {
-    const width = videoFrame.displayWidth * scaleFactor;
-    const height = videoFrame.displayHeight * scaleFactor;
-
-    // Create a canvas and get WebGL context
-    const canvas = new OffscreenCanvas(width, height);
-    canvas.width = width;
-    canvas.height = height;
-    const gl = canvas.getContext('webgl');
-
-    // Vertex shader program
-    const vsSource = `
-        attribute vec4 aVertexPosition;
-        attribute vec2 aTextureCoord;
-        varying vec2 vTextureCoord;
-        void main(void) {
-            vTextureCoord = aTextureCoord;
-            gl_Position = aVertexPosition;
-        }
-    `;
-
-    // Fragment shader program
-    const fsSource = `
-        precision mediump float;
-        varying vec2 vTextureCoord;
-        uniform sampler2D uSampler;
-        void main(void) {
-            gl_FragColor = texture2D(uSampler, vTextureCoord);
-        }
-    `;
-
-    // Compile shader program
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, vsSource);
-    gl.compileShader(vertexShader);
-
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, fsSource);
-    gl.compileShader(fragmentShader);
-
-    // Link WebGL program
-    const shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
-    gl.useProgram(shaderProgram);
-
-    // Define the geometry and texture coordinates
-    const vertices = new Float32Array([
-        -1.0, 1.0, 0.0, 1.0,
-        -1.0, -1.0, 0.0, 0.0,
-        1.0, -1.0, 1.0, 0.0,
-        1.0, 1.0, 1.0, 1.0,
-    ]);
-
-    // Create a buffer and put the vertices in it
-    const vertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-
-    // Bind the buffer, i.e., let's use the buffer we've just created
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-
-    const position = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 4 * vertices.BYTES_PER_ELEMENT, 0);
-    gl.enableVertexAttribArray(position);
-
-    const texCoord = gl.getAttribLocation(shaderProgram, "aTextureCoord");
-    gl.vertexAttribPointer(texCoord, 2, gl.FLOAT, false, 4 * vertices.BYTES_PER_ELEMENT, 2 * vertices.BYTES_PER_ELEMENT);
-    gl.enableVertexAttribArray(texCoord);
-
-    // Provide texture
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFrame);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
-
-    // Here you can either return the canvas element directly
-    // or convert it to a VideoFrame or ImageBitmap, or other formats as needed
-    const imageBitmap = await createImageBitmap(canvas);
-
-    // Create a VideoFrame from the ImageBitmap
-    const largeFrame = new VideoFrame(imageBitmap, {
-        timestamp: videoFrame.timestamp,
-    });
-
-    // Close the ImageBitmap to release resources
-    imageBitmap.close();
-
-    return videoFrame;
-}
-
-
-
 /*
  * Class that sets up a transform stream that can add an impairment
  * The constructor and takes a track settings object and an  impairment config object
@@ -238,14 +139,17 @@ export class Impairment {
                 frame.close();
             } else {
                 try {
+                    // ToDo: finish up scaling here
+                    /*
                     if(this.kind === 'video'){
                         const resizedFrame = resizeFrame(frame, this.impairmentConfig.video.widthFactor || 1);
                         this.#controller.enqueue(resizedFrame)
                     } else {
                         this.#controller.enqueue(frame);
                     }
+                     */
 
-
+                    this.#controller.enqueue(frame)
                 } catch (err) {
                     this.debug("controller enqueue error", err);
                 }
@@ -422,9 +326,8 @@ export class Impairment {
                             this.#forceKeyFrame = false;
                         }
 
-                        this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
+                       this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
 
-                        // part of update
                         if(this.#forceKeyFrame === true)
                             this.#forceKeyFrame = false;
 
