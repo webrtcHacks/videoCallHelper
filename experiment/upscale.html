@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Frame Resizer</title>
+    <style>
+        video, canvas {
+            border: 1px solid black;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+<video id="originalVideo" autoplay muted controls loop>
+    <source src="mov_bbb.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
+
+<canvas id="resizedCanvas"></canvas>
+<div id="stats"></div>
+<script type="module">
+    // VideoFrameResizer class definition (from the previous response)
+    // Main part to handle video and canvas
+
+    const video = document.getElementById('originalVideo');
+    const canvas = document.getElementById('resizedCanvas');
+    const ctx = canvas.getContext('bitmaprenderer');
+    const scale = 2.0;
+
+
+    // Function that resizes a video frame amd returns an image bitmap
+    const offscreenCanvas = new OffscreenCanvas(640, 480);
+    const offscreenCtx = offscreenCanvas.getContext('bitmaprenderer');
+    async function resizeVideoFrame(bitmap) {
+        offscreenCanvas.width = bitmap.width * scale; // video.videoWidth * scale;
+        offscreenCanvas.height = bitmap.height * scale;  // video.videoHeight * scale;
+        // offscreenCtx.drawImage(video, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        offscreenCtx.transferFromImageBitmap(bitmap);
+        return await createImageBitmap(offscreenCanvas);
+    }
+
+
+    video.addEventListener('loadedmetadata', ()=>{
+        // const newWidth = video.videoWidth * scale;
+        // const newHeight = video.videoHeight * scale;
+        // canvas.width = newWidth;
+        // canvas.height = newHeight;
+
+        // const offscreenCanvas = new OffscreenCanvas(newWidth, newHeight);
+        // const offscreenCtx = offscreenCanvas.getContext('2d');
+    });
+
+
+    video.addEventListener('play', () => {
+
+        const render = async () => {
+            if (video.paused || video.ended) {
+                return;
+            }
+
+            const newWidth = video.videoWidth * scale;
+            const newHeight = video.videoHeight * scale;
+
+            const bitmap = await createImageBitmap(video, {resizedWidth: newWidth, resizedHeight: newHeight});
+            window.bitmap = bitmap;
+            // const biggerImageBitmap = await resizeVideoFrame(bitmap);
+            // const imageBitmap = await createImageBitmap(biggerImageBitmap);
+            canvas.width = newWidth; // bitmap.width;
+            canvas.height = newHeight; // bitmap.height;
+            // Note to remember: this transfers the context, so you can't access bitmap properties after this
+            ctx.transferFromImageBitmap(bitmap);
+
+
+
+            requestAnimationFrame(render);
+        };
+        requestAnimationFrame(render);
+    });
+
+</script>
+<script>
+    const stats = document.querySelector('div#stats');
+    const video = document.querySelector('video#originalVideo');
+    const canvas = document.querySelector('canvas#resizedCanvas');
+    function calculateStats() {
+
+        let decodedFrames = 0,
+            droppedFrames = 0,
+            startTime = new Date().getTime(),
+            initialTime = new Date().getTime();
+
+        const interval = setInterval(function () {
+
+            //see if webkit stats are available; exit if they aren't
+            if (!video.webkitDecodedFrameCount) {
+                console.log("Video FPS calcs not supported");
+                clearInterval(interval);
+            }
+            //get the stats
+            else {
+                const currentTime = new Date().getTime();
+                let deltaTime = (currentTime - startTime) / 1000;
+                let totalTime = (currentTime - initialTime) / 1000;
+                startTime = currentTime;
+
+                // Calculate decoded frames per sec.
+                const currentDecodedFPS = (video.webkitDecodedFrameCount - decodedFrames) / deltaTime;
+                const decodedFPSavg = video.webkitDecodedFrameCount / totalTime;
+                decodedFrames = video.webkitDecodedFrameCount;
+
+                // Calculate dropped frames per sec.
+                const currentDroppedFPS = (video.webkitDroppedFrameCount - droppedFrames) / deltaTime;
+                const droppedFPSavg = video.webkitDroppedFrameCount / totalTime;
+                droppedFrames = video.webkitDroppedFrameCount;
+
+                //write the results to a table
+                stats.innerHTML =
+                    "<table><tr><th>Type</th><th>Total</th><th>Avg FPS</th><th>Current FPS</th></tr>" +
+                    "<tr><td>Decoded</td><td>" + decodedFrames + "</td><td>" + decodedFPSavg.toFixed() + "</td><td>" + currentDecodedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>Dropped</td><td>" + droppedFrames + "</td><td>" + droppedFPSavg.toFixed() + "</td><td>" + currentDroppedFPS.toFixed() + "</td></tr>" +
+                    "<tr><td>All</td><td>" + (decodedFrames + droppedFrames) + "</td><td>" + (decodedFPSavg + droppedFPSavg).toFixed() + "</td><td>" + (currentDecodedFPS + currentDroppedFPS).toFixed() + "</td></tr></table>" +
+                    "Video source resolution: " + video.videoWidth + " x " + video.videoHeight + "<br>" +
+                    "Video element size: " + video.clientWidth + " x " + video.clientHeight + "<br>" +
+                    "Canvas size: " + canvas.width + " x " + canvas.height;
+            }
+        }, 1000);
+    }
+
+    video.addEventListener('loadeddata', (event) => {
+        console.log(`Actual stream height: ${video.videoHeight}`);
+        calculateStats();
+    });
+</script>
+
+</body>
+</html>
