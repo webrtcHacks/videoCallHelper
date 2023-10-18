@@ -9,6 +9,12 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
 
 const mh = new MessageHandler('inject'); //, debug);
 
+/**
+ * Modifies a MediaStreamTrack to simulate a bad connection
+ * @param {MediaStreamTrack} track - the track to modify
+ * @param {object} settings - the settings for the bad connection simulator
+ * @returns {Promise<MediaStreamTrackGenerator>} - a MediaStreamTrackGenerator
+ */
 export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 
     generator;
@@ -174,24 +180,6 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
             debug("Error in alterTrack: ", err);
         });
     }
-
-    /*
-    // ToDo: start a new worker and generator
-    clone() {
-
-        const newGenerator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
-
-        this.#startWorker(newGenerator).then((generator) => {
-            debug(`generator started on worker ${this.worker.name}`, generator);
-            this.clones.push(generator);
-        });
-
-        return newGenerator;
-
-    }
-
-     */
-
 }
 
 // Learning: I was not able to transfer a modified writer to the worker
@@ -200,6 +188,13 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 // I always get the error:
 //  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
 
+
+/**
+ * Extends a MediaStreamTrackGenerator to look like a MediaStreamTrack
+ * @param {object} options - the options for the MediaStreamTrackGenerator
+ * @param {MediaStreamTrack} sourceTrack - the source track to modify
+ * @returns {MediaStreamTrackGenerator} - a MediaStreamTrackGenerator
+ */
 class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
     /*
@@ -400,231 +395,4 @@ async function changeInputTrack(track) {
 
     // No kind checking
     worker.postMessage({command: "changeInputTrack", track, settings: track.getSettings()}, [reader]);
-}
-
-// Sets the GUI to active=false if there are no generated streams
-async function checkGeneratorStreams() {
-    // ToDo: do better than use window below
-    const active = window.newStreams.find(stream => stream.active);
-    if (active === undefined)
-        // await storage.update('badConnection', {active: false});
-        settings.active = false;
-}
-
-/*
-// returns a promise that resolves to a MediaStreamTrackGenerator
-export async function alterStream(stream) {
-
-    if (!settings.enabled) {
-        return new Error("Bad connection is not enabled");
-    }
-
-    const tracks = stream.getTracks();
-
-    // ToDo: need to close the worker when the stream is closed
-
-    const alteredTracks = tracks.map((track) => {
-        const alteredTrack = alterTrack(track);
-
-        debug("alteredTrack: ", alteredTrack);
-        // debug("alteredTrack settings: ", alteredTrack.getSettings());
-        // debug("alteredTrack constraints: ", alteredTrack.getConstraints());
-        // debug("alteredTrack capabilities: ", alteredTrack.getCapabilities());
-        return alteredTrack;
-    });
-
-    const newStream = new MediaStream(alteredTracks);
-
-    // Do I need to make sure these work?
-    if (newStream.getTracks().filter(track => track.readyState === 'live').length > 0) {
-        window.newStreams.push(newStream);
-        settings.active = true;
-        mh.sendMessage("content", m.UPDATE_BAD_CONNECTION_SETTINGS, settings);
-        return newStream;
-    } else {
-        debug("alterStream error, returning original stream. No active tracks", newStream, newStream.getTracks());
-        return stream;
-    }
-
-}
-*/
-
-// ToDo: need a way to replace an altered track
-// ToDo: mute / unmute not working - I think I fixed that in the alteredMediaStreamTrackGenerator, need to verify
-export function alterTrack(track) {
-
-    if (!settings.enabled) {
-        debug("Bad connection simulator not enabled - disabling");
-        return track;
-    }
-
-    // ToDo: make this work with a Generated Tracks too
-    //  - but I should only be grabbing gUM streams and wny would they be generated?
-    // Check if the track id sa MediaStreamTrackGenerator
-    if (track instanceof MediaStreamTrackGenerator) {
-        debug("track is MediaStreamTrackGenerator");
-        return track;
-    }
-
-    /*
-    // ToDo: gMeet audio self mute debugging
-    //  The below works for muting, but doesn't send any audio
-    if(track.kind === "audio") {
-        // const generator = new MediaStreamTrackGenerator({kind: track.kind});
-        const generator = new alteredMediaStreamTrackGenerator({kind: track.kind}, track);
-        const writer = generator.writable;
-
-        const processor = new MediaStreamTrackProcessor(track);
-        const reader = processor.readable;
-
-        // Needed to add a delay here to avoid the following error:
-        //  vch 💉️😈 DEBUG: Insertable stream error DOMException: Failed to execute 'write' on 'UnderlyingSinkBase': Stream closed
-        setTimeout(() => {
-            reader
-                .pipeTo(writer)
-                .catch(async err => {
-                    debug(`DEBUG: Insertable stream error`, err);
-                });
-        }, 200);
-
-        return
-    }
-     */
-
-    // Don't process audio for google meet- it had some issue
-    // ToDo: process audio for Google Meet
-    if (track.kind === "audio" && window.location.host.includes("google")) {
-        debug("alterTrack: google meet audio track, returning original track");
-        return track;
-    }
-
-    // I used to return the promise which would only resolve after a couple of frames to make sure
-    // the track was working. That doesn't work for the clone() method that needs an immediate response
-    // so I return the generator and let the generator start when it starts
-
-    const generator = new AlteredMediaStreamTrackGenerator({kind: track.kind}, track, isFakeDevice);
-
-    // keep the promise here in case I need to send a notification on resolve
-    new Promise((resolve, reject) => {
-
-        const processor = new MediaStreamTrackProcessor(track);
-        const reader = processor.readable;
-
-        const writer = generator.writable;
-
-        // debug("alteredMediaStreamTrackGenerator video track: ", generator);
-        // debug("alteredMediaStreamTrackGenerator video track settings: ", generator.getSettings());
-        // debug("alteredMediaStreamTrackGenerator video track constraints: ", generator.getConstraints());
-        // debug("alteredMediaStreamTrackGenerator video track capabilities: ", generator.getCapabilities());
-
-
-        // const workerBlobURL = URL.createObjectURL(new Blob([impairmentWorkerScript], {type: 'application/javascript'}));
-        const workerName = `vch-bcs-${track.kind}-${track.id.substr(0, 5)}`;
-        // const worker = new Worker(workerBlobURL, {name: workerName});
-
-        let worker;
-        if (window.trustedTypes && trustedTypes.createPolicy) {
-            const policy = trustedTypes.createPolicy('my-policy', {
-                createScriptURL: (url) => url,
-            });
-            const workerBlobURL = URL.createObjectURL(
-                new Blob([worker], {type: 'application/javascript'})
-            );
-            worker = new Worker(policy.createScriptURL(workerBlobURL), {
-                name: workerName,
-            });
-        } else {
-            const workerBlobURL = URL.createObjectURL(new Blob([worker], {type: 'application/javascript'}));
-            worker = new Worker(workerBlobURL, {name: workerName});
-        }
-
-        if (!worker) {
-            const error = new Error("Failed to create worker");
-            debug(error);
-            reject(error);
-        }
-        worker.name = workerName;
-
-
-        function trackDone() {
-            worker.postMessage({command: "stop"});  // clean-up resources?
-            generator.stop();
-            worker.terminate();
-            track.stop();
-        }
-
-        track.addEventListener('mute', () => {
-            debug(`track ${track.id} muted, pausing worker ${worker.name}`)
-            generator.enabled = false;
-            worker.postMessage({command: "pause"});
-        });
-
-        track.addEventListener('unmute', () => {
-            debug(`track ${track.id} unmuted, unpausing worker ${worker.name}`)
-            // ToDo: state management
-            worker.postMessage({command: "unpause"});
-            generator.enabled = true;
-        });
-
-        // Remember this only works when the track is ended not by the user
-        track.addEventListener('ended', () => {
-            debug(`track ${track.id} ended event, stopping worker ${worker.name}`);
-            trackDone();
-        });
-
-        // do I really need a 2nd listener to communicate with the worker?
-        mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, async (newSettings) => {
-            debug("badConnection changed to: ", newSettings);
-            worker.postMessage({command: newSettings.level});
-
-            /*
-            if (newSettings.enabled === false) {
-                worker.postMessage({command: "passthrough"});
-            }
-            if (newSettings.level)
-                worker.postMessage({command: newSettings.level});
-             */
-        });
-
-
-        worker.onmessage = async (e) => {
-            // debug("worker message: ", e.data);
-            if (e.data?.response === "started") {
-                resolve(generator);
-            } else if (e.data?.response === "error") {
-                if (track.muted && track.readyState === "live")
-                    debug(`track ${track.id} is muted, ignoring worker ${worker.name} error: `, e.data.error)
-                else {
-                    debug(`terminating worker ${worker.name}. worker error: `, e.data.error);
-                    trackDone();
-
-                    // ToDo: better track status mechanism?
-                    // see if there are other tracks still running and update the gUI
-                    await checkGeneratorStreams();
-
-                    reject(e.data.error);
-                }
-            } else {
-                // reject("Unknown error");
-                debug("Unknown message", e.data)
-            }
-        };
-
-        worker.postMessage({
-            command: "setup",
-            reader,
-            writer,
-            id: track.id,
-            kind: track.kind,
-            settings: track.getSettings(),
-            impairmentState: settings.level,
-        }, [reader, writer]);
-
-    }).catch((err) => {
-        debug("Error in alterTrack: ", err);
-    });
-
-    alteredTracks.push(generator);
-    return generator;
-
 }

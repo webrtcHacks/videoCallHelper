@@ -1,6 +1,6 @@
 //import {VideoFrameScaler} from './webGLresize.mjs';
 
-/*
+/**
  * Class that sets up a transform stream that can add an impairment
  * The constructor and takes a track settings object and an  impairment config object
  *  and returns a Transform Stream object set to `passthrough`
@@ -9,6 +9,12 @@
  * The start function changes the operation to 'impair'
  * The config setter applies an impairment configuration
  * Static class objects are included for a moderation and severe impairment
+ * @type {Impairment} - a TransformStream object
+ * @param {string} kind - 'audio' or 'video'
+ * @param {MediaStreamTrackSettings} settings - the track settings object
+ * @param {string} id - an optional id for the impairment
+ * @param {object} impairmentConfig - an optional impairment configuration object
+ * @param {object} debug - an optional debug object
  */
 export class Impairment {
     #controller;
@@ -148,6 +154,7 @@ export class Impairment {
                 frame.close();
             } else {
                 try {
+                    // Upscale the video frame to the original resolution
                     if(this.kind === 'video'){
 
                         const newHeight = frame.displayHeight * (this.impairmentConfig.video.heightFactor || 1);
