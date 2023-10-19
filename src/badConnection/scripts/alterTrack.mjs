@@ -10,7 +10,7 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
 const mh = new MessageHandler('inject'); //, debug);
 
 /**
- * Modifies a MediaStreamTrack to simulate a bad connection
+ * Modifies a MediaStreamTrack in a worker using insertable streams
  * @param {MediaStreamTrack} track - the track to modify
  * @param {object} settings - the settings for the bad connection simulator
  * @returns {Promise<MediaStreamTrackGenerator>} - a MediaStreamTrackGenerator
@@ -70,6 +70,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 
             const workerName = `vch-bcs-${this.sourceTrack.kind}-${this.sourceTrack.id.substr(0, 5)}`;
 
+            // Needed in Chrome now to load the worker script from a blob
             if (window.trustedTypes && trustedTypes.createPolicy) {
                 const policy = trustedTypes.createPolicy('my-policy', {
                     createScriptURL: (url) => url,
@@ -91,8 +92,9 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
             this.worker.name = workerName;
 
 
+            /*** Start listeners ***/
             const trackDone = () => {
-                this.worker.postMessage({command: "stop"});  // clean-up resources?
+                this.worker.postMessage({trackEvent: "stop"});  // clean-up resources?
 
                 // terminate the worker after 500ms to give it time to clean-up resources (should this be a worker event listener?)
                 setTimeout(() => {
@@ -106,13 +108,13 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
             this.sourceTrack.addEventListener('mute', () => {
                 debug(`track ${this.sourceTrack.id} muted, pausing worker ${this.worker.name}`)
                 this.generator.enabled = false;
-                this.worker.postMessage({command: "pause"});
+                this.worker.postMessage({trackEvent: "pause"});
             });
 
             this.sourceTrack.addEventListener('unmute', () => {
                 debug(`track ${this.sourceTrack.id} unmuted, unpausing worker ${this.worker.name}`)
                 // ToDo: state management
-                this.worker.postMessage({command: "unpause"});
+                this.worker.postMessage({trackEvent: "unpause"});
                 this.generator.enabled = true;
             });
 
@@ -130,16 +132,15 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
             // do I really need a 2nd listener to communicate with the worker?
             mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, async (newSettings) => {
                 debug("badConnection changed to: ", newSettings);
-                this.worker.postMessage({command: newSettings.level});
-                AlterTrack.settings = newSettings;
-
-                /*
-                if (newSettings.enabled === false) {
-                    worker.postMessage({command: "passthrough"});
+                const message = {
+                    transformData: {
+                        impairment: {
+                            state: newSettings.level
+                        }
+                    }
                 }
-                if (newSettings.level)
-                    worker.postMessage({command: newSettings.level});
-                 */
+                this.worker.postMessage(message);   //({command: newSettings.level});
+                AlterTrack.settings = newSettings;
             });
 
 
@@ -166,14 +167,23 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                 }
             };
 
+            /*** End listeners ***/
+
+
+            // kickoff the worker processes
             this.worker.postMessage({
                 command: "setup",
+                transformData: {
+                    impairment: {
+                        state: AlterTrack.settings.level
+                    }
+                },
                 reader: this.reader,
                 writer: this.writer,
                 id: this.sourceTrack.id,
                 kind: this.sourceTrack.kind,
                 settings: this.sourceTrack.getSettings(),
-                impairmentState: AlterTrack.settings.level,
+                // impairmentState: AlterTrack.settings.level,
             }, [this.reader, this.writer]);
 
         }).catch((err) => {

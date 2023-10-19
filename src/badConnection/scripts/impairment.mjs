@@ -9,12 +9,28 @@
  * The start function changes the operation to 'impair'
  * The config setter applies an impairment configuration
  * Static class objects are included for a moderation and severe impairment
- * @type {Impairment} - a TransformStream object
- * @param {string} kind - 'audio' or 'video'
- * @param {MediaStreamTrackSettings} settings - the track settings object
- * @param {string} id - an optional id for the impairment
- * @param {object} impairmentConfig - an optional impairment configuration object
- * @param {object} debug - an optional debug object
+ * @static {object} moderateImpairmentConfig - a moderate impairment configuration object
+ * @static {object} severeImpairmentConfig - a severe impairment configuration object
+ * @constructor
+     * @type {Impairment} - a TransformStream object
+     * @param {string} kind - 'audio' or 'video'
+     * @param {MediaStreamTrackSettings} settings - the track settings object
+     * @param {string} id - an optional id for the impairment
+     * @param {object} impairmentConfig - an optional impairment configuration object
+     * @param {object} debug - an optional debug object
+ * @method {function} onMessage - handles messages from the main thread
+ * @method {function} #sleep - a helper function to add latency
+ * @method {function} #addPacketLoss - simulate old-school loss impact on a frame (not used)
+ * @method {function} #setupCodec - sets up the encoder and decoder
+ * @method {function} #loadConfig - loads the impairment configuration
+ * @getter {object} transformStream - returns the transform stream
+ * @method {function} start - starts the impairment
+ * @method {function} pause - pauses the impairment
+ * @getter {object} config - returns the current impairment configuration
+ *  @param {object} config - an impairment configuration object
+ * @setter {object} config - sets the impairment configuration
+ * @method {function} onFrameNumber - calls a callback when the frame number is reached, needed to prevent blank frames
+ * @method {function} stop - stops the impairment
  */
 export class Impairment {
     #controller;
@@ -45,9 +61,9 @@ export class Impairment {
             keyFrameInterval: 30,
             delayMs: 250,
             // codec config
-            widthFactor: 2,
-            heightFactor: 2,
-            bitrate: 400_000,   // 750_000
+            widthFactor: 4, // 2
+            heightFactor: 4,    // 2
+            bitrate: 200_000, // 400_000,   // 750_000
             framerateFactor: 2,
             frameDrop: 0.2,
             frameRate: 10
@@ -87,32 +103,83 @@ export class Impairment {
 
     // static #debug = Function.prototype.bind.call(console.debug, console, `vch 😈🫙️`);
 
-
-    // ToDo: apply the impairment to the track settings
-    constructor(kind, settings, id=null,  impairmentConfig = Impairment.moderateImpairmentConfig, debug = {}) {
+    constructor(kind, settings, id=null,  startingState = "passthrough", debug = {}) {
 
         // this.track = track;
         this.kind = kind;
         this.id = id || Math.random().toString(36).substring(2, 15);
         this.trackSettings = settings;   // trackSettings;
-        this.impairmentConfig = impairmentConfig;
         this.debug = debug;
+
+
+        if(startingState === "moderate") {
+            this.impairmentConfig = Impairment.moderateImpairmentConfig;
+            this.operation = "impair";
+        }
+        else if(startingState === "severe"){
+            this.impairmentConfig = Impairment.severeImpairmentConfig;
+            this.operation = "impair";
+        }
+        else{
+            this.debug(`Error: invalid starting impairmentState: ${startingState}}`);
+            // This needs to have something
+            this.impairmentConfig = Impairment.moderateImpairmentConfig;
+            this.operation = "passthrough";
+        }
 
         if(this.kind === 'video'){
             // this.scaler = new VideoFrameScaler(impairmentConfig.video.widthFactor || 1);
             this.canvas = new OffscreenCanvas(settings.width, settings.height);
             this.ctx = this.canvas.getContext('bitmaprenderer');
-
         }
 
         // ToDo: **make this a promise so we can cancel if the codec config doesn't work?
+
         this.#loadConfig();
         this.#setupCodec();
+
+        this.start();
     }
 
 
     async #sleep(ms) {
         await new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    // handle messages from the main thread
+    onmessage = (message)=>{
+        this.debug("received message", message);
+
+        if(message.trackEvent){
+            const event = message.trackEvent;
+            if(event === "pause")
+                this.operation = "skip";
+            else if(event === "unpause")
+                this.operation = "impair";
+            else if (event === "stop")
+                this.stop().then(() => this.debug(`impairment ${this.id} stopped`));
+        }
+
+        else if(message.transformData?.impairment){
+            const {state} = message.transformData.impairment;
+            this.debug(`impairment ${this.id} received state change: ${state}`);
+
+            if(state === "moderate") {
+                this.config = Impairment.moderateImpairmentConfig;
+                this.operation = "impair";
+            }
+            else if(state === "severe"){
+                this.config = Impairment.severeImpairmentConfig;
+                this.operation = "impair";
+            }
+            else if(state === "passthrough"){
+                this.operation = "passthrough";
+            }
+            else{
+                this.debug(`Error: invalid impairmentState: ${state}}`);
+            }
+        }
+
     }
 
     // This wasn't working consistently - h264 problem?
@@ -157,8 +224,8 @@ export class Impairment {
                     // Upscale the video frame to the original resolution
                     if(this.kind === 'video'){
 
-                        const newHeight = frame.displayHeight * (this.impairmentConfig.video.heightFactor || 1);
-                        const newWidth = frame.displayWidth * (this.impairmentConfig.video.widthFactor || 1);
+                        const newHeight = this.trackSettings.height || frame.displayHeight * (this.impairmentConfig.video.heightFactor || 1);
+                        const newWidth = this.trackSettings.width || frame.displayWidth * (this.impairmentConfig.video.widthFactor || 1);
 
                         const bitmap = await createImageBitmap(frame, {resizeHeight: newHeight, resizeWidth: newWidth});
                         this.canvas.width = newWidth;
@@ -258,8 +325,9 @@ export class Impairment {
                 pt: 1
              */
 
-            const codecFrameRate =  (frameRate / (framerateFactor || 1)).toFixed(0);
+            const codecFrameRate =  Number((frameRate / framerateFactor).toFixed(0)) || 1;
 
+            // ToDo: frameRate not working
 
             // Configure the codec
             this.codecConfig = {
@@ -277,15 +345,9 @@ export class Impairment {
                 keyInterval: keyFrameInterval,
                  */
 
-                // ToDo: session screen share putting width, height, and frameRate at 'NaN'
-                //  Session is using a MediaStreamTrackGenerator and that doesn't have those properties
-                //  Need to find those settings somewhere else
-
                 codec: 'vp8',
                 width: (width / (widthFactor || 1)).toFixed(0),
                 height: (height / (heightFactor || 1)).toFixed(0),
-                // framerate: (frameRate / (framerateFactor || 1)).toFixed(0) || frameRate
-                // frameRate: frameRate;
                 frameRate: Math.max(this.impairmentConfig.video.frameRate, codecFrameRate )
             }
 

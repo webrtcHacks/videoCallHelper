@@ -33,6 +33,8 @@
 
 <br>
 <button id="start">Start</button>
+<button id="pause">Pause</button>
+<button id="unpause" hidden>Unpause</button>
 <button id="stop">Stop</button>
 <button id="shrink">Shrink</button>
 <button id="grow">Grow</button>
@@ -43,6 +45,8 @@
 <script type="module">
 
     const startBtn = document.querySelector('button#start');
+    const pauseBtn = document.querySelector('button#pause');
+    const unpauseBtn = document.querySelector('button#unpause');
     const stopBtn = document.querySelector('button#stop');
     const stats = document.querySelector('div#stats');
     const cloneBtn = document.querySelector('button#clone');
@@ -97,6 +101,20 @@
 
     startBtn.onclick = async () => {
         await getCam();
+    }
+
+    pauseBtn.onclick = () => {
+        video.pause();
+        console.log("paused video")
+        pauseBtn.hidden = true;
+        unpauseBtn.hidden = false;
+    }
+
+    unpauseBtn.onclick = () => {
+        video.play();
+        console.log("unpaused video")
+        pauseBtn.hidden = false;
+        unpauseBtn.hidden = true;
     }
 
     stopBtn.onclick = () => {

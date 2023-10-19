@@ -4,7 +4,8 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 👷${se
 debug(`I am worker ${self.name}`);
 let impairment;
 
-/*
+
+// Frame counter transform for testing
 let frameCounter = 0;
 self.frameCounter = frameCounter;
 
@@ -20,40 +21,42 @@ const testTransform = new TransformStream({
     },
 });
 
- */
-
+// Holders for transform class onMessage
+const transformMessageHandlers = [];
 
 // Message handler
 onmessage = async (event) => {
+    let transform = testTransform;
+
     debug("received message", event.data);
     const {command} = event.data;
+    const impairmentData = event.data.transformData?.impairment;
 
     if (command === 'setup'){
-        const {reader, writer, id, kind, settings, impairmentState} = event.data;
+        const {reader, writer, id, kind, settings} = event.data;
 
-        let config;
-        let operation = impairmentState === "passthrough" ? "passthrough" : "impair";
+        let config, operation;
+        if(impairmentData){
+            const impairmentState = impairmentData.state === "passthrough" ? "passthrough" : "impair";
 
-        if(impairmentState === "severe"){
-            config = Impairment.severeImpairmentConfig;
-            // impairmentState.operation = "impair";
+            const impairmentDebug = Function.prototype.bind.call(console.debug, console, `vch ${self.name}👷😈 `);
+            impairment = new Impairment(kind, settings, id, impairmentState, impairmentDebug);
+            transformMessageHandlers.push(impairment.onmessage);
+
+            // impairment.start();
+
+            transform = impairment.transformStream;
+
+            debug(`processing new stream video with operation ${impairment.operation} and impairment:`, impairment.impairmentConfig[kind]);
+
+            // first frame response (or maybe 0) causing issues in some services
+            const minFrameNumberToStart = 3;
+            impairment.onFrameNumber(minFrameNumberToStart, () => {
+                // debug(`frame ${impairment.frameCounter} is >= ${minFrameNumberToStart}, sending "started"`);
+                self.postMessage({response: "started"});
+            });
+
         }
-        if(impairmentState === "moderate") {
-            config = Impairment.moderateImpairmentConfig;
-            // impairmentState.operation = "impair";
-        }
-        else{
-            // debug(`Error: invalid impairmentState: ${impairmentState}}`);
-            operation = "passthrough";
-        }
-
-        const impairmentDebug = Function.prototype.bind.call(console.debug, console, `vch ${self.name}👷😈 `);
-        impairment = new Impairment(kind, settings, id, config, impairmentDebug);
-        impairment.operation = operation;
-        impairment.start();
-
-        debug(`processing new stream video with operation ${impairment.operation} and impairment:`, impairment.impairmentConfig[kind]);
-        // self.postMessage({response: "before reader"});
 
         // Learning: not easy to pipe streams - could be worth a post
         // Attempt:
@@ -77,55 +80,23 @@ onmessage = async (event) => {
         //     at onmessage (50df2885-db3f-468d-b0d5-4be0cf7e92c1:436:18)
         // Conclusion: pipeThrough locks the writer so you can send it again; would need to clone
 
-        // first frame response (or maybe 0) causing issues in some services
-        const minFrameNumberToStart = 3;
-        impairment.onFrameNumber(minFrameNumberToStart, () => {
-            // debug(`frame ${impairment.frameCounter} is >= ${minFrameNumberToStart}, sending "started"`);
-            self.postMessage({response: "started"});
-        });
-
         await reader
                 // ToDo: abstract the transformStream so I can swap them
-                .pipeThrough(impairment.transformStream)
+                .pipeThrough(transform)
                 .pipeTo(writer)
                 .catch(async err => {
                     // ToDo: don't throw error on muted - backpressure?
                     debug(`Insertable stream error`, err);
                     self.postMessage({response: "error", error: err});
                 });
+    }
 
-        // self.postMessage({response: "ready"});
+    else {
+        // push message handling to each transform handler
+        transformMessageHandlers.forEach(handler => {
+            handler(event.data);
+        })
 
-    }
-    else if (command === 'moderate') {
-        impairment.operation = "impair";
-        impairment.config = Impairment.moderateImpairmentConfig;
-        debug("impairing stream moderately");
-    }
-    else if (command === 'severe') {
-        impairment.operation = "impair";
-        impairment.config = Impairment.severeImpairmentConfig;
-        debug("impairing stream severely");
-    }
-    else if(command === 'passthrough') {
-        impairment.operation = "passthrough";
-        debug("passthrough stream");
-    }
-    else if (command === 'pause') {
-        impairment.operation = "skip";
-        debug("pausing stream");
-    }
-    else if (command === 'unpause') {
-        impairment.operation = "impair";
-        debug("unpausing stream");
-    }
-    else if (command === 'stop') {
-        await impairment.stop();
-        debug("stopping stream");
-        // ToDo: handle this
-        // await videoReader.cancel(); // no cancel method
-    } else {
-        debug(`Unhandled message: `, event);
     }
 };
 
