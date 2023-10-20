@@ -47,6 +47,10 @@ export class Impairment {
     track;
     trackSettings;
 
+    // used for simulating framerate
+    skipcount = 0;
+    lastFrame = null;
+
     static moderateImpairmentConfig = {
         audio: {
             loss:   0.25,
@@ -89,7 +93,7 @@ export class Impairment {
             heightFactor: 8,        // 4
             bitrate: 25_000,       // 300_000
             framerateFactor: 4,
-            frameDrop: 0.5,
+            frameDrop: 0.4,
             frameRate: 5
         }
     }
@@ -100,8 +104,6 @@ export class Impairment {
     keyFrameInterval = 300;     // was 100
     delayMs = 200;
     frameDrop = 0.01;
-
-    // static #debug = Function.prototype.bind.call(console.debug, console, `vch 😈🫙️`);
 
     constructor(kind, settings, id=null,  startingState = "passthrough", debug = {}) {
 
@@ -254,13 +256,11 @@ export class Impairment {
             // const modifiedChunk = this.#addPacketLoss(chunk, this.kind);
             // const modifiedChunk = chunk;
 
-            // add latency
             await this.#sleep(this.delayMs);
-            // end test
 
             // ToDo: figure out how to make sure this has a keyframe after configure
-            // hypothesis: packets caught in sleep function
-            // add something like if(this.#frameIgnore
+            //  hypothesis: packets caught in sleep function
+            //  add something like if(this.#frameIgnore
             try {
                 this.#decoder.decode(chunk);        //(modifiedChunk)
             } catch (err) {
@@ -274,6 +274,7 @@ export class Impairment {
                 if (decoderSupport.supported){
                     this.#decoder = new VideoDecoder({output: handleDecodedFrame, error: this.debug});
                     this.#decoder.configure(this.codecConfig);
+                    this.#forceKeyFrame = true;
                     // this.debug(`${this.kind} decoder config supported`, this.codecConfig)
                 }
                 else
@@ -327,8 +328,6 @@ export class Impairment {
 
             const codecFrameRate =  Number((frameRate / framerateFactor).toFixed(0)) || 1;
 
-            // ToDo: frameRate not working
-
             // Configure the codec
             this.codecConfig = {
                 // ToDo: severe to moderate not working when using h264 config below
@@ -350,8 +349,6 @@ export class Impairment {
                 height: (height / (heightFactor || 1)).toFixed(0),
                 frameRate: Math.max(this.impairmentConfig.video.frameRate, codecFrameRate )
             }
-
-            this.debug("codecConfig", JSON.stringify(this.codecConfig));
 
             // Set up the impairment
             const {loss, payloadSize, delayMs, frameDrop} = this.impairmentConfig.video;
@@ -378,6 +375,8 @@ export class Impairment {
             this.delayMs = delayMs || 10;
         }
 
+        this.debug(`frame ${this.frameCounter} codecConfig`, JSON.stringify(this.codecConfig));
+
     }
 
     get transformStream() {
@@ -397,22 +396,40 @@ export class Impairment {
                     // Start webcodecs for impairment
                     if (this.operation === 'impair') {
 
-                        // ToDo: retest this
+                        // drop random frames
                         if(Math.random() <= this.frameDrop ){
                             frame.close();
                             return
                         }
 
-                        const keyFrame = this.frameCounter % this.keyFrameInterval === 0 || this.#forceKeyFrame;
-                        if (this.#forceKeyFrame) {
-                            this.debug(`set ${this.frameCounter} to keyframe`);
-                            this.#forceKeyFrame = false;
+                        if(this.kind === 'video'){
+                            // keyframe controller
+                            const keyFrame = this.frameCounter % this.keyFrameInterval === 0 || this.#forceKeyFrame;
+                            if (this.#forceKeyFrame) {
+                                this.debug(`set ${this.frameCounter} to keyframe`);
+                                // this.#forceKeyFrame = false;
+                            }
+
+                            // fake the real framerate by repeating frames
+                            if(this.skipcount < this.config.video.framerateFactor && frameCounter > 1){
+                                this.skipcount++;
+                                frame.close();
+                                this.#encoder.encode(this.lastFrame,  {keyFrame});
+                                return
+                            }
+
+                            if(this.lastFrame)
+                                this.lastFrame.close();
+                            this.lastFrame = frame;
+
+                            this.#encoder.encode(frame, {keyFrame} );
+
+                            // if(this.#forceKeyFrame === true)
+                                this.#forceKeyFrame = false;
                         }
+                        else
+                            this.#encoder.encode(frame);
 
-                       this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
-
-                        if(this.#forceKeyFrame === true)
-                            this.#forceKeyFrame = false;
 
                     }
                     // Do nothing and re-enqueue the frame
@@ -422,7 +439,7 @@ export class Impairment {
                     }
                     // Drop the frame
                     else if (this.operation === 'skip') {
-                        // ToDo: skip in the case of track.readyState === 'live' and track.enabled = false indicating muted status?
+                        // skip in the case of track.readyState === 'live' and track.enabled = false indicating muted status?
                         // this.debug("skipping frame");
                     }
                     // Something went wrong
@@ -448,11 +465,23 @@ export class Impairment {
         this.impairmentConfig = config;
 
         this.#encoder.flush().then(() => {
-            this.#loadConfig();
-            this.#encoder.configure(this.codecConfig);
-            this.#decoder.configure(this.codecConfig);
+            const lastOperation = this.operation;
+            this.operation = "passthrough";
             this.#forceKeyFrame = true;
-            this.#decoder.flush();
+            // ERROR: frame 201 DOMException: Failed to execute 'decode' on 'VideoDecoder': A key frame is required after configure() or flush().
+
+            // ToDo: I got crazy with the forceKeyFrame since this seemed to help
+            //  likely some some async timing issue between encode and decode
+            this.onFrameNumber(this.frameCounter + 4, () => {
+                this.#forceKeyFrame = true;
+                this.#loadConfig();
+                this.#forceKeyFrame = true;
+                this.#encoder.configure(this.codecConfig);
+                this.#forceKeyFrame = true;
+                this.#decoder.configure(this.codecConfig);
+                this.#forceKeyFrame = true;
+                this.operation = lastOperation;
+            });
         }).catch(err => this.debug(`codec config error at frame ${this.frameCounter}`, err))
 
         this.debug(`New configuration. Operation state: ${this.operation}. Config: `, config)
