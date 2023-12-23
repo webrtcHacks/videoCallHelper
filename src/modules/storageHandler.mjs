@@ -79,7 +79,7 @@ export class StorageHandler {
             if (newValue.hasOwnProperty(key)) {
                 if(!oldValue || !oldValue[key])  // handle if the key didn't exist
                     changedValues[key] = newValue[key];
-                if (typeof newValue[key] === "object" && oldValue[key]) {
+                else if (typeof newValue[key] === "object" && oldValue[key]) {
                     let nestedChange = StorageHandler.#findChangedValues(oldValue[key], newValue[key]);
                     if (Object.keys(nestedChange).length > 0) {
                         changedValues[key] = nestedChange;

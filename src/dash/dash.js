@@ -106,8 +106,8 @@ function updateSelfViewUI() {
 
     // Hide/Obscure Self-View
     try {
-        const hideViewEnabled = storage.contents['selfView']['hideView'].enabled;
-        const hideViewActive = storage.contents['selfView']['hideView'].active;
+        const hideViewEnabled = storage.contents['selfView']?.['hideView']?.enabled;
+        const hideViewActive = storage.contents['selfView']?.['hideView']?.active;
 
         if (hideViewEnabled && hideViewActive)
             selfViewStatus.innerText = "Obscuring self-view";
@@ -126,8 +126,8 @@ function updateSelfViewUI() {
 
     try {
         // Show Framing
-        const showFramingEnabled = storage.contents['selfView']['showFraming'].enabled;
-        const showFramingActive = storage.contents['selfView']['showFraming'].active;
+        const showFramingEnabled = storage.contents['selfView']?.['showFraming']?.enabled;
+        const showFramingActive = storage.contents['selfView']?.['showFraming']?.active;
 
         if (showFramingEnabled && showFramingActive)
             showFramingStatus.innerText = "Showing framing";

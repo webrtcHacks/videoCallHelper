@@ -84,14 +84,17 @@ chrome.runtime.onInstalled.addListener(async () => {
 
     debug("onInstalled starting local storage: ", storage.contents);
 
-    //await storage.set("streamTabs", []);
+    // ToDo: prototypes for each applet
+    // ToDo: cleaning function to apply those prototypes to existing storage without erasing existing data
 
+    // ToDo: this is not loading on reinstall
     // presence settings
-    if(!storage.contents.presence)
+    if(!storage.contents['presence'])
         await storage.set('presence', settingsPrototype);
     else{
         await storage.update('presence', {active:false});
     }
+
 
     // ToDo: rename
     if(!storage.contents['imageCapture']){
@@ -125,7 +128,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     // self-view settings
     const selfViewSettings = {
         active: false,
-        enabled: storage.contents['selfView']?.enabled || false,
+        enabled: storage.contents?.['selfView']?.enabled || false,
         hideView: false,
         showFraming: false,
     }
@@ -292,14 +295,13 @@ async function handleTabRemoved(tabId){
     trackData = trackData.filter(td => td.tabId !== tabId);
 
     // something is switching storage.contents.presence.active to false before this point
-    /*
-    if(storage.contents.presence && storage.contents.presence.active){
+    if(storage.contents?.presence?.active){
         await presenceOff();
     }
-     */
 
+    // ToDo: this is annoying for debugging - uncommented above
     // just call presence off everytime - it won't do anything if there is an active track
-    await presenceOff();
+    // await presenceOff();
 
     // await removeTab(tabId);  // if addTab is used again
 }
@@ -369,7 +371,13 @@ chrome.action.onClicked.addListener(async (tab)=>{
         message: 'toggle_dash',
         data: {tabId: tab.id}
     }
-    chrome.tabs.sendMessage(tab.id, {...messageToSend})
+
+    try{
+        chrome.tabs.sendMessage(tab.id, {...messageToSend})
+    }
+    catch (err){
+        debug("error sending message", err);
+    }
 
     // const url = chrome.runtime.getURL("pages/video.html");
     // const videoTab = await chrome.tabs.create({url});
