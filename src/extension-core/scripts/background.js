@@ -1,8 +1,16 @@
 import {get, set as idbSet, update} from "idb-keyval";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-import {settingsPrototype, webhook} from "../../presence/scripts/presence.mjs";
+import {webhook} from "../../presence/scripts/presence.mjs";
 import {glow} from "../../presence/scripts/embrava.mjs";
+
+// storage prototypes for each applet used for initialization
+import {settings as presenceSettingsProto} from "../../presence/scripts/settings.mjs";
+import {settings as imageCaptureSettingsProto} from "../../imageCapture/scripts/settings.mjs";
+import {settings as deviceManagerSettingsProto} from "../../deviceManager/scripts/settings.mjs";
+import {settings as selfViewSettingsProto} from "../../selfView/scripts/settings.mjs";
+import {settings as badConnectionSettingsProto} from "../../badConnection/scripts/settings.mjs";
+
 // import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
 // import '../../modules/lovefield';
 
@@ -19,6 +27,8 @@ let trackData = [];
 
 const mh = new MessageHandler('background', debug);
 
+// ToDo: see if I need these tab tacking functions - test with multiple webrtc tabs
+/*
 // Keep state on tabs; uses a Set to only store unique items
 async function addTab(tabId) {
     try {
@@ -70,9 +80,51 @@ async function getVideoTabId(){
         return videoTabId
     // log("videoTab", videoTab);
 }
+ */
+
+async function initStorage(){
+
+    // presence settings
+    if(!storage.contents['presence'])
+        await storage.set('presence', presenceSettingsProto);
+    // else await storage.update('presence', {active:false});
+
+    // Image capture
+    if(!storage.contents['imageCapture'])
+        await storage.set('imageCapture', imageCaptureSettingsProto);
+    // else await storage.update('imageCapture', {active:false});
+
+    // device manager settings
+    if(!storage.contents['deviceManager']) {
+        await storage.set('deviceManager', deviceManagerSettingsProto);
+        //else
+        // await storage.update('deviceManager', {active:false});
+        // await storage.set('deviceManager', deviceManagerSettings);
+    }
+
+    // self-view settings
+    if(!storage.contents['selfView'])
+        await storage.set('selfView', selfViewSettingsProto);
+    // else await storage.update('selfView', {hideView: {active:false}, showFraming: {active:false}});
+
+    // bad connection settings
+    if(!storage.contents['badConnection'])
+        await storage.set('badConnection', badConnectionSettingsProto);
+    // else await storage.update('badConnection', {active:false});
+
+}
 
 // let gumActive = false;
 chrome.runtime.onStartup.addListener(async () => {
+
+    // fired when a profile that has this extension installed first starts up.
+    // This event is not fired when the installed extension is disabled and re-enabled.
+    // moved to initializing storage whenever background.js is loaded
+    // debug("onStartup local storage before init: ", storage.contents);
+    // await initStorage();
+    // debug("onStartup local storage after init: ", storage.contents);
+
+
     // await getVideoTabId();
 })
 
@@ -82,65 +134,11 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.runtime.onInstalled.addListener(async () => {
 
-    debug("onInstalled starting local storage: ", storage.contents);
-
-    // ToDo: prototypes for each applet
-    // ToDo: cleaning function to apply those prototypes to existing storage without erasing existing data
-
-    // ToDo: this is not loading on reinstall
-    // presence settings
-    if(!storage.contents['presence'])
-        await storage.set('presence', settingsPrototype);
-    else{
-        await storage.update('presence', {active:false});
-    }
-
-
-    // ToDo: rename
-    if(!storage.contents['imageCapture']){
-        // Image capture
-        const imageCaptureSettings = {
-            startOnPc: false,
-            captureIntervalMs: (30 * 1000),
-            samplingActive: false,
-        }
-        await storage.update('imageCapture', imageCaptureSettings);
-    }
-
-    // device manager settings
-    if(!storage.contents['deviceManager']) {
-        const deviceManagerSettings = {
-            enabled: false,
-            currentDevices: [],
-            selectedDeviceLabels: {
-                audio: null,
-                video: null,
-            },
-            excludedDevices: [],
-            lastDeviceIds: {
-                audio: null,
-                video: null,
-            }
-        }
-        await storage.set('deviceManager', deviceManagerSettings);
-    }
-
-    // self-view settings
-    const selfViewSettings = {
-        active: false,
-        enabled: storage.contents?.['selfView']?.enabled || false,
-        hideView: false,
-        showFraming: false,
-    }
-    await storage.set('selfView', selfViewSettings);
-
-    // bad connection settings
-    const badConnectionSettings = {
-        enabled: true,
-        active: false,
-        level: "passthrough"
-    }
-    await storage.set('badConnection', badConnectionSettings);
+    // fired when the extension is first installed, when the extension is updated to a new version,
+    // moved to initializing storage whenever background.js is loaded
+    // debug("onInstalled starting local storage before init: ", storage.contents);
+    // await initStorage();
+    // debug("onInstalled starting local storage after init: ", storage.contents);
 
 
     // Testing
@@ -394,5 +392,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     }
     // else if (changeInfo.status === 'loading' && /^http/.test(tab.url)) { });
 });
+
+
+await initStorage();
 
 debug("background.js loaded");

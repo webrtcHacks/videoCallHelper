@@ -4,6 +4,8 @@
 import worker from "!!raw-loader!../../../temp/worker-bundle.js";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 
+import {settings} from "./settings.mjs";
+
 // import impairmentWorkerScript from '../../badConnection/scripts/worker.js';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
 
@@ -23,11 +25,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
     writer;
     worker;
 
-    static settings = {
-        enabled: false,
-        level: "passthrough",
-        active: false,
-    }
+    static settings = settings;
 
     constructor(track, settings) {
         // super();

@@ -2,6 +2,7 @@
 
 import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {settings} from "../scripts/settings.mjs";
 
 
 /*
@@ -53,19 +54,7 @@ const mh = new MessageHandler('inject', debug);
 
 export class DeviceManager {
 
-    settings = {
-        enabled: false,
-        currentDevices: [],
-        selectedDeviceLabels: {
-            audio: null,
-            video: null,
-        },
-        excludedDevices: [],
-        lastDeviceIds: {
-            audio: null,
-            video: null,
-        }
-    }
+    settings = settings;
 
     deviceChangeListeners = [];
     /** @type {MediaStream} */

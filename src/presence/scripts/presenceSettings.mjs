@@ -1,7 +1,8 @@
 // UI handler for standalone settings page
 
 import {glow, disconnect} from "./embrava.mjs"
-import {settingsPrototype, webhook} from "./presence.mjs";
+import {webhook} from "./presence.mjs";
+import {settings as presenceSettingsProto} from "./settings.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch presenceSettings: `);
@@ -19,7 +20,7 @@ const enabledCheck = document.querySelector('input#enable_presence_check');
 
 let settings = storage.contents['presence'];
 if(!settings){
-    settings = await storage.set('presence', settingsPrototype);
+    settings = await storage.set('presence', presenceSettingsProto);
 }
 
 debug("presence settings:", settings);

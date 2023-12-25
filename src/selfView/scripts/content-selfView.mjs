@@ -14,6 +14,7 @@ const remoteTrackIds = new Set();
 // ToDo: remove - for debugging
 window.remoteTrackIds = remoteTrackIds;
 
+
 // if(!storage)
 //    storage = await new StorageHandler("local", selfViewElementModifier.debug);
 

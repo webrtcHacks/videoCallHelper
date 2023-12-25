@@ -1,21 +1,4 @@
 // ToDo: handle debug function
-export const settingsPrototype = {
-    on: {
-        onUrl: "",
-        onMethod: "POST",
-        onPostBody: "",
-        onHeaders: "",
-    },
-    off: {
-        offUrl: "",
-        offMethod: "POST",
-        offPostBody: "",
-        offHeaders: "",
-    },
-    hid: false,
-    active: false,
-    enabled: false
-}
 
 // dont repeat on webhook for each track
 let webhookIsActive = false;

@@ -8,7 +8,7 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch️ 🕵📸️`);
 
-const sendMessage = new MessageHandler('content', null , false).sendMessage;
+const sendMessage = new MessageHandler('content').sendMessage;
 let storage = await new StorageHandler("local", debug);
 
 let captureInterval;

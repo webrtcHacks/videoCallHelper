@@ -43,11 +43,13 @@ document.querySelector("button#open_sampling").onclick = async () => {
 
 /************ START presence ************/
 // backend functions
-import {settingsPrototype, webhook} from "../presence/scripts/presence.mjs";
+import {webhook} from "../presence/scripts/presence.mjs";
 
+/*
 if (!storage.contents['presence']) {
-    await storage.set('presence', settingsPrototype);
+    await storage.set('presence', presenceSettingsPrototype);
 }
+ */
 
 const statusSpanElem = document.querySelector('span#presence_status');
 const enabledCheck = document.querySelector('input#enable_presence_check');
