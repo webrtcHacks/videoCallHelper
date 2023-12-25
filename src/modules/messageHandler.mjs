@@ -84,7 +84,10 @@ export class MessageHandler {
                 // this should only handle content -> background
                 // ToDo: debug
                 this.debug(`${this.context} -> background`, messageToSend);
-                chrome.runtime.sendMessage(messageToSend, {});
+                chrome.runtime.sendMessage(messageToSend, {}, response =>{
+                    if (chrome.runtime.lastError)
+                        this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
+                    });
             }
 
             this.debug(`sent "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);

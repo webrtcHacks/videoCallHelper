@@ -370,12 +370,13 @@ chrome.action.onClicked.addListener(async (tab)=>{
         data: {tabId: tab.id}
     }
 
-    try{
-        chrome.tabs.sendMessage(tab.id, {...messageToSend})
-    }
-    catch (err){
-        debug("error sending message", err);
-    }
+    chrome.tabs.sendMessage(tab.id, {...messageToSend}, response => {
+        // catch if the sendMessage failed, liked when the extension is reloaded
+        if (chrome.runtime.lastError) {
+            debug("Error sending message: ", chrome.runtime.lastError.message);
+            // Additional error handling logic can go here
+        }
+    });
 
     // const url = chrome.runtime.getURL("pages/video.html");
     // const videoTab = await chrome.tabs.create({url});
