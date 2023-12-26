@@ -8,6 +8,7 @@
             background-color: #333;
             color: #fff;
         }
+
         video {
             /*opacity: 20%; */
             /*
@@ -38,9 +39,15 @@
 <button id="grow">Grow</button>
 <button id="clone">Clone</button>
 <br>
+<button id="devices">Get Devices</button>
+<select id="deviceList"></select>
+<br>
 <div id="stats"></div>
 
 <script type="module">
+
+    const devicesBtn = document.querySelector('button#devices');
+    const deviceList = document.getElementById('deviceList');
 
     const startBtn = document.querySelector('button#start');
     const stopBtn = document.querySelector('button#stop');
@@ -51,6 +58,36 @@
 
     const video = document.querySelector('video#source');
     let stream;
+
+    // Device selection
+    function updateDeviceList(devices) {
+        deviceList.innerHTML = '';
+        devices.forEach(device => {
+            if (device.kind === 'videoinput') {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Camera ${deviceList.length + 1}`;
+                deviceList.appendChild(option);
+            }
+        });
+    }
+
+    devicesBtn.onclick = async () => {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        updateDeviceList(devices);
+    };
+
+    navigator.mediaDevices.ondevicechange = async () => {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        updateDeviceList(devices);
+    };
+
+    deviceList.addEventListener('change', () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        getCam();
+    });
 
 
     function clone() {
@@ -80,7 +117,15 @@
     }
 
     async function getCam() {
-        stream = await navigator.mediaDevices.getUserMedia({video: {height: {exact: 720}, aspectRatio: 1.7777777778, deviceId: "vch-video"}});
+        const deviceId = deviceList.value || undefined;
+        const constraints = {
+            video: {
+                height: { exact: 720 },
+                aspectRatio: 1.7777777778,
+                deviceId: deviceId ? { exact: deviceId } : undefined
+            }
+        };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
         const [track] = stream.getVideoTracks();
         console.log("Source track:", track);
         console.log("Source track settings:", track.getSettings());
