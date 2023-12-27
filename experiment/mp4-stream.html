@@ -35,28 +35,17 @@
         window.mediaSource = mediaSource;
         // let mimeCodec = 'video/mp4; codecs="avc1.64001f"'; // H.264 High Profile Level 3.1
         const mimeCodec = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
-        video.src = URL.createObjectURL(mediaSource);
-        // video.srcObject = mediaSource.handle;
 
         if (!MediaSource.isTypeSupported(mimeCodec)) {
             console.log("Mime type not supported");
             // mimeCodec = 'video/mp4; codecs="avc1.42E01E"'; // H.264 Baseline Profile Level 3.0
         }
 
-        mediaSource.addEventListener('sourceopen', async ()=>{
-            const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
-            const assetURL = 'frag_bunny.mp4';
-            const response = await fetch(assetURL);
-            const buf = await response.arrayBuffer();
-            sourceBuffer.appendBuffer(buf);
-
-            sourceBuffer.addEventListener('updateend', function () {
-                    mediaSource.endOfStream();
-                    video.play();
-                    //console.log(mediaSource.readyState); // ended
-                });
-            });
-
+        const worker = new Worker('worker.js', {name: "msePlayer"});
+        worker.addEventListener("message", (msg) => {
+            video.srcObject = msg.data.arg;
+            video.play();
+        });
     }
     switchButton.addEventListener('click', switchToVideoFile);
 
