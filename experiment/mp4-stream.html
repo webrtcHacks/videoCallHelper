@@ -6,22 +6,87 @@
 </head>
 <body>
 <video id="videoElement" autoplay playsinline controls></video>
-<button id="switchButton">Switch to BigBuckBunny</button>
+<br>
+<button id="bbbButton" hidden="hidden">Switch to BigBuckBunny</button>
+<button id="recordButton">Record</button>
+<button id="playButton">Play Recorded</button>
 
 <script>
     const video = document.getElementById('videoElement');
-    const switchButton = document.getElementById('switchButton');
+    const bbbButton = document.getElementById('bbbButton');
+    const recordButton = document.getElementById('recordButton');
+    const playButton = document.getElementById('playButton');
     let stream;
+    let mediaRecorder;
+    let recordedChunks = [];
 
     // Start the getUserMedia stream
     async function startUserMedia() {
         try {
-            // stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            // videoElement.srcObject = stream;
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoElement.srcObject = stream;
         } catch (error) {
             console.error('Error accessing media devices.', error);
         }
     }
+
+    function startRecording() {
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs="vp8"' });
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.start(1000);
+    }
+
+    recordButton.onclick = () => {
+        if (recordButton.textContent === 'Record') {
+            startRecording();
+            recordButton.textContent = 'Stop Recording';
+        } else {
+            mediaRecorder.stop();
+            console.log(`Recorded Blobs: ${recordedChunks.length}`);
+            recordButton.textContent = 'Record';
+        }
+    };
+
+    /*
+    playButton.onclick = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        console.log(blob);
+        video?.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+        video.src = URL.createObjectURL(blob);
+        video.play();
+    };
+     */
+
+    playButton.onclick = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        blob.arrayBuffer().then(arrayBuffer => {
+            console.log('ArrayBuffer size:', arrayBuffer.byteLength);
+
+            // Initialize worker and send ArrayBuffer data
+            const worker = new Worker('worker.js', {name: "msePlayer"});
+            worker.addEventListener("message", (msg) => {
+                if (msg.data.type === 'sourceOpen') {
+                    console.log('message', msg);
+                    video.srcObject = msg.data.sourceHandle;
+                    video.play();
+                }
+            });
+
+            // Send data to worker after a brief delay to ensure worker initialization
+            setTimeout(() => {
+                worker.postMessage({ type: 'playback', data: arrayBuffer });
+            }, 500);
+        });
+    };
+
 
     // Replace the getUserMedia stream with BigBuckBunny.mp4
     function switchToVideoFile() {
@@ -47,7 +112,7 @@
             video.play();
         });
     }
-    switchButton.addEventListener('click', switchToVideoFile);
+    bbbButton.addEventListener('click', switchToVideoFile);
 
     // Initialize the getUserMedia stream
     startUserMedia();
