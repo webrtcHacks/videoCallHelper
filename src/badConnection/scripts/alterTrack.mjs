@@ -33,7 +33,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
         /** @type {MediaStreamTrack} */
         this.sourceTrack = track;
 
-        // I should only be processing gUM - check if the track id sa MediaStreamTrackGenerator
+        // I should only be processing gUM - check if the track id is a MediaStreamTrackGenerator
         if (track instanceof MediaStreamTrackGenerator) {
             debug("track is MediaStreamTrackGenerator");
             return track;

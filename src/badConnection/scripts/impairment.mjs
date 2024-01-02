@@ -1,4 +1,4 @@
-//import {VideoFrameScaler} from './webGLresize.mjs';
+// import {VideoFrameScaler} from './webGLresize.mjs';
 
 /**
  * Class that sets up a transform stream that can add an impairment
@@ -139,9 +139,8 @@ export class Impairment {
         };
 
         if (this.kind === 'video'){
-            const newChunk = new EncodedVideoChunk(chunkObj);
             // this.debug("chunk", chunk, "\nnew Chunk", newChunk );
-            return newChunk;
+            return new EncodedVideoChunk(chunkObj);
         }
         else if (this.kind === 'audio')
             return new EncodedAudioChunk(chunkObj);
@@ -286,7 +285,7 @@ export class Impairment {
                 height: (height / (heightFactor || 1)).toFixed(0),
                 // framerate: (frameRate / (framerateFactor || 1)).toFixed(0) || frameRate
                 // frameRate: frameRate;
-                frameRate: Math.max(this.impairmentConfig.video.frameRate, codecFrameRate )
+                frameRate: Math.max(this.impairmentConfig.video.frameRate, codecFrameRate * 1 )
             }
 
             this.debug("codecConfig", JSON.stringify(this.codecConfig));
@@ -373,14 +372,15 @@ export class Impairment {
                     frame.close();
                 }
             },
-            flush: (controller) => {
+            /*flush: (controller) => {
                 // from https://streams.spec.whatwg.org/#transformstream: (Note that there is no need to call
                 // controller.terminate() inside flush(); the stream is already in the process of successfully closing
                 // down, and terminating it would be counterproductive.)
                 // controller.terminate();
-            }
+            }*/
         })
     }
+
 
     set config(config) {
         this.impairmentConfig = config;

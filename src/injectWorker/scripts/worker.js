@@ -75,7 +75,7 @@ onmessage = async (event) => {
         // Result
         //  50df2885-db3f-468d-b0d5-4be0cf7e92c1:436 Uncaught (in promise) TypeError: Failed to execute 'pipeThrough' on 'ReadableStream': parameter 1's 'writable' is locked
         //     at onmessage (50df2885-db3f-468d-b0d5-4be0cf7e92c1:436:18)
-        // Conclusion: pipeThrough locks the writer so you can send it again; would need to clone
+        // Conclusion: pipeThrough locks the writer, so you can't send it again; would need to clone
 
         // first frame response (or maybe 0) causing issues in some services
         const minFrameNumberToStart = 3;
@@ -117,7 +117,7 @@ onmessage = async (event) => {
     }
     else if (command === 'unpause') {
         impairment.operation = "impair";
-        debug("unpausing stream");
+        debug("un-pausing stream");
     }
     else if (command === 'stop') {
         await impairment.stop();

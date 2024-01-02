@@ -1,7 +1,7 @@
 'use strict';
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+// import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
-// import {alterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -268,7 +268,7 @@ else {
 
 //  It looks like Google Meet has its own addStream shim that does a track replacement instead of addTrack
 //  try to shim RTCRtpSender.replaceTrack() - from MDN: https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpSender
-//    "Attempts to replace the track currently being sent by the RTCRtpSender with another track, without
+//    >Attempts to replace the track currently being sent by the RTCRtpSender with another track, without
 //    performing renegotiation. This method can be used, for example, to toggle between the front- and
 //    rear-facing cameras on a device.
 
@@ -298,7 +298,7 @@ else {
 
     const origAddTransceiver = RTCPeerConnection.prototype.addTransceiver;
     RTCPeerConnection.prototype.addTransceiver = function () {
-        const init = arguments[1] || undefined;
+        // const init = arguments[1] || undefined;
         debug(`addTransceiver shimmed on peerConnection`, this, arguments);
         window.pcs.push(this);
         if (typeof (arguments[0]) !== 'string') {  // could be MediaStreamTrack, Canvas, Generator, etc
@@ -414,7 +414,7 @@ else {
         debug(`navigator.mediaDevices.addEventListener called with "${type}" and listener:`, listener);
 
         if (type === 'devicechange') {
-            // debug('navigator.mediaDevices.addEventListener called with "devicechange"');
+            // debug(`navigator.mediaDevices.addEventListener called with "devicechange"`);
             deviceManager.deviceChangeListeners.push(listener);
         }
 

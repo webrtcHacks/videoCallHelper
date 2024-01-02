@@ -1,8 +1,8 @@
 // Manages the devices returned by navigator.mediaDevices.enumerateDevices() and inserts fake vch devices
 
-import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
-import {settings} from "../scripts/settings.mjs";
+import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
+import {settings} from "./settings.mjs";
 
 
 /*
@@ -262,15 +262,14 @@ export class DeviceManager {
         // convert constraints to a string and see if it contains "vch-*"
         const constraintsString = JSON.stringify(constraints);
         // Test if the string contains "vch-audio" or "vch-video"
-        const useFakeDevices = constraintsString.match(/vch-(audio|video)/)?.length > 0;
-        return useFakeDevices;
+        return constraintsString.match(/vch-(audio|video)/)?.length > 0;
 
     }
 
     /* returns a stream with one or more altered tracks
         arguments:
         - constraints - original constraints passed to getUserMedia by the app
-        - getUserMedia - the original, unshimmed getUserMedia function
+        - getUserMedia - the original, un-shimmed getUserMedia function
      */
     async fakeDeviceStream(constraints, getUserMedia) {
 
@@ -282,7 +281,7 @@ export class DeviceManager {
         const useFakeAudio = constraintsString.includes("vch-audio");
         const useFakeVideo = constraintsString.includes("vch-video");
 
-        // try to look-up the deviceId from dash, if that's not there, then check the last one that was used;
+        // try to look up the deviceId from dash, if that's not there, then check the last one that was used;
         //  if that's not there, then remove so a default device is used
         if (useFakeAudio) {
             const audioDeviceId = this.vchAudioId || this.settings.lastDeviceIds.audio || "default";
@@ -302,7 +301,7 @@ export class DeviceManager {
 
         }
 
-        //debug("gUM with fake devices removed using constraints:", constraints);
+        // debug("gUM with fake devices removed using constraints:", constraints);
         // when constraints include vch-audio|video but deviceManager is not enabled
         /** @type {MediaStream} */
         this.unalteredStream = await getUserMedia(constraints)
