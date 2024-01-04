@@ -7,7 +7,7 @@
 <body>
 <video id="videoElement" autoplay playsinline controls></video>
 <br>
-<button id="bbbButton" hidden="hidden">Switch to BigBuckBunny</button>
+<button id="bbbButton">Play BigBuckBunny</button>
 <button id="recordButton">Record</button>
 <button id="playButton">Play Recorded</button>
 
@@ -43,6 +43,23 @@
         mediaRecorder.start(1000);
     }
 
+    function startWorker(arrayBuffer) {
+        const worker = new Worker('worker.js', {name: "msePlayer"});
+        worker.addEventListener("message", (msg) => {
+            if (msg.data.type === 'sourceOpen') {
+                console.log('message', msg);
+                video.srcObject = msg.data.sourceHandle;
+                video.play();
+            }
+        });
+
+        // Send data to worker after a brief delay to ensure worker initialization
+        setTimeout(() => {
+            worker.postMessage({ type: 'playback', data: arrayBuffer });
+        }, 500);
+
+    }
+
     recordButton.onclick = () => {
         if (recordButton.textContent === 'Record') {
             startRecording();
@@ -54,67 +71,28 @@
         }
     };
 
-    /*
-    playButton.onclick = () => {
-        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        console.log(blob);
-        video?.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-        video.src = URL.createObjectURL(blob);
-        video.play();
-    };
-     */
-
     playButton.onclick = () => {
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
         blob.arrayBuffer().then(arrayBuffer => {
             console.log('ArrayBuffer size:', arrayBuffer.byteLength);
-
-            // Initialize worker and send ArrayBuffer data
-            const worker = new Worker('worker.js', {name: "msePlayer"});
-            worker.addEventListener("message", (msg) => {
-                if (msg.data.type === 'sourceOpen') {
-                    console.log('message', msg);
-                    video.srcObject = msg.data.sourceHandle;
-                    video.play();
-                }
-            });
-
-            // Send data to worker after a brief delay to ensure worker initialization
-            setTimeout(() => {
-                worker.postMessage({ type: 'playback', data: arrayBuffer });
-            }, 500);
+            startWorker(arrayBuffer);
         });
     };
 
 
     // Replace the getUserMedia stream with BigBuckBunny.mp4
-    function switchToVideoFile() {
+    bbbButton.addEventListener('click', async ()=> {
+        // Stop the existing stream
         if (stream) {
-            // Stop the existing stream
             stream.getTracks().forEach(track => track.stop());
         }
+        const assetURL = 'frag_bunny_10s.webm';
+        const response = await fetch(assetURL);
+        const arrayBuffer = await response.arrayBuffer();
+        startWorker(arrayBuffer);
+    });
 
-        // Create a new MediaSource object
-        const mediaSource = new MediaSource();
-        window.mediaSource = mediaSource;
-        // let mimeCodec = 'video/mp4; codecs="avc1.64001f"'; // H.264 High Profile Level 3.1
-        const mimeCodec = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
-
-        if (!MediaSource.isTypeSupported(mimeCodec)) {
-            console.log("Mime type not supported");
-            // mimeCodec = 'video/mp4; codecs="avc1.42E01E"'; // H.264 Baseline Profile Level 3.0
-        }
-
-        const worker = new Worker('worker.js', {name: "msePlayer"});
-        worker.addEventListener("message", (msg) => {
-            video.srcObject = msg.data.arg;
-            video.play();
-        });
-    }
-    bbbButton.addEventListener('click', switchToVideoFile);
-
-    // Initialize the getUserMedia stream
+    // Start the getUserMedia stream
     startUserMedia();
 </script>
 </body>
