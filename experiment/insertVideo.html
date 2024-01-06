@@ -19,7 +19,7 @@
 <br>
 <button id="recordButton">Record</button>
 <button id="playButton">Play Recorded</button>
-<button id="insertButton">Insert</button>
+<button id="insertButton" disabled>Insert</button>
 
 <script>
     const video = document.getElementById('videoElement');
@@ -34,6 +34,7 @@
     let mediaRecorder;
     let recordedChunks = [];
     let generator;
+    let pipeController;
 
     // Start the getUserMedia stream
     async function startUserMedia() {
@@ -60,7 +61,7 @@
     }
 
     async function startWorker(arrayBuffer) {
-        const worker = new Worker('mse-worker.js', {name: "msePlayer"});
+        const worker = new Worker('mse-worker.js', {name: "videoPlayer"});
 
         // Send data to worker after a brief delay to ensure worker initialization
         setTimeout(() => {
@@ -97,7 +98,9 @@
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
         blob.arrayBuffer().then(async arrayBuffer => {
             console.log('ArrayBuffer size:', arrayBuffer.byteLength);
-            video.srcObject = await startWorker(arrayBuffer);
+            // video.srcObject = await startWorker(arrayBuffer);
+            const handle = await startWorker(arrayBuffer);
+            video.src = URL.createObjectURL(mediaSource);
             video.play();
         });
     };
@@ -116,77 +119,67 @@
         video.play();
     };
 
-    startGeneratorButton.onclick = () => {
-        const processor = new MediaStreamTrackProcessor(stream.getVideoTracks()[0]);
-        generator = new MediaStreamTrackGenerator({kind: 'video' });
+    startGeneratorButton.onclick = async () => {
+        if (pipeController) {
+            pipeController.abort(); // Abort the previous pipe operation
+        }
+        pipeController = new AbortController(); // Create a new controller for the new pipe operation
 
-        processor.readable.pipeTo(generator.writable);
+        generator = new MediaStreamTrackGenerator({ kind: 'video' });
         video.srcObject = new MediaStream([generator]);
         insertButton.disabled = false;
 
+        const processor = new MediaStreamTrackProcessor(stream.getVideoTracks()[0]);
+        await processor.readable.pipeTo(generator.writable, { signal: pipeController.signal }).catch(e => {
+            if (e.name !== 'AbortError') {
+                console.error('Error piping to generator:', e);
+            }
+        });
+        console.log("original generator started");
     };
 
+
+    // piping to the new generator isn't working
+    // also hiddenVideo.captureStream() only works when the video is visible
     insertButton.onclick = async () => {
 
-        const hiddenVideo = document.createElement('video');
-        hiddenVideo.autoplay = true;
-        hiddenVideo.muted = true;
-        hiddenVideo.loop = true;
+        console.log("inserting video");
 
+
+        pipeController?.abort(); // Abort the previous pipe operation
+        pipeController = new AbortController(); // Create a new controller for the new pipe operation
+
+
+        const hiddenVideo = document.createElement('video');
         window.hiddenVideo = hiddenVideo;
+
+        // hiddenVideo.style.display = 'none';
+        hiddenVideo.autoplay = true;
+        hiddenVideo.muted = true; // Mute to autoplay without user interaction
+        hiddenVideo.loop = true;
+        hiddenVideo.src = 'frag_bunny_10s.webm';
         document.body.appendChild(hiddenVideo);
 
-
-        const assetURL = 'frag_bunny_10s.webm';
-        const response = await fetch(assetURL);
-        const arrayBuffer = await response.arrayBuffer();
-        hiddenVideo.srcObject = await startWorker(arrayBuffer);
-        // hiddenVideo.play();
-        // video.srcObject = await startWorker(arrayBuffer);
-
-
-        // const captureStream = hiddenVideo.captureStream();
-        // const track = captureStream.getVideoTracks()[0];
-        // undefined
-        // console.log('captured track', track);
-
-        // 1. Setup a MediaStreamTrackProcessor
-        // Uncaught (in promise) TypeError: Failed to construct 'MediaStreamTrackProcessor':
-        // The provided value is not of type 'MediaStreamTrackProcessorInit'.
-        // const processor = new MediaStreamTrackProcessor(track);
-        // processor.readable.pipeTo(generator.writable);
-
-        // 2. Clone the source track
-        // can't clone this track
-        // video.srcObject = new MediaStream([track.clone()]);
-
-        // 3. reuse the srcObject
-        // can't reuse the srcObject either
-        // video.srcObject = hiddenVideo.srcObject;
         // video.play();
 
-        // Only works if the video element is visible
-        // 4. draw it to a canvas
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('bitmaprenderer');
-        document.body.appendChild(canvas);
 
-        hiddenVideo.addEventListener('playing', async () => {
-            canvas.width = hiddenVideo.videoWidth;
-            canvas.height = hiddenVideo.videoHeight;
-            // need to loop to continuously draw the video to the canvas
-            async function renderLoop() {
-                const image = await createImageBitmap(hiddenVideo);
-                ctx.transferFromImageBitmap(image)
-                // ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-                requestAnimationFrame(renderLoop);
-            }
-            await renderLoop();
-            // const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            // console.log('imgData', imgData);
-            // video.srcObject = canvas.captureStream();
-        });
+        hiddenVideo.oncanplay = async () => {
+            console.log("videoElement can play");
+            const videoStream = hiddenVideo.captureStream();
+            const videoTrack = videoStream.getVideoTracks()[0];
+            console.log("videoTrack:", videoTrack);
 
+
+            const processor = new MediaStreamTrackProcessor({ track: videoTrack });
+
+            await processor.readable.pipeTo(generator.writable, { signal: pipeController.signal }).catch(e => {
+                if (e.name !== 'AbortError') {
+                    console.error('Error piping to generator:', e);
+                }
+            });
+
+            // video.srcObject = new MediaStream([videoTrack]);
+        };
 
     };
 

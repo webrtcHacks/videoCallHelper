@@ -19,7 +19,7 @@ mediaSource.addEventListener("sourceopen", async () => {
 });
  */
 
-// worker.js
+// mse-worker.js
 let mediaSource = new MediaSource();
 let handle = mediaSource.handle;
 let sourceBuffer;
@@ -102,7 +102,7 @@ function addSourceBufferAndAppendData(data) {
             segmentDuration = sourceBuffer.buffered.end(0);
             if(mediaSource.duration === Infinity)
                 mediaSource.duration = segmentDuration;
-            console.log(`Buffer duration: ${segmentDuration}s`);
+            console.log(`Starting buffer duration: ${segmentDuration}s`);
         }
 
         // add or remove from the buffer
