@@ -105,51 +105,93 @@
             </div>
         </div>
 
-        <!-- Card 3: Bad Connection Simulator -->
-        <div class="dashBox card col-3" id="bcs">
-            <h5>Bad Connection Simulator</h5>
-            <div class="row">
-                <div class="col-6">
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="bcs_enabled_check">
-                        <label class="form-check-label" for="bcs_enabled_check">Enable quality simulation</label>
+        <!-- Stream Modification Section -->
+        <div class="dashBox card col-3" id="stream_modification">
+            <div class="d-flex align-items-center">
+                <h5 class="mb-0">Sending Stream</h5>
+                <ul class="nav nav-tabs ms-auto" id="streamModTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="bad-connection-tab" data-bs-toggle="tab" href="#badConnection" role="tab" aria-controls="badConnection" aria-selected="true">Bad Connection</a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="inject-player-tab" data-bs-toggle="tab" href="#injectPlayer" role="tab" aria-controls="injectPlayer" aria-selected="false">Inject Player</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="tab-content" id="streamModTabContent">
+                <!-- Bad Connection Tab -->
+                <div class="tab-pane fade show active" id="badConnection" role="tabpanel" aria-labelledby="bad-connection-tab">
+                    <!-- Bad Connection Simulator -->
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="bcs_enabled_check">
+                                <label class="form-check-label" for="bcs_enabled_check">Enable quality simulation</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <table class="table table-sm align-middle lh-1">
+                            <tr>
+                                <td class="text-end"><span id="active">None</span></td>
+                                <td rowspan=3>
+                                    <div class="range-slider">
+                                        <input id="bcs_level" type="range" min="0" max="2" value="0" step="1"
+                                               list="tick_marks" class="align-middle">
+                                        <datalist id="tick_marks">
+                                            <option value="none"></option>
+                                            <option value="moderate"></option>
+                                            <option value="severe"></option>
+                                        </datalist>
+                                    </div>
+                                </td>
+                                <td><span id="active_desc"
+                                          class="small fw-light">Normal - select an option below to start
+                </span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-end"><span>Moderate</span></td>
+                                <td class="small fw-light">Bad – noticeable video issues and audio clipping</td>
+                            </tr>
+                            <tr>
+                                <td class="text-end"><span>Severe</span></td>
+                                <td class="small fw-light">Unusable – unintelligible audio and video</td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
-                <!--div class="col-6">
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="bcs_selfie_check" disabled>
-                        <label class="form-check-label" for="bcs_selfie_check">Show in self-view</label>
-                    </div>
-                </div-->
-            </div>
-            <div class="row">
-                <table class="table table-sm align-middle lh-1">
-                    <tr>
-                        <td class="text-end"><span id="active">None</span></td>
-                        <td rowspan=3>
-                            <div class="range-slider">
-                                <input id="bcs_level" type="range" min="0" max="2" value="0" step="1"
-                                       list="tick_marks" class="align-middle">
-                                <datalist id="tick_marks">
-                                    <option value="none"></option>
-                                    <option value="moderate"></option>
-                                    <option value="severe"></option>
-                                </datalist>
+                <!-- Inject Player Tab -->
+                <div class="tab-pane fade" id="injectPlayer" role="tabpanel" aria-labelledby="inject-player-tab">
+                    <div class="d-flex justify-content-between h-100">
+                        <!-- Left Video Container -->
+                        <div class="video-container selected">
+                            <video id="liveVideo" class="video-element"></video>
+                            <div class="video-overlay">Camera Stream</div>
+                        </div>
+
+                        <!-- Right Video Container -->
+                        <div class="video-container">
+                            <video id="recordedVideo" class="video-element"></video>
+                            <div class="video-overlay">Inject Stream</div>
+
+                            <!-- Control Buttons Overlay -->
+                            <div class="video-controls">
+                                <button class="btn btn-sm btn-light btn-video-control" id="recordButton">
+                                    <i class="bi bi-record-circle"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light btn-video-control" id="playButton">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light btn-video-control" id="openButton">
+                                    <i class="bi bi-folder2-open"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light btn-video-control" id="clearButton">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
-                        </td>
-                        <td><span id="active_desc"
-                                  class="small fw-light">Normal - select an option below to start
-                    </span></td>
-                    </tr>
-                    <tr>
-                        <td class="text-end"><span>Moderate</span></td>
-                        <td class="small fw-light">Bad – noticeable video issues and audio clipping</td>
-                    </tr>
-                    <tr>
-                        <td class="text-end"><span>Severe</span></td>
-                        <td class="small fw-light">Unusable – unintelligible audio and video</td>
-                    </tr>
-                </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
