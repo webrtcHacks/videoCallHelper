@@ -89,22 +89,21 @@ input#bcs_level {
 
 #injectPlayer .video-overlay {
   position: absolute;
-  top: 0;
+  top: 0; /* Adjust this value to move the text down */
   left: 0;
   width: 100%;
   color: white;
   background-color: rgba(0, 0, 0, 0.5);
   text-align: center;
-  line-height: 110px; /* Aligning text vertically */
+  padding-top: 5px; /* Add padding to position the text slightly lower */
 }
+
 
 #injectPlayer .video-controls {
   position: absolute;
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%); /* Centering the button group horizontally */
-  display: flex;
-  gap: 10px;
 }
 
 .btn-video-control {

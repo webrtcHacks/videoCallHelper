@@ -165,22 +165,25 @@
                     <div class="d-flex justify-content-between h-100">
                         <!-- Left Video Container -->
                         <div class="video-container selected">
-                            <video id="liveVideo" class="video-element"></video>
+                            <img id="localVideo" class="video-element" alt="current local video"></img>
                             <div class="video-overlay">Camera Stream</div>
                         </div>
 
                         <!-- Right Video Container -->
                         <div class="video-container">
-                            <video id="recordedVideo" class="video-element"></video>
+                            <video id="recordedVideo" class="video-element" src="../bbb_360p_30s.webm"></video>
                             <div class="video-overlay">Inject Stream</div>
 
                             <!-- Control Buttons Overlay -->
-                            <div class="video-controls">
+                            <div class="video-controls btn-group" role="group" aria-label="Video controls">
                                 <button class="btn btn-sm btn-light btn-video-control" id="recordButton">
                                     <i class="bi bi-record-circle"></i>
                                 </button>
                                 <button class="btn btn-sm btn-light btn-video-control" id="playButton">
                                     <i class="bi bi-play-fill"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light btn-video-control" id="checkButton">
+                                    <i class="bi bi-check"></i>
                                 </button>
                                 <button class="btn btn-sm btn-light btn-video-control" id="openButton">
                                     <i class="bi bi-folder2-open"></i>
@@ -188,8 +191,11 @@
                                 <button class="btn btn-sm btn-light btn-video-control" id="clearButton">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                                <button class="btn btn-sm btn-light btn-video-control" id="expandButton">
+                                    <i class="bi bi-arrows-fullscreen"></i>
+                                </button>
                             </div>
-                        </div>
+                       </div>
                     </div>
                 </div>
             </div>

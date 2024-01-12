@@ -1,5 +1,12 @@
 /*
- * Communicate with the background worker context
+ * Relays messages between contexts in a consistent way
+ *
+ * Contexts
+ * - content: content script
+ * - inject: inject script
+ * - background: background script
+ * - dash: drop-down dash
+ * - worker: worker script
  *
  * content can send to 'all', 'background', and 'inject' and relays to and from inject
  */
@@ -124,8 +131,11 @@ export class MessageHandler {
 
                 // this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 
+                // skip messages not sent to this listener's context
+                if(to !== this.context && to !== 'all')
+                    return
                 // ignore messages to self
-                if (from === this.context) // && (to === this.context || to !== 'all'))
+                else if (from === this.context) // && (to === this.context || to !== 'all'))
                     return
 
                 // this.debug(this.#listeners);

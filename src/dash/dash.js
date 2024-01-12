@@ -3,9 +3,11 @@ import './style.scss';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
 
 import {StorageHandler} from '../modules/storageHandler.mjs';
-
 const storage = await new StorageHandler("local", debug);
 window.storage = storage; // for debugging
+
+import {MessageHandler, MESSAGE as m} from '../modules/messageHandler.mjs';
+const mh = new MessageHandler('dash');
 
 /*
 // Remnants from past experiments
@@ -590,3 +592,15 @@ storage.addListener('badConnection', () => {
 
 
 /************ END badConnection ************/
+
+
+/************ START InsertPlayer ************/
+
+const localVideoPreview = document.querySelector('img#localVideo');
+mh.addListener(m.FRAME_CAPTURE, (data) => {
+    // debug("frame capture data received", data);
+    localVideoPreview.src = data.blobUrl;
+});
+
+
+/************ END InsertPlayer ************/

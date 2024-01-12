@@ -2,6 +2,7 @@
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 // import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
+import {AlterStream} from "../../badConnection/scripts/alterTrack.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -170,6 +171,14 @@ else {
             await transferStream(deviceManager.unalteredStream);
             // await transferStream(fakeStream);
             return fakeStream;
+        }
+        // ToDo: initial testing
+        else if(true) {
+            const stream = await origGetUserMedia(constraints);
+            await transferStream(stream);
+            const alteredStream = await new AlterStream(stream);
+            debug("returning alteredStream", alteredStream);
+            return alteredStream;
         }
         else {
             debug("gUM with no fakeDevices using constraints:", constraints);

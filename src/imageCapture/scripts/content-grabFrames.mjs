@@ -14,6 +14,7 @@ let storage = await new StorageHandler("local", debug);
 let captureInterval;
 let currentStream = null;
 let running = false;
+let lastImageUrl = URL.createObjectURL(new Blob());
 
 let settings = storage.contents['imageCapture'];
 debug("Image Capture settings:", settings);
@@ -30,64 +31,77 @@ const initSettings = {
 await storage.set('imageCapture', initSettings);
 
 
-// Generator that uses Media stream processor to get images
-async function* getImages(stream) {
-    // Insertable stream image capture
+/**
+ * Generator that uses Media stream processor to get images
+ * @param {MediaStream} stream - the stream to process
+ * @param {boolean} thumbnail - whether to resize to thumbnail size (for preview)
+ * @returns {Promise<AsyncGenerator>} - the generator
+ */
+async function* getImages(stream, thumbnail = false) {
     const [track] = stream?.getVideoTracks();
-    if(!track){
+    if (!track) {
         debug("No video track to grab frames from");
-        return
+        return null
     }
+
     const processor = new MediaStreamTrackProcessor(track);
     const reader = await processor.readable.getReader();
 
-    const {width, height, deviceId, groupId} = stream.getVideoTracks()[0].getSettings()
+    let { width, height, deviceId } = track.getSettings();
+    if(thumbnail){
+        height = 90;
+        width =  90 * (width / height);
+    }
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("bitmaprenderer");
 
-    let stopGenerator = false;
-    let running = true;
+    try {
+        while (true) {
+            running = true;
+            const { value: frame, done } = await reader.read();
+            if (done) break;
 
-    async function readFrame() {
-        const {value: frame, done} = await reader.read();
-        if (frame && !done) {
-
-            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight);
+            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight, { resizeHeight: height });
             ctx.transferFromImageBitmap(bitmap);
-            const blob = await canvas.convertToBlob({type: "image/jpeg", quality: 1});
-            const blobUrl = window.URL.createObjectURL(blob);
+            const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 1 });
+            const blobUrl = URL.createObjectURL(blob);
+
+
+            yield {
+                url: window?.location.href || "",
+                date: new Date().toLocaleString(),
+                deviceId,
+                blobUrl,
+                width,
+                height
+            };
 
             frame.close();
             bitmap.close();
 
-            return blobUrl
+            URL.revokeObjectURL(lastImageUrl);
+            lastImageUrl = blobUrl;
         }
-    }
-
-    while (!stopGenerator) {
-        const blobUrl = await readFrame();
-
-        if (blobUrl) {
-            const imgData = {
-                url: window?.location.href || "",
-                date: (new Date()).toLocaleString(),
-                deviceId: deviceId,
-                blobUrl: blobUrl,
-                width: width,
-                height: height
-            }
-            yield imgData
-        } else {
-            stopGenerator = true;
-            running = false;
-            return false
-        }
+    } catch (error) {
+        debug("Error processing stream:", error);
+    } finally {
+        reader.releaseLock();
+        running = false;
     }
 }
 
 
-// Check the stream before getting images
-export async function grabFrames(newStream) {
+
+//
+
+/**
+ * Sets up an interval timer for getImages and handles messaging
+ * Checks the stream before getting images
+ * Sends the image
+ * @param {MediaStream} newStream - the stream to process
+ * @returns {Promise<void>} - waits for storage updates
+ * */
+export async function grabFrames(newStream = currentStream) {
 
     // Check globals
 
@@ -146,7 +160,7 @@ export async function grabFrames(newStream) {
 
 
     // Now start capturing images and send them
-    const getImg = getImages(newStream);
+    const getImg =  getImages(newStream);
 
     // clear the current interval if it is running
     clearInterval(captureInterval);
@@ -154,7 +168,7 @@ export async function grabFrames(newStream) {
         const imgData = await getImg.next();
 
         if (imgData.value)
-            await sendMessage('all', m.FRAME_CAPTURE, imgData.value);
+            await sendMessage('background', m.FRAME_CAPTURE, imgData.value);
 
         if (imgData.done) {
             clearInterval(captureInterval);
@@ -164,6 +178,70 @@ export async function grabFrames(newStream) {
     }, storage.contents['imageCapture'].captureIntervalMs);
 
     await storage.update('imageCapture', {active: true});
+
+}
+
+/** Class that regularly generates images from a stream  */
+export class ImageStream {
+    /**
+     * @param {MediaStream} stream - defaults to currentStream global
+     * @param {number} captureIntervalMs - how often to send the image, defaults to 1000ms
+     * @param {string}destination- where to send the image, defaults to dash
+     * @param {boolean}thumbnail -  to resize the image to thumbnail size, defaults to false
+     */
+    constructor(stream = currentStream, captureIntervalMs = 250, destination = 'dash', thumbnail = false) {
+        this.stream = stream;
+        this.captureIntervalMs = captureIntervalMs;
+        this.destination = destination;
+        this.thumbnail = thumbnail;
+        this.running = false;
+        this.captureInterval = null;
+    }
+
+    /**
+     * Periodically stream of images - intended for preview function in dash
+     * @returns {Promise<void>} -
+     */
+    async start(){
+
+        const getImg = await getImages(this.stream, this.thumbnail);
+        return new Promise(async (resolve, reject) => {
+
+            if(!this.stream?.getVideoTracks()[0]){
+                reject("No video tracks to capture from", this.stream);
+                return
+            }
+
+            this.captureInterval = setInterval(async () => {
+
+                if (!this.stream?.active) {
+                    clearInterval(this.captureInterval);
+                    resolve("imageStream stream is no longer active", this.stream)
+                }
+
+                const {value, done} = await getImg.next();
+
+                if (value){
+                    // debug("Preview image", value);
+                    await sendMessage(this.destination, m.FRAME_CAPTURE, value);
+                }
+
+                if (done) {
+                    clearInterval(this.captureInterval);
+                    resolve("No more image data")
+                }
+            }, this.captureIntervalMs);
+        });
+    }
+
+    /**
+     * Stops the image stream
+     * @returns {Promise<void>} -
+     */
+    async stop(){
+        clearInterval(this.captureInterval);
+    }
+
 
 }
 

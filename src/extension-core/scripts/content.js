@@ -1,6 +1,6 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
-import {grabFrames} from "../../imageCapture/scripts/content-grabFrames.mjs";
+import {grabFrames, ImageStream} from "../../imageCapture/scripts/content-grabFrames.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -109,17 +109,41 @@ mh.addListener(m.PEER_CONNECTION_OPEN,  () => {
 
 /************ END bad connection ************/
 
+/*
+   Not easy to send a stream to dash:
+     * can't access the iframe content - CORS issues
+     * can't send the stream over postMessage - it's not serializable
+     * can't pass a resource URL - treated as different domains
+   ideas:
+     1. open a new stream - could cause gUM conflicts, more encoding
+     2. send snapshots
+*/
+let imagePreview = null; // used to hold the gUM preview image generator
+/**
+ * Grabs the last stream and generates
+ * @returns {Promise<void>}
+ */
+async function showPreview(){
+    const stream = streams.at(-1);  // get the last stream
+    // debug("showPreview:: stream", stream);
+    if(stream){
+        imagePreview = new ImageStream(stream, 200, 'dash', true);
+        await imagePreview.start();
+    }
+    else
+        imagePreview = null;
+}
+
 const dashHeight = 150;
 // ToDo: inline CSS with webpack
 const dashStyle = `position:fixed;top:0;left:0;width:100%;max-height:${dashHeight}px;z-index:2147483647;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
-
 // const dashStyle = `position:fixed;top:0;left:0;width:100%;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 
-
+let iframe;
 async function toggleDash() {
 
     // see if the iframe has already been loaded
-    let iframe = document.querySelector('iframe#vch_dash');
+    iframe = document.querySelector('iframe#vch_dash');
     // add the iframe
     if (!iframe) {
         iframe = document.createElement('iframe');
@@ -132,6 +156,7 @@ async function toggleDash() {
         iframe.style.visibility = "visible";
         // document.body.style.marginTop = `${dashHeight}px`;
 
+        await showPreview();
         debug("created dash");
 
         // iframe.blur();   // didn't work; neither did visibility
@@ -143,6 +168,7 @@ async function toggleDash() {
             iframe.style.height = "0px";
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
+            imagePreview?.stop();
             // debug("closed dash");
 
         }
@@ -153,11 +179,13 @@ async function toggleDash() {
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
             // debug("opened dash");
+            await showPreview();
         }
     }
 }
 
 mh.addListener(m.TOGGLE_DASH, toggleDash);
+
 
 // Monitor and share track changes
 // useful for replicating the stream in another tab
@@ -358,6 +386,8 @@ async function gumStreamStart(data) {
 
     // Clean-up the DOM since I don't use this anymore
     document.body.removeChild(video);
+
+    // updateVideoPreview(origStream);
 
     // Video-only processing
     if(origStream.getVideoTracks().length > 0) {
