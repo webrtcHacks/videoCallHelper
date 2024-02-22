@@ -29,6 +29,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 
     constructor(track, settings) {
         // super();
+        // ToDo: get settings directly from storage
         AlterTrack.settings = settings;
         /** @type {MediaStreamTrack} */
         this.sourceTrack = track;
@@ -174,6 +175,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                 impairmentState: AlterTrack.settings.level,
             }, [this.reader, this.writer]);
 
+
         }).catch((err) => {
             debug("Error in alterTrack: ", err);
         });
@@ -186,6 +188,38 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 // I always get the error:
 //  DOMException: Failed to execute 'postMessage' on 'Worker': Value at index 1 does not have a transferable type
 
+/**
+ * Modifies each track in a MediaStream
+ * @param {MediaStream} stream - the stream to modify
+ * @returns {MediaStream} - a MediaStream
+ */
+/** @type {MediaStream} */
+export class AlterStream {
+
+    originalTracks;
+    originalStream;
+    constructor(stream)
+    {
+        this.originalStream = stream;
+        this.originalTracks = stream.getTracks();
+        this.tracks = [];
+        const bcsSettings = {
+            enabled: true,
+            active: false,
+            level: "passthrough"
+        }
+
+        return Promise.all(this.originalTracks.map(async (track) => {
+            const alteredTrack = await new AlterTrack(track, {bcsSettings} );
+            this.tracks.push(alteredTrack);
+        })).then(() => {
+            this.alteredStream = new MediaStream(this.tracks);
+            return this.alteredStream
+        });
+    }
+
+}
+
 
 /**
  * Extends a MediaStreamTrackGenerator to look like a MediaStreamTrack
@@ -193,6 +227,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
  * @param {MediaStreamTrack} sourceTrack - the source track to modify
  * @returns {MediaStreamTrackGenerator} - a MediaStreamTrackGenerator
  */
+/** @type {MediaStreamTrackGenerator} */
 class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
     /*

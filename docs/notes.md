@@ -8,8 +8,33 @@
 4. content.js does a sendMessage to 'inject' with the update
 5. inject.js has a listener for messages from content.js
 
+# Bad Connection Simulator
 
-# Alterstream
+### Today
+
+Device manager needs to be enabled. 
+Device manager only enabled if there is an enumDevices
+
+```
+gum<<web>> 
+    -> inject<<web>>
+        -> deviceManager.fakeDeviceStream<<web>> 
+            -> AlterTrack<<web>>
+                -> impairment.worker<<worker>>
+```
+
+### Ideal
+```
+gum<<web>> 
+    -> inject<<web>>
+        -> AlterTrack<<web>>
+            -> impairment.worker<<web>>
+        -> deviceManager.fakeDeviceStream<<web>> 
+            -> AlterTrack<<web>>
+                -> impairment.worker<<worker>>
+```
+
+# ~AlterStream~
 
 gum -> transferStream -> content 
     -> alterStream -> impairment.worker
@@ -31,20 +56,20 @@ width: {max: 1920, min: 1}
 
 Tried to run the worker in the content context.
 The stream/track object would get reset when switching contexts, so it would look like a 
-MediaStreamTrackGenerator instead of the faked MediaStreamTrack I setup with alteredMediaStreamTrack.
-This inturn would cause errors in the apps
+MediaStreamTrackGenerator instead of the faked MediaStreamTrack I set up with alteredMediaStreamTrack.
+This in turn would cause errors in the apps
 
 ## cloning options
 
 1. clone the source gUM track and run it through a new generator
- - Pro: could do applyContraints to the clone track without affecting the original source
+ - Pro: could do applyConstraints to the clone track without affecting the original source
  - Con: way more resources
-2. clone the generated track
+1. clone the generated track
  - Pro: easy
- - Con: won't work with apply contraints
-3. Tee the generator output to a new stream 
+ - Con: won't work with apply constraints
+1. Tee the generator output to a new stream 
  - Pro: no new resources
- - Con: can't do applyContraints
+ - Con: can't do applyConstraints
 
 
 # Saving to disk
