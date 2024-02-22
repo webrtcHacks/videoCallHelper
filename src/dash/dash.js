@@ -7,7 +7,7 @@ const storage = await new StorageHandler("local", debug);
 window.storage = storage; // for debugging
 
 import {MessageHandler, MESSAGE as m} from '../modules/messageHandler.mjs';
-const mh = new MessageHandler('dash');
+const mh = new MessageHandler('dash', debug);
 
 /*
 // Remnants from past experiments
@@ -597,10 +597,85 @@ storage.addListener('badConnection', () => {
 /************ START InsertPlayer ************/
 
 const localVideoPreview = document.querySelector('img#localVideo');
+const recordedVideo = document.querySelector('video#recordedVideo');
+const playButton = document.querySelector('button#playButton');
+const openButton = document.querySelector('button#openButton');
+const injectButton = document.querySelector('button#injectButton');
+
+let arrayBuffer = null;
+// let blob = null;
+
 mh.addListener(m.FRAME_CAPTURE, (data) => {
     // debug("frame capture data received", data);
     localVideoPreview.src = data.blobUrl;
 });
+
+/*
+let mediaSource = new MediaSource();
+let handle = mediaSource.handle;
+const mimeCodec = 'video/webm; codecs="vp8"';
+
+mediaSource.addEventListener('sourceopen', () => {
+    console.log('MediaSource state when open:', mediaSource.readyState);
+    const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+    sourceBuffer.appendBuffer(arrayBuffer);
+});
+
+recordedVideo.oncanplay = () => {
+    // get the file from the video
+
+}
+
+ */
+
+
+openButton.onclick = async () => {
+    const assetURL = chrome.runtime.getURL('bbb_360p_30s.webm');
+    const response = await fetch(assetURL);
+    arrayBuffer = await response.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: 'video/webm; codecs="vp8"' }); // Adjust the MIME type if necessary
+    // blob = await response.blob();
+
+    // const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob);
+    // ToDo: revoke this url when done
+    recordedVideo.src = blobUrl;
+}
+
+
+
+// recordedVideo.src = chrome.runtime.getURL('bbb_360p_30s.webm');
+playButton.onclick = () => {
+    recordedVideo.play();
+}
+
+injectButton.onclick = async () => {
+    if(!arrayBuffer) {
+        debug("no blob to send");
+        return;
+    }
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    const currentTime = recordedVideo.currentTime;
+    const data = {
+        buffer: arrayBufferToBase64(arrayBuffer),
+        currentTime: currentTime
+    }
+
+    debug("saving this arrayBuffer:", arrayBuffer);
+    // mh.sendMessage('inject', m.PLAYER_URL, {buffer: arrayBuffer })
+    await storage.update('player', data);
+
+}
+
 
 
 /************ END InsertPlayer ************/
