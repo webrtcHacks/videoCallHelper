@@ -64,9 +64,6 @@ mh.addListener(m.UPDATE_DEVICE_SETTINGS, async (data) => {
     await storage.update('deviceManager', deviceSettings);
 });
 
-
-
-
 /************ END deviceManager ************/
 
 
@@ -109,6 +106,10 @@ mh.addListener(m.PEER_CONNECTION_OPEN,  () => {
 
 /************ END bad connection ************/
 
+/************ START video player ************/
+
+
+let imagePreview = null; // used to hold the gUM preview image generator
 /*
    Not easy to send a stream to dash:
      * can't access the iframe content - CORS issues
@@ -116,11 +117,10 @@ mh.addListener(m.PEER_CONNECTION_OPEN,  () => {
      * can't pass a resource URL - treated as different domains
    ideas:
      1. open a new stream - could cause gUM conflicts, more encoding
-     2. send snapshots
+     2. send snapshots - this is what did
 */
-let imagePreview = null; // used to hold the gUM preview image generator
 /**
- * Grabs the last stream and generates
+ * Grabs the last stream and generates preview thumbnails
  * @returns {Promise<void>}
  */
 async function showPreview(){
@@ -133,6 +133,66 @@ async function showPreview(){
     else
         imagePreview = null;
 }
+
+storage.addListener('player', async (newValue) => {
+    debug("player storage changed", newValue);
+
+    if(newValue.buffer){
+        // const buffer = base64ToBuffer(newValue.buffer);
+        // debug("buffer", buffer);
+        // newValue.buffer  = buffer;
+
+        const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = newValue;
+        const tranmissionDelay = new Date().getTime() - currentTime;
+
+        function base64ToBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+
+        const arrayBuffer = base64ToBuffer(buffer);
+        const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
+        const blobUrl = URL.createObjectURL(blob);
+
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.loop = loop;
+        video.id = "vch-player";
+        video.preload = "auto";
+
+        // mute the video without muting the source
+        const audioCtx = new AudioContext();  // for Firefox
+        const sourceNode = audioCtx.createMediaElementSource(video);
+        const destinationNode = audioCtx.createMediaStreamDestination();
+        sourceNode.connect(destinationNode);
+        await audioCtx.setSinkId({type: "none"});
+
+        document.body.appendChild(video);
+        debug("added video element", video);
+        
+        video.canplay = () => {
+            const playbackOffset = (videoTimeOffsetMs + tranmissionDelay) / 1000;
+            video.currentTime = playbackOffset;
+            debug("Adjusted playback to match sync", playbackOffset);
+        };
+
+        video.src = blobUrl;
+        // video.currentTime = (videoTimeOffsetMs + new Date().getTime() - currentTime) / 1000;   // adjust for signaling delays
+
+
+        // ToDo: revoke the blobURL when it is no longer needed
+        // URL.revokeObjectURL(blobUrl);
+
+    }
+});
+
+/************ END video player ************/
 
 const dashHeight = 150;
 // ToDo: inline CSS with webpack

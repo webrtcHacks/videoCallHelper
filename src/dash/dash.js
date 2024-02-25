@@ -630,16 +630,16 @@ recordedVideo.oncanplay = () => {
 
 
 openButton.onclick = async () => {
-    const assetURL = chrome.runtime.getURL('bbb_360p_30s.webm');
+    const assetURL = chrome.runtime.getURL('BigBuckBunny_360p30.mp4');
     const response = await fetch(assetURL);
     arrayBuffer = await response.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: 'video/webm; codecs="vp8"' }); // Adjust the MIME type if necessary
-    // blob = await response.blob();
+    const blob = new Blob([arrayBuffer], { type: 'video/mp4' }); //; codecs="vp8"' }); // Adjust the MIME type if necessary
 
     // const blob = await response.blob()
     const blobUrl = URL.createObjectURL(blob);
     // ToDo: revoke this url when done
     recordedVideo.src = blobUrl;
+    recordedVideo.currentTime = 240;
 }
 
 
@@ -664,18 +664,18 @@ injectButton.onclick = async () => {
         return window.btoa(binary);
     }
 
-    const currentTime = recordedVideo.currentTime;
     const data = {
+        mimeType: 'video/mp4',
+        loop: true,
         buffer: arrayBufferToBase64(arrayBuffer),
-        currentTime: currentTime
+        videoTimeOffsetMs: recordedVideo.currentTime * 1000,
+        currentTime: new Date().getTime()
     }
 
-    debug("saving this arrayBuffer:", arrayBuffer);
+    debug("saving video arrayBuffer:", arrayBuffer);
     // mh.sendMessage('inject', m.PLAYER_URL, {buffer: arrayBuffer })
     await storage.update('player', data);
 
 }
-
-
 
 /************ END InsertPlayer ************/
