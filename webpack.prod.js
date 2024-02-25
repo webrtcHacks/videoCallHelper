@@ -6,28 +6,6 @@ const commonConfigs = require("./webpack.common");
 // ToDo: update this to use multiple configs in commonConfig
 const prodConfig = {
     mode: 'production',
-    optimization: {
-        splitChunks: {
-            chunks: 'all',
-            minSize: 20000,
-            maxSize: 70000,
-            minChunks: 1,
-            maxAsyncRequests: 30,
-            maxInitialRequests: 30,
-            enforceSizeThreshold: 50000,
-            cacheGroups: {
-                vendors: {
-                    test: /[\\/]node_modules[\\/]/,
-                    priority: -10,
-                },
-                default: {
-                    minChunks: 2,
-                    priority: -20,
-                    reuseExistingChunk: true,
-                },
-            },
-        },
-    },
     output: {
         filename: '[name].js',
         path:
@@ -45,4 +23,3 @@ module.exports = [
     workerConfig, // keep the workerConfig as is
     merge(extensionConfig, prodConfig) // apply the devConfig only to the extensionConfig
 ];
-

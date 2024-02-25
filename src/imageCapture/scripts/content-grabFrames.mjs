@@ -21,11 +21,11 @@ debug("Image Capture settings:", settings);
 
 // Set default values if storage is blank
 const initSettings = {
-        startOnPc: storage.contents['imageCapture']?.startOnPc || false,
-        captureIntervalMs: storage.contents['imageCapture']?.captureIntervalMs || (60 * 1000),
-        active: storage.contents['imageCapture']?.active || false,
-        enabled: storage.contents['imageCapture']?.enabled || false
-    };
+    startOnPc: storage.contents['imageCapture']?.startOnPc || false,
+    captureIntervalMs: storage.contents['imageCapture']?.captureIntervalMs || (60 * 1000),
+    active: storage.contents['imageCapture']?.active || false,
+    enabled: storage.contents['imageCapture']?.enabled || false
+};
 
 // ToDo: change this to update
 await storage.set('imageCapture', initSettings);
@@ -47,10 +47,10 @@ async function* getImages(stream, thumbnail = false) {
     const processor = new MediaStreamTrackProcessor(track);
     const reader = await processor.readable.getReader();
 
-    let { width, height, deviceId } = track.getSettings();
-    if(thumbnail){
+    let {width, height, deviceId} = track.getSettings();
+    if (thumbnail) {
         height = 90;
-        width =  90 * (width / height);
+        width = 90 * (width / height);
     }
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext("bitmaprenderer");
@@ -58,12 +58,12 @@ async function* getImages(stream, thumbnail = false) {
     try {
         while (true) {
             running = true;
-            const { value: frame, done } = await reader.read();
+            const {value: frame, done} = await reader.read();
             if (done) break;
 
-            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight, { resizeHeight: height });
+            const bitmap = await createImageBitmap(frame, 0, 0, frame.codedWidth, frame.codedHeight, {resizeHeight: height});
             ctx.transferFromImageBitmap(bitmap);
-            const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 1 });
+            const blob = await canvas.convertToBlob({type: "image/jpeg", quality: 1});
             const blobUrl = URL.createObjectURL(blob);
 
 
@@ -91,7 +91,6 @@ async function* getImages(stream, thumbnail = false) {
 }
 
 
-
 //
 
 /**
@@ -105,17 +104,17 @@ export async function grabFrames(newStream = currentStream) {
 
     // Check globals
 
-    if(!storage.contents['imageCapture'].enabled){
+    if (!storage.contents['imageCapture'].enabled) {
         debug("Image capture is not enabled");
         return
     }
 
-    if(running){
+    if (running) {
         debug("Image capture is already running");
         return
     }
 
-    if(!newStream?.active && !currentStream?.active){
+    if (!newStream?.active && !currentStream?.active) {
         debug("No active stream to grab frames from");
         return
     }
@@ -152,23 +151,25 @@ export async function grabFrames(newStream = currentStream) {
                 return
             }
         }
-    }
-    else{
+    } else {
         // if it is not supplied, use the current stream
         newStream = currentStream;
     }
 
 
     // Now start capturing images and send them
-    const getImg =  getImages(newStream);
+    const getImg = getImages(newStream);
 
     // clear the current interval if it is running
     clearInterval(captureInterval);
     captureInterval = setInterval(async () => {
         const imgData = await getImg.next();
 
-        if (imgData.value)
-            await sendMessage('background', m.FRAME_CAPTURE, imgData.value);
+        if (imgData.value) {
+            const {deviceId, width, height} = imgData.value;
+            debug(`New image ${width}x${height} from ${deviceId}`);
+            await sendMessage('all', m.FRAME_CAPTURE, imgData.value);
+        }
 
         if (imgData.done) {
             clearInterval(captureInterval);
@@ -202,12 +203,12 @@ export class ImageStream {
      * Periodically stream of images - intended for preview function in dash
      * @returns {Promise<void>} -
      */
-    async start(){
+    async start() {
 
         const getImg = await getImages(this.stream, this.thumbnail);
         return new Promise(async (resolve, reject) => {
 
-            if(!this.stream?.getVideoTracks()[0]){
+            if (!this.stream?.getVideoTracks()[0]) {
                 reject("No video tracks to capture from", this.stream);
                 return
             }
@@ -221,7 +222,7 @@ export class ImageStream {
 
                 const {value, done} = await getImg.next();
 
-                if (value){
+                if (value) {
                     // debug("Preview image", value);
                     await sendMessage(this.destination, m.FRAME_CAPTURE, value);
                 }
@@ -238,7 +239,7 @@ export class ImageStream {
      * Stops the image stream
      * @returns {Promise<void>} -
      */
-    async stop(){
+    async stop() {
         clearInterval(this.captureInterval);
     }
 
@@ -257,7 +258,7 @@ storage.addListener('imageCapture', async (newValue) => {
         await storage.update('imageCapture', {active: false});
     }
     // Start sampling
-    else if (storage.contents['imageCapture']?.enabled && newValue?.active && !running){ //} && currentStream?.active) {
+    else if (storage.contents['imageCapture']?.enabled && newValue?.active && !running) { //} && currentStream?.active) {
         debug("Starting image capture");
         await grabFrames();
     }
@@ -265,7 +266,7 @@ storage.addListener('imageCapture', async (newValue) => {
     else if (newValue.captureIntervalMs) {
         debug(`Changing image capture interval to ${newValue.captureIntervalMs}`);
         clearInterval(captureInterval);
-        if(storage.contents['imageCapture']?.active)
+        if (storage.contents['imageCapture']?.active)
             await grabFrames();
     }
 
