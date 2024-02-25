@@ -154,7 +154,10 @@ export async function grabFrames(newStream) {
         const imgData = await getImg.next();
 
         if (imgData.value)
+            const {deviceId, width, height} = imgData.value;
+            debug(`New image ${width}x${height} from ${deviceId}`);
             await sendMessage('all', m.FRAME_CAPTURE, imgData.value);
+        }
 
         if (imgData.done) {
             clearInterval(captureInterval);
