@@ -35,6 +35,8 @@ export class MessageHandler {
 
         this.context = context;
         this.debug = debug; // debug function
+        this.debug(`creating new MessageHandler for ${context}`);
+
         if(listen){
             if(context === 'content'){
                 this.#documentListener('content', this.#listeners);
@@ -46,6 +48,9 @@ export class MessageHandler {
                 this.#runtimeListener('dash', this.#listeners);
             else if(context === 'background')
                 this.#runtimeListener('background', this.#listeners);
+            else if(context === 'worker'){
+                // this.#runtimeListener('worker', this.#listeners);
+            }
             else
                 this.debug(`invalid context for listener ${context}`);
         }
@@ -87,6 +92,21 @@ export class MessageHandler {
                 const dashEvent = new CustomEvent('vch', {detail: messageToSend});
                 document.dispatchEvent(dashEvent);
             }
+            // Handle worker comms
+            /*
+            else if (this.context === 'worker') {
+                this.workerInstance.postMessage({ message, data });
+            } else if (this.context === 'inject' && to === 'worker') {
+                // Assuming workerInstance is available in the inject script
+                this.workerInstance.postMessage({ message, data });
+            } else if (this.context === 'dash' && to === 'worker') {
+                // Send message to worker from dash
+                // You need a reference to the worker in the dash context
+                this.workerInstance.postMessage({ message, data });
+            }
+             */
+
+
             else{
                 // this should only handle content -> background
                 // ToDo: debug
@@ -262,5 +282,8 @@ export const MESSAGE = {
     // bad connection
     GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
     UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
+
+    // inject player
+    PLAYER_LOADED: 'player_loaded',
 
 }

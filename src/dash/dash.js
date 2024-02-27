@@ -595,6 +595,7 @@ storage.addListener('badConnection', () => {
 
 
 /************ START InsertPlayer ************/
+import {base64ToBuffer} from "../videoPlayer/scripts/videoPlayer.mjs";
 
 const localVideoPreview = document.querySelector('img#localVideo');
 const recordedVideo = document.querySelector('video#recordedVideo');
@@ -605,28 +606,24 @@ const injectButton = document.querySelector('button#injectButton');
 let arrayBuffer = null;
 // let blob = null;
 
+// local video preview
 mh.addListener(m.FRAME_CAPTURE, (data) => {
     // debug("frame capture data received", data);
     localVideoPreview.src = data.blobUrl;
 });
 
-/*
-let mediaSource = new MediaSource();
-let handle = mediaSource.handle;
-const mimeCodec = 'video/webm; codecs="vp8"';
 
-mediaSource.addEventListener('sourceopen', () => {
-    console.log('MediaSource state when open:', mediaSource.readyState);
-    const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
-    sourceBuffer.appendBuffer(arrayBuffer);
-});
+// see if there is any video in storage already
+if(storage.contents['player']?.buffer) {
 
-recordedVideo.oncanplay = () => {
-    // get the file from the video
+    // Play the buffer in the video element
+    const buffer = storage.contents['player'].buffer;
+    const mimeType = storage.contents['player'].mimeType;
 
+    arrayBuffer = base64ToBuffer(buffer);
+    const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
+    recordedVideo.src = URL.createObjectURL(blob);
 }
-
- */
 
 
 openButton.onclick = async () => {

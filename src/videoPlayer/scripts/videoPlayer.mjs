@@ -1,89 +1,139 @@
 
-export class VideoPlayer {
-    mediaSource
-    handle
-    sourceBuffer
-    queuedData = null
-    #reader
+/**
+ * Helper to convert base64 needed for localStorage to ArrayBuffer
+ * @param {string} base64
+ * @returns {ArrayBuffer}
+ */
+export function base64ToBuffer(base64) {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+}
 
-    constructor() {
-        this.mediasource = new MediaSource();
-        this.handle = this.mediasource.handle;
-        this.mediasource.addEventListener('sourceopen', () => {
-            debug('MediaSource state when open:', this.mediasource.readyState);
-            if (this.queuedData) {
-                // this.#addSourceBufferAndAppendData(this.queuedData)
-                this.#addSourceBufferAndAppendData().then(() => {
-                    this.queuedData = null;
+export class VideoPlayer{
 
-                    const videoTrack = this.handle.getVideoTracks()[0];
-                    const videoTrackReader = videoTrack.readable;
-                    this.#reader = videoTrackReader.getReader();
-                });
+    #decoder;
 
-            }
-
-            // return this.handle;
-        });
-
-        this.mediasource.addEventListener('error', (e) => {
-            debug('MediaSource error:', e);
-        });
+    constructor(sourceArrayBuffer, debug = {}) {
+        this.source = sourceArrayBuffer;
+        this.debug = debug;
+        this.currentFrame = null;
     }
 
+    async play(){
+        // In your worker script
 
+            this.#decoder = new VideoDecoder({
+                output: frame => {
+                    this.currentFrame.close();
+                    this.currentFrame = frame;
+                    debug(frame);
+                },
+                error: e => console.error(e)
+            });
 
+            const config = {
+                codec: 'avc1.64001f', // Replace with the correct AVC codec string for your video
+                description: spsAndPpsBuffer, // ArrayBuffer containing the SPS and PPS data
+                // codec: 'vp8',
+            };
 
-    async #addSourceBufferAndAppendData(arrayBuffer) {
-        const mimeCodec = 'video/mp4; codecs="avc1.64001f, mp4a.40.2"';
-        const assetURL =  "../frag_bunny.mp4";
-        const response = await fetch(assetURL);
-        const buf = await response.arrayBuffer();
-        this.mediasource.sourceBuffers[0].appendBuffer(buf);
+            this.#decoder.configure(config);
 
-        // const mimeCodec = 'video/webm; codecs="vp8"';
-        debug('Adding source buffer with codec:', mimeCodec);
-        this.sourceBuffer = this.mediaSource.addSourceBuffer(mimeCodec);
+            // Assume the entire file is a single encoded chunk for simplicity
+            this.#decoder.decode(new EncodedVideoChunk({
+                type: 'key', // or 'delta' for non-keyframes
+                timestamp: 0, // in microseconds
+                data: this.source
+            }));
 
-        this.sourceBuffer.addEventListener('updateend', () => {
-            debug('Source buffer update ended');
-            if (!this.sourceBuffer.updating && this.mediaSource.readyState === 'open') {
-                // reset to start of video
-                this.sourceBuffer.timestampOffset = 0;
-                debug('Calling endOfStream on mediaSource - will this restart?');
-                // mediaSource.endOfStream();
-            }
-        });
+        }
 
-        sourceBuffer.appendBuffer(new Uint8Array(arrayBuffer));
-        debug('Data appended to source buffer');
-    }
+        async stop() {
+            this.currentFrame.close();
+            await this.#decoder.flush(); // Ensure all queued frames are emitted
+        }
 
-    get transformStream() {
-        return new TransformStream({ transform: async (frame, controller) => {
-            //const playerFrame = await this.#reader.read();
-                // debug("transforming frame");
-                controller.enqueue(frame);
-            }});
-    }
+        get frame(){
+            return this.currentFrame;
+        }
 
 }
 
-/*
 
-self.addEventListener('message', (event) => {
-    console.log('Message received in worker:', event.data.type);
-    if (event.data.type === 'playback') {
-        console.log('Playback data size:', event.data.data.byteLength);
-        if (mediaSource.readyState === 'open' && !sourceBuffer) {
-            addSourceBufferAndAppendData(event.data.data);
-        } else {
-            queuedData = event.data.data;
-        }
+
+export class VideoPlayerFromVideoElement {
+
+    videoProcessor
+    videoReader
+
+    constructor(source, debug = {}) {
+        this.source = source;
+        this.debug = debug;
     }
-});
 
+    #createMediaStreamTrackFromVideoFile() {
+        return new Promise((resolve, reject) => {
+            // Create a video element
+            this.videoElement = document.createElement('video');
+            videoElement.autoplay = true;
+            videoElement.muted = true;
+            videoElement.loop = true; // Optional: Loop if you want continuous stream
 
+            videoElement.src = this.source;
 
-postMessage({ type: 'sourceOpen', sourceHandle: handle }, [handle]);
-*/
+            // When the video metadata is loaded, start playing
+            videoElement.onloadedmetadata = () => {
+                videoElement.play().then(() => {
+                    // Capture the stream from the video element
+                    const stream = videoElement.captureStream();
+                    const [videoTrack] = stream.getVideoTracks();
+                    resolve(videoTrack);
+                }).catch(reject);
+            };
+
+            // Handle video element errors
+            videoElement.onerror = () => {
+                reject(new Error(`Error loading video file: ${this.source}`));
+            };
+        });
+    };
+
+    async play(){
+        this.debug("starting video player");
+        const videoTrack = await this.#createMediaStreamTrackFromVideoFile(this.source);
+        this.videoProcessor = new MediaStreamTrackProcessor(videoTrack);
+        this.videoReader = this.videoProcessor.readable.getReader();
+    }
+
+    pause(){
+        this.debug("pausing video player");
+        this.videoElement.pause();
+    }
+
+    async unPause(){
+        this.debug("unpausing video player");
+        await this.videoElement.play();
+    }
+
+    async stop(){
+        this.debug("stopping video player");
+        this.videoElement.pause();
+        this.videoElement = null;
+        this.videoReader.releaseLock();
+    }
+
+    /** @type {VideoFrame} */
+    async readFrame(){
+        const {done, value} = await this.videoReader.read();
+        if(done){
+            this.debug("video player has finished reading all frames");
+            return null;
+        }
+        return value;
+    }
+}

@@ -1,6 +1,8 @@
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 import {grabFrames, ImageStream} from "../../imageCapture/scripts/content-grabFrames.mjs";
+import {StorageHandler} from "../../modules/storageHandler.mjs";
+import {base64ToBuffer} from "../../videoPlayer/scripts/videoPlayer.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -16,7 +18,6 @@ debug(`content.js loaded on ${window.location.href}`);
 const mh = new MessageHandler('content', debug);
 const sendMessage = mh.sendMessage;
 
-import {StorageHandler} from "../../modules/storageHandler.mjs";
 let storage = await new StorageHandler("local", debug);
 const settings = storage.contents;
 debug("storage contents: ", settings);
@@ -143,29 +144,16 @@ storage.addListener('player', async (newValue) => {
         // newValue.buffer  = buffer;
 
         const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = newValue;
-        const tranmissionDelay = new Date().getTime() - currentTime;
-
-        function base64ToBuffer(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-
-        const arrayBuffer = base64ToBuffer(buffer);
-        const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
-        const blobUrl = URL.createObjectURL(blob);
+        const transmissionDelay = new Date().getTime() - currentTime;
 
         const video = document.createElement('video');
         video.autoplay = true;
         video.loop = loop;
-        video.id = "vch-player";
+        video.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
         video.preload = "auto";
+        video.hidden = true;
 
+        // ToDo: handle multiple tracks; think about separating audio & video
         // mute the video without muting the source
         const audioCtx = new AudioContext();  // for Firefox
         const sourceNode = audioCtx.createMediaElementSource(video);
@@ -175,19 +163,24 @@ storage.addListener('player', async (newValue) => {
 
         document.body.appendChild(video);
         debug("added video element", video);
-        
-        video.canplay = () => {
-            const playbackOffset = (videoTimeOffsetMs + tranmissionDelay) / 1000;
+
+        video.oncanplay = () => {
+            video.oncanplay = null;
+            const playbackOffset = (videoTimeOffsetMs + transmissionDelay) / 1000;
             video.currentTime = playbackOffset;
             debug("Adjusted playback to match sync", playbackOffset);
+            mh.sendMessage('inject', m.PLAYER_LOADED, {id: video.id});
         };
 
-        video.src = blobUrl;
-        // video.currentTime = (videoTimeOffsetMs + new Date().getTime() - currentTime) / 1000;   // adjust for signaling delays
+        const arrayBuffer = base64ToBuffer(buffer);
+        const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
+        video.src = URL.createObjectURL(blob);
 
 
         // ToDo: revoke the blobURL when it is no longer needed
         // URL.revokeObjectURL(blobUrl);
+
+        // ToDo: player controls
 
     }
 });

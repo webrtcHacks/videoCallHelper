@@ -6,10 +6,10 @@ import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 
 import {settings} from "./settings.mjs";
 
-// import impairmentWorkerScript from '../../badConnection/scripts/worker.js';
+// import impairmentWorkerScript from '../../badConnection/scripts/mse-worker.js';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
 
-const mh = new MessageHandler('inject'); //, debug);
+const mh = new MessageHandler('inject', debug);
 
 /**
  * Modifies a MediaStreamTrack to simulate a bad connection
@@ -139,6 +139,35 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                 if (newSettings.level)
                     worker.postMessage({command: newSettings.level});
                  */
+            });
+
+            mh.addListener(m.PLAYER_LOADED, async (data) => {
+                debug("player loaded: ", data);
+                const player = document.querySelector(`video#${data.id}`);
+                // ToDo: adjust size
+                // ToDo: adjust framerate
+                // ToDo: captureStream is happening twice because alterTrack is per track
+                const playerStream = player.captureStream();
+
+                let processor;
+
+                if(this.sourceTrack.kind === "audio"){
+                    processor = new MediaStreamTrackProcessor(playerStream.getAudioTracks()[0]);
+                }
+                else if(this.sourceTrack.kind === "video"){
+                    processor = new MediaStreamTrackProcessor(playerStream.getVideoTracks()[0]);
+                }
+                else{
+                    debug("ERROR! Video player fail - unknown kind: ", this.sourceTrack);
+                    return;
+                }
+
+                const reader = processor.readable;
+                this.worker.postMessage({
+                    command: "player",
+                    reader: reader,
+                }, [reader]);
+
             });
 
 

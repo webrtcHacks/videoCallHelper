@@ -29,7 +29,7 @@
     </style>
 </head>
 <body>
-<video id="source" autoplay playsinline muted controls></video>
+<video id="source" autoplay playsinline controls></video>
 <video id="cloneVid" autoplay playsinline muted controls hidden="hidden"></video>
 
 <br>
@@ -123,7 +123,8 @@
                 height: { exact: 720 },
                 aspectRatio: 1.7777777778,
                 deviceId: deviceId ? { exact: deviceId } : undefined
-            }
+            },
+            audio: true
         };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         const [track] = stream.getVideoTracks();
