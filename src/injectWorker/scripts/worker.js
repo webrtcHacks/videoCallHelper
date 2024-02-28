@@ -83,7 +83,6 @@ async function loadImpairment(reader, writer, id, kind, settings, impairmentStat
     // debug("playerReader", self.playerReader);
 
     await reader
-        // ToDo: abstract the transformStream so I can swap them
         .pipeThrough( new TransformStream(
             { transform: async (frame, controller) => {
                     if(usePlayer) {

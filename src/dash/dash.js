@@ -598,7 +598,7 @@ storage.addListener('badConnection', () => {
 import {base64ToBuffer} from "../videoPlayer/scripts/videoPlayer.mjs";
 
 const localVideoPreview = document.querySelector('img#localVideo');
-const recordedVideo = document.querySelector('video#recordedVideo');
+const playerPreview = document.querySelector('video#recordedVideo');
 const playButton = document.querySelector('button#playButton');
 const openButton = document.querySelector('button#openButton');
 const injectButton = document.querySelector('button#injectButton');
@@ -622,7 +622,9 @@ if(storage.contents['player']?.buffer) {
 
     arrayBuffer = base64ToBuffer(buffer);
     const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
-    recordedVideo.src = URL.createObjectURL(blob);
+    playerPreview.src = URL.createObjectURL(blob);
+    playerPreview.currentTime = 120;    // ToDo: remove
+
 }
 
 
@@ -635,15 +637,15 @@ openButton.onclick = async () => {
     // const blob = await response.blob()
     const blobUrl = URL.createObjectURL(blob);
     // ToDo: revoke this url when done
-    recordedVideo.src = blobUrl;
-    recordedVideo.currentTime = 240;
+    playerPreview.src = blobUrl;
+    playerPreview.currentTime = 240; // ToDo: remove
 }
 
 
 
 // recordedVideo.src = chrome.runtime.getURL('bbb_360p_30s.webm');
 playButton.onclick = () => {
-    recordedVideo.play();
+    playerPreview.play();
 }
 
 injectButton.onclick = async () => {
@@ -665,13 +667,14 @@ injectButton.onclick = async () => {
         mimeType: 'video/mp4',
         loop: true,
         buffer: arrayBufferToBase64(arrayBuffer),
-        videoTimeOffsetMs: recordedVideo.currentTime * 1000,
+        videoTimeOffsetMs: playerPreview.currentTime * 1000,
         currentTime: new Date().getTime()
     }
 
     debug("saving video arrayBuffer:", arrayBuffer);
     // mh.sendMessage('inject', m.PLAYER_URL, {buffer: arrayBuffer })
     await storage.update('player', data);
+    playerPreview.play();
 
 }
 

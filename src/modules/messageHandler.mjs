@@ -284,6 +284,6 @@ export const MESSAGE = {
     UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
 
     // inject player
-    PLAYER_LOADED: 'player_loaded',
+    PLAYER_READY: 'player_loaded',
 
 }

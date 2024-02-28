@@ -29,7 +29,6 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 
     constructor(track, settings) {
         // super();
-        // ToDo: get settings directly from storage
         AlterTrack.settings = settings;
         /** @type {MediaStreamTrack} */
         this.sourceTrack = track;
@@ -141,21 +140,84 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                  */
             });
 
-            mh.addListener(m.PLAYER_LOADED, async (data) => {
+            mh.addListener(m.PLAYER_READY, async (data) => {
                 debug("player loaded: ", data);
-                const player = document.querySelector(`video#${data.id}`);
-                // ToDo: adjust size
-                // ToDo: adjust framerate
-                // ToDo: captureStream is happening twice because alterTrack is per track
-                const playerStream = player.captureStream();
+                const videoPlayer = document.querySelector(`video#${data.id}`);
+                debug(this.sourceTrack.getSettings());
 
                 let processor;
 
+                // ToDo: captureStream is happening twice because alterTrack is per track
                 if(this.sourceTrack.kind === "audio"){
-                    processor = new MediaStreamTrackProcessor(playerStream.getAudioTracks()[0]);
+                    // processor = new MediaStreamTrackProcessor(playerStream.getAudioTracks()[0]);
+
+                    // mute the video without muting the source
+                    const audioCtx = new AudioContext();  // for Firefox
+                    const sourceNode = audioCtx.createMediaElementSource(videoPlayer);
+                    const destinationNode = audioCtx.createMediaStreamDestination();
+                    sourceNode.connect(destinationNode);
+                    await audioCtx.setSinkId({type: "none"});
+                    videoPlayer.muted = false;
+
+                    // use webAudio to capture audio from the video element
+                    const playerAudioTrack = destinationNode.stream;
+                    processor = new MediaStreamTrackProcessor(playerAudioTrack.getAudioTracks()[0]);
                 }
+                // ToDo: adjust size
+                // ToDo: adjust framerate
                 else if(this.sourceTrack.kind === "video"){
-                    processor = new MediaStreamTrackProcessor(playerStream.getVideoTracks()[0]);
+                    debug("track settings: ", this.sourceTrack.getSettings());
+                    const {height, width, frameRate} = this.sourceTrack.getSettings();
+                    // videoPlayer.height = height;
+                    // videoPlayer.width = width;
+
+                    // No srcObject, so you can't do this
+                    // const [videoPlayerSourceTrack] = videoPlayer.srcObject.getVideoTracks();
+                    // await videoPlayerSourceTrack.applyConstraints({height, width, frameRate});
+
+                    // const playerVideoStream = videoPlayer.captureStream(frameRate);
+                    // const playerVideoTrack = playerVideoStream.getVideoTracks()[0];
+
+                    // Create an offscreen canvas
+                    // const canvas = new OffscreenCanvas(width, height);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+
+                    // Implementing a cover to fit strategy
+                    function drawVideoPlayerToCanvas() {
+                        const sourceAspectRatio = videoPlayer.videoWidth / videoPlayer.videoHeight;
+                        const targetAspectRatio = width / height;
+                        let drawWidth, drawHeight, offsetX, offsetY;
+
+                        // Cover to fit strategy
+                        if (sourceAspectRatio > targetAspectRatio) {
+                            // Source is wider
+                            drawHeight = height;
+                            drawWidth = drawHeight * sourceAspectRatio;
+                            offsetX = (width - drawWidth) / 2;
+                            offsetY = 0;
+                        } else {
+                            // Source is taller
+                            drawWidth = width;
+                            drawHeight = drawWidth / sourceAspectRatio;
+                            offsetX = 0;
+                            offsetY = (height - drawHeight) / 2;
+                        }
+
+                        ctx.drawImage(videoPlayer, offsetX, offsetY, drawWidth, drawHeight);
+                        requestAnimationFrame(drawVideoPlayerToCanvas); // Keep updating the canvas with the video frame
+                    }
+                    drawVideoPlayerToCanvas();
+
+                    // Capture the stream from the canvas and get the track
+                    const canvasStream = canvas.captureStream(frameRate);
+                    const playerVideoTrack = canvasStream.getVideoTracks()[0];
+
+                    // uses videoHeight & videoWidth - no good way to change the size here
+                    debug("player settings: ", playerVideoTrack.getSettings());
+                    processor = new MediaStreamTrackProcessor(playerVideoTrack);
                 }
                 else{
                     debug("ERROR! Video player fail - unknown kind: ", this.sourceTrack);
@@ -203,7 +265,6 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                 settings: this.sourceTrack.getSettings(),
                 impairmentState: AlterTrack.settings.level,
             }, [this.reader, this.writer]);
-
 
         }).catch((err) => {
             debug("Error in alterTrack: ", err);

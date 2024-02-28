@@ -144,37 +144,47 @@ storage.addListener('player', async (newValue) => {
         // newValue.buffer  = buffer;
 
         const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = newValue;
-        const transmissionDelay = new Date().getTime() - currentTime;
 
-        const video = document.createElement('video');
-        video.autoplay = true;
-        video.loop = loop;
-        video.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
-        video.preload = "auto";
-        video.hidden = true;
+        const videoPlayer = document.createElement('video');
+        videoPlayer.autoplay = true;
+        videoPlayer.loop = loop;
+        videoPlayer.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
+        videoPlayer.preload = "auto";
+        // videoPlayer.hidden = true;
+        videoPlayer.muted = true;
+        // set the style to fit to cover
+        // videoPlayer.style.cssText = "object-fit:cover;";
+
+        // ToDo: figure out how to get these values?
+        // can set videoHeight & videoWidth
+        // videoPlayer.height = 720;
+        // videoPlayer.width = 1280;
 
         // ToDo: handle multiple tracks; think about separating audio & video
-        // mute the video without muting the source
+        /*
         const audioCtx = new AudioContext();  // for Firefox
         const sourceNode = audioCtx.createMediaElementSource(video);
         const destinationNode = audioCtx.createMediaStreamDestination();
         sourceNode.connect(destinationNode);
         await audioCtx.setSinkId({type: "none"});
+         */
 
-        document.body.appendChild(video);
-        debug("added video element", video);
+        document.body.appendChild(videoPlayer);
+        debug("added video element", videoPlayer);
 
-        video.oncanplay = () => {
-            video.oncanplay = null;
+        videoPlayer.oncanplay = () => {
+            videoPlayer.oncanplay = null;
+            const transmissionDelay = new Date().getTime() - currentTime;
             const playbackOffset = (videoTimeOffsetMs + transmissionDelay) / 1000;
-            video.currentTime = playbackOffset;
+            videoPlayer.currentTime = playbackOffset;
             debug("Adjusted playback to match sync", playbackOffset);
-            mh.sendMessage('inject', m.PLAYER_LOADED, {id: video.id});
+            mh.sendMessage('inject', m.PLAYER_READY, {id: videoPlayer.id});
         };
 
         const arrayBuffer = base64ToBuffer(buffer);
         const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
-        video.src = URL.createObjectURL(blob);
+        videoPlayer.src = URL.createObjectURL(blob);
+
 
 
         // ToDo: revoke the blobURL when it is no longer needed
