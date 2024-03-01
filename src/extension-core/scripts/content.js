@@ -125,7 +125,7 @@ let imagePreview = null; // used to hold the gUM preview image generator
  * @returns {Promise<void>}
  */
 async function showPreview(){
-    const stream = streams.at(-1);  // get the last stream
+    const stream = streams.at(-1);  // get the last stream  // ToDo: get the highest res gUM stream
     // debug("showPreview:: stream", stream);
     if(stream){
         imagePreview = new ImageStream(stream, 200, 'dash', true);
@@ -155,19 +155,10 @@ storage.addListener('player', async (newValue) => {
         // set the style to fit to cover
         // videoPlayer.style.cssText = "object-fit:cover;";
 
-        // ToDo: figure out how to get these values?
-        // can set videoHeight & videoWidth
-        // videoPlayer.height = 720;
-        // videoPlayer.width = 1280;
-
-        // ToDo: handle multiple tracks; think about separating audio & video
-        /*
-        const audioCtx = new AudioContext();  // for Firefox
-        const sourceNode = audioCtx.createMediaElementSource(video);
-        const destinationNode = audioCtx.createMediaStreamDestination();
-        sourceNode.connect(destinationNode);
-        await audioCtx.setSinkId({type: "none"});
-         */
+        // captureStream takes the source video size so this doesn't matter
+        // const {width, height} = streams.at(-1)?.getVideoTracks()[0]?.getSettings();
+        // videoPlayer.height = height;
+        // videoPlayer.width = width;
 
         document.body.appendChild(videoPlayer);
         debug("added video element", videoPlayer);
@@ -197,12 +188,15 @@ storage.addListener('player', async (newValue) => {
 
 /************ END video player ************/
 
+/************ START dash manager ************/
+
 const dashHeight = 150;
 // ToDo: inline CSS with webpack
 const dashStyle = `position:fixed;top:0;left:0;width:100%;max-height:${dashHeight}px;z-index:2147483647;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 // const dashStyle = `position:fixed;top:0;left:0;width:100%;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 
 let iframe;
+let dashOpen = false;
 async function toggleDash() {
 
     // see if the iframe has already been loaded
@@ -214,6 +208,7 @@ async function toggleDash() {
         iframe.src = chrome.runtime.getURL("/pages/dash.html");
         iframe.id = "vch_dash";
         // iframe.sandbox;      // ToDo: turn iframe.sandbox on with the right settings for prod
+        iframe.allow = "camera; microphone";                    // add camera and mic permissions
         iframe.classList.add('dashOpen');
         document.body.appendChild(iframe);
         iframe.style.visibility = "visible";
@@ -231,9 +226,8 @@ async function toggleDash() {
             iframe.style.height = "0px";
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
+            dashOpen = false;
             imagePreview?.stop();
-            // debug("closed dash");
-
         }
         // open if closed
         else {
@@ -242,6 +236,7 @@ async function toggleDash() {
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
             // debug("opened dash");
+            dashOpen = true;
             await showPreview();
         }
     }
@@ -249,6 +244,10 @@ async function toggleDash() {
 
 mh.addListener(m.TOGGLE_DASH, toggleDash);
 
+/************ END dash manager ************/
+
+
+/************ START gUM stream management ************/
 
 // Monitor and share track changes
 // useful for replicating the stream in another tab
@@ -447,6 +446,17 @@ async function gumStreamStart(data) {
     // send a message back to inject to remove the temp video element
     await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
 
+    // for video player
+    /*
+    const audioTrack = origStream.getAudioTracks();
+    const videoTrack = origStream.getVideoTracks();
+    const audioConstraints = audioTrack[0]?.getConstraints() || false;
+    const videoConstraints = videoTrack[0]?.getConstraints() || false;
+    const constraints = {audio: audioConstraints, video: videoConstraints};
+    debug("gumStreamStart:: constraints", constraints);
+    await sendMessage('dash', m.GUM_STREAM_START, {id: origStream.id, constraints});
+     */
+
     // Clean-up the DOM since I don't use this anymore
     document.body.removeChild(video);
 
@@ -470,7 +480,10 @@ async function gumStreamStart(data) {
 
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
 
+/************ END gUM stream management ************/
 
+
+/************ START inject script injection ************/
 
 // For timing testing
 /*
@@ -500,3 +513,5 @@ async function addScript(path) {
 
 await addScript('/scripts/inject.js');
 // debug("inject injected");
+
+/************ END inject script injection ************/

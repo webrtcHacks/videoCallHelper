@@ -147,7 +147,6 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 
                 let processor;
 
-                // ToDo: captureStream is happening twice because alterTrack is per track
                 if(this.sourceTrack.kind === "audio"){
                     // processor = new MediaStreamTrackProcessor(playerStream.getAudioTracks()[0]);
 
@@ -163,11 +162,12 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                     const playerAudioTrack = destinationNode.stream;
                     processor = new MediaStreamTrackProcessor(playerAudioTrack.getAudioTracks()[0]);
                 }
-                // ToDo: adjust size
-                // ToDo: adjust framerate
                 else if(this.sourceTrack.kind === "video"){
                     debug("track settings: ", this.sourceTrack.getSettings());
                     const {height, width, frameRate} = this.sourceTrack.getSettings();
+
+                    /* Things that didn't work
+
                     // videoPlayer.height = height;
                     // videoPlayer.width = width;
 
@@ -175,11 +175,14 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                     // const [videoPlayerSourceTrack] = videoPlayer.srcObject.getVideoTracks();
                     // await videoPlayerSourceTrack.applyConstraints({height, width, frameRate});
 
+                    //
                     // const playerVideoStream = videoPlayer.captureStream(frameRate);
                     // const playerVideoTrack = playerVideoStream.getVideoTracks()[0];
 
-                    // Create an offscreen canvas
-                    // const canvas = new OffscreenCanvas(width, height);
+                    // const canvas = new OffscreenCanvas(width, height);   // no captureStream on an OffscreenCanvas
+                    */
+
+                    // Create a canvas
                     const canvas = document.createElement('canvas');
                     canvas.width = width;
                     canvas.height = height;
