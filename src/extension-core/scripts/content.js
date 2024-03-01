@@ -214,6 +214,7 @@ async function toggleDash() {
         iframe.src = chrome.runtime.getURL("/pages/dash.html");
         iframe.id = "vch_dash";
         // iframe.sandbox;      // ToDo: turn iframe.sandbox on with the right settings for prod
+        iframe.allow = "camera; microphone";                    // add camera and mic permissions
         iframe.classList.add('dashOpen');
         document.body.appendChild(iframe);
         iframe.style.visibility = "visible";

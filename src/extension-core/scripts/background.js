@@ -112,6 +112,11 @@ async function initStorage(){
         await storage.set('badConnection', badConnectionSettingsProto);
     // else await storage.update('badConnection', {active:false});
 
+    // ToDo: setup videoPlayer proto
+    // videoPlayer
+    if(!storage.contents['videoPlayer'])
+        await storage.set('videoPlayer', {buffer: null});
+
 }
 
 // let gumActive = false;

@@ -627,7 +627,7 @@ if(storage.contents['player']?.buffer) {
 
 }
 
-
+/*
 openButton.onclick = async () => {
     const assetURL = chrome.runtime.getURL('BigBuckBunny_360p30.mp4');
     const response = await fetch(assetURL);
@@ -636,16 +636,48 @@ openButton.onclick = async () => {
 
     // const blob = await response.blob()
     const blobUrl = URL.createObjectURL(blob);
-    // ToDo: revoke this url when done
     playerPreview.src = blobUrl;
     playerPreview.currentTime = 240; // ToDo: remove
 }
+ */
+
+// ToDo: Cross origin sub frames aren't allowed to show a file picker. Need to load this via background or inject
+openButton.onclick = async () => {
+    try {
+        // Show the file picker. You can specify options to restrict the file types
+        const [fileHandle] = await window.showOpenFilePicker({
+            types: [{
+                description: 'Video files',
+                accept: {'video/*': ['.mp4', '.webm', '.ogg']}
+            }],
+            multiple: false // Allow only one file to be selected
+        });
+
+        // Get a File object from the file handle
+        const file = await fileHandle.getFile();
+        const url = URL.createObjectURL(file);
+
+        // Set the video source to the selected file
+        playerPreview.src = url;
+        playerPreview.currentTime = 0; // Optional: Reset time to start
+
+        // Listen for the 'loadedmetadata' event to revoke the object URL
+        playerPreview.addEventListener('loadedmetadata', () => {
+            URL.revokeObjectURL(url);
+        }, { once: true });
+
+    } catch (err) {
+        // Handle errors or cancellation
+        console.error(err);
+    }
+};
 
 
 
 // recordedVideo.src = chrome.runtime.getURL('bbb_360p_30s.webm');
 playButton.onclick = () => {
     playerPreview.play();
+    debug("playing video");
 }
 
 injectButton.onclick = async () => {
@@ -677,5 +709,61 @@ injectButton.onclick = async () => {
     playerPreview.play();
 
 }
+
+let mediaRecorder;
+let recordedChunks = [];
+const recordButton = document.querySelector('#recordButton');
+
+async function startRecording() {
+    let stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    mediaRecorder = new MediaRecorder(stream);
+    playerPreview.srcObject = stream;
+
+    mediaRecorder.ondataavailable = (event) =>{
+        if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+        }
+    };
+
+    mediaRecorder.onstop = async ()=> {
+        stream.getTracks().forEach(track => track.stop());
+        playerPreview.srcObject = null;
+
+        // Reset the record button
+        recordButton.innerHTML = '<i class="bi bi-record-circle"></i>'; // Reset to record icon
+        recordButton.classList.remove('recording'); // Remove animation class
+
+        // preview the recording
+        const recordedBlob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(recordedBlob);
+        debug("recording:", recordedBlob, url);
+        playerPreview.src = url;
+        playerPreview.load(); // Load the new source
+
+        // Save the recording
+        arrayBuffer = await recordedBlob.arrayBuffer();
+
+    };
+
+    mediaRecorder.start();
+
+    // Update the record button to indicate recording
+    recordButton.innerHTML = '<i class="bi bi-stop-fill"></i>'; // Change to stop icon
+    recordButton.classList.add('recording'); // Add class to handle animation
+}
+
+function stopRecording() {
+    mediaRecorder.stop();
+}
+
+// Toggle recording on button click
+recordButton.addEventListener('click', async () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        stopRecording();
+    } else {
+        await startRecording();
+    }
+});
+
 
 /************ END InsertPlayer ************/
