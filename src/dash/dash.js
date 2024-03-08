@@ -604,12 +604,14 @@ const openButton = document.querySelector('button#openButton');
 const injectButton = document.querySelector('button#injectButton');
 
 let arrayBuffer = null;
+let previewAspectRatio = 16/9;
 // let blob = null;
 
 // local video preview
 mh.addListener(m.FRAME_CAPTURE, (data) => {
     // debug("frame capture data received", data);
     localVideoPreview.src = data.blobUrl;
+    previewAspectRatio = localVideoPreview.naturalWidth / localVideoPreview.naturalHeight;     // needed for recording window
 });
 // Todo: width value is off above
 
@@ -765,11 +767,32 @@ function stopRecording() {
 
 // Toggle recording on button click
 recordButton.addEventListener('click', async () => {
+    const recorderUrl = chrome.runtime.getURL('pages/recorder.html');
+    // set the pop-out window size to be roughly 1/4 of the screen but not larger than 1280x720 while keeping the aspect ratio
+    const chromeUrlBarHeight = 67;
+
+    const popoutWidth = Math.min(window.screen.width / 2, 1280);
+    const popoutHeight = Math.min(popoutWidth / previewAspectRatio, 720);
+
+    debug("preview aspect ratio:", previewAspectRatio, "popout size:", popoutWidth, popoutHeight);
+    const popOutWindow = window.open(recorderUrl, '_blank', `
+        popup=yes,
+        location=no,
+        menubar=no,
+        status=no,
+        scrollbars=no,
+        width=${popoutWidth},
+        height=${popoutHeight - chromeUrlBarHeight}
+        `);
+
+    /*
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         stopRecording();
     } else {
         await startRecording();
     }
+     */
+
 });
 
 

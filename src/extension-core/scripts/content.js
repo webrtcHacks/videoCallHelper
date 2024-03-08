@@ -7,7 +7,6 @@ import {base64ToBuffer} from "../../videoPlayer/scripts/videoPlayer.mjs";
 const streams = [];
 let trackInfos = [];
 
-window.vchStreams = streams;
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵`);
 
@@ -21,6 +20,13 @@ const sendMessage = mh.sendMessage;
 let storage = await new StorageHandler("local", debug);
 const settings = storage.contents;
 debug("storage contents: ", settings);
+
+window.vch = {
+    streams: streams,
+    trackInfos: trackInfos,
+};
+
+
 
 mh.addListener(m.GET_ALL_SETTINGS, async() => {
     await mh.sendMessage('inject', m.ALL_SETTINGS, storage.contents);
@@ -196,7 +202,12 @@ const dashStyle = `position:fixed;top:0;left:0;width:100%;max-height:${dashHeigh
 // const dashStyle = `position:fixed;top:0;left:0;width:100%;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 
 let iframe;
-let dashOpen = false;
+Object.defineProperty(window.vch, 'dashOpen', {
+    get: function() {
+        return iframe?.classList.contains('dashOpen') || false;
+    }
+});
+
 async function toggleDash() {
 
     // see if the iframe has already been loaded
@@ -226,7 +237,6 @@ async function toggleDash() {
             iframe.style.height = "0px";
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
-            dashOpen = false;
             imagePreview?.stop();
         }
         // open if closed
@@ -236,7 +246,6 @@ async function toggleDash() {
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
             // debug("opened dash");
-            dashOpen = true;
             await showPreview();
         }
     }
@@ -515,3 +524,4 @@ await addScript('/scripts/inject.js');
 // debug("inject injected");
 
 /************ END inject script injection ************/
+

@@ -1,7 +1,8 @@
 // Image capture module for content.js
 
 // ToDo: running multiple intervals at once
-// ToDo: refactor this to grab images out of the worker?
+// refactor this to grab images out of the worker? Already have a reader there, but then would need to
+//  send the images back to the content script
 
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
@@ -182,15 +183,14 @@ export async function grabFrames(newStream = currentStream) {
 
 }
 
-/** Class that regularly generates images from a stream  */
+/** Class that regularly generates images from a stream
+ * @param {MediaStream} stream - defaults to currentStream global
+ * @param {number} captureIntervalMs - how often to send the image, defaults to 1000ms
+ * @param {string} destination- where to send the image, defaults to dash
+ * @param {boolean}thumbnail -  to resize the image to thumbnail size, defaults to false
+ * */
 export class ImageStream {
-    /**
-     * @param {MediaStream} stream - defaults to currentStream global
-     * @param {number} captureIntervalMs - how often to send the image, defaults to 1000ms
-     * @param {string}destination- where to send the image, defaults to dash
-     * @param {boolean}thumbnail -  to resize the image to thumbnail size, defaults to false
-     */
-    constructor(stream = currentStream, captureIntervalMs = 250, destination = 'dash', thumbnail = false) {
+     constructor(stream = currentStream, captureIntervalMs = 250, destination = 'dash', thumbnail = false) {
         this.stream = stream;
         this.captureIntervalMs = captureIntervalMs;
         this.destination = destination;

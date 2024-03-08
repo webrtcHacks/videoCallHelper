@@ -32,6 +32,7 @@ const extensionConfig = {
         images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
         framing: './src/framing/scripts/framingAnalysis.js',
         presence: './src/presence/scripts/presenceSettings.mjs',
+        recorder: './src/videoPlayer/scripts/recorder.mjs',
         bootstrap: './node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
         bootstrapIcons: './node_modules/bootstrap-icons/font/bootstrap-icons.scss',
     },
@@ -117,12 +118,21 @@ const extensionConfig = {
             filename: "../pages/presence.html",
             inject: "body"
         }),
+        new HtmlWebpackPlugin({
+            title: 'Video recorder',
+            chunks: ['bootstrap','bootstrapIcons','recorder'],
+            template: "src/videoPlayer/pages/recorder.html",
+            filename: "../pages/recorder.html",
+            inject: "body",
+        }),
         new CopyPlugin({
             patterns: [
                 // The extension manifeet
                 {from: "src/manifest.json", to: "../manifest.json"},
                 // Icons
                 {from: "src/static/icons", to: "../icons"},
+                // Video player testing
+                // {from: "src/static/BigBuckBunny_360p30.mp4", to: "../BigBuckBunny_360p30.mp4"},
                 // The worker so it is inlined
                 // { from: path.resolve(__dirname, 'temp/worker-bundle.js'), to: 'worker-bundle.js' }
                 // { from: 'temp/worker-bundle.js', to: 'worker-bundle.js' }

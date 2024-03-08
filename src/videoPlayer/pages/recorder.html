@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Recorder</title>
+</head>
+<body>
+    <div class="container-fluid m-0 p-0 overflow-hidden h-100" data-bs-theme="dark">
+        <div class="video-container">
+            <div class="video-overlay">Inject Stream</div>
+            <video id="recordedVideo" class="video-element" autoplay muted>
+            </video>
+
+            <!-- Grouping the controls -->
+            <div class="video-controls d-flex align-items-center justify-content-center">
+                <!-- Control Group -->
+                <div class="control-group me-2">
+                    <!-- Record Button -->
+                    <button class="btn btn-video-control" id="recordButton">
+                        <i class="bi bi-record-circle"></i> Record
+                    </button>
+
+                    <!-- Audio Controls -->
+                    <div class="btn-group">
+                        <!-- Audio Toggle Button -->
+                        <button class="btn btn-video-control" id="toggleAudio">
+                            <i class="bi bi-mic-mute-fill"></i> Audio
+                        </button>
+                        <!-- Audio Device Selection Dropdown -->
+                        <div class="btn-group dropup">
+                            <button class="btn btn-video-control dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                            </button>
+                            <ul class="dropdown-menu">
+                                <!-- Dynamically populate device list here -->
+                                <li><a class="dropdown-item" href="#">Microphone 1</a></li>
+                                <li><a class="dropdown-item" href="#">Microphone 2</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Video Controls -->
+                    <div class="btn-group">
+                        <!-- Video Toggle Button -->
+                        <button class="btn btn-video-control" id="toggleVideo">
+                            <i class="bi bi-camera-video-off"></i> Video
+                        </button>
+                        <!-- Video Device Selection Dropdown -->
+                        <div class="btn-group dropup">
+                            <button class="btn btn-video-control dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                            </button>
+                            <ul class="dropdown-menu">
+                                <!-- Dynamically populate device list here -->
+                                <li><a class="dropdown-item" href="#">Camera 1</a></li>
+                                <li><a class="dropdown-item" href="#">Camera 2</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Play Button -->
+                <button class="btn btn-secondary btn-video-control me-2" id="playButton">
+                    <i class="bi bi-play-fill"></i>
+                </button>
+
+                <!-- Open File Button -->
+                <button class="btn btn-secondary btn-video-control me-2" id="openButton">
+                    <i class="bi bi-folder2-open"></i>
+                </button>
+
+                <!-- Loop Button -->
+                <button class="btn btn-secondary btn-video-control disabled" id="loopButton">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
