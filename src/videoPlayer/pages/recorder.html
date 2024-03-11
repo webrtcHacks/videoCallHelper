@@ -24,18 +24,17 @@
                     <!-- Audio Controls -->
                     <div class="btn-group">
                         <!-- Audio Toggle Button -->
-                        <button class="btn btn-video-control" id="toggleAudio">
-                            <i class="bi bi-mic-mute-fill"></i> Audio
+                        <button class="btn btn-sm btn-outline-secondary" id="toggleAudio" type="button">
+                            <i class="bi bi-mic-fill" id="audioIcon"></i> Audio
                         </button>
                         <!-- Audio Device Selection Dropdown -->
                         <div class="btn-group dropup">
                             <button class="btn btn-video-control dropdown-toggle" type="button"
                                     data-bs-toggle="dropdown" aria-expanded="false">
                             </button>
-                            <ul class="dropdown-menu">
-                                <!-- Dynamically populate device list here -->
-                                <li><a class="dropdown-item" href="#">Microphone 1</a></li>
-                                <li><a class="dropdown-item" href="#">Microphone 2</a></li>
+                            <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="audioDropdown"
+                                id="audio_devices_list">
+                                <!-- Audio options will be populated dynamically -->
                             </ul>
                         </div>
                     </div>
@@ -43,18 +42,17 @@
                     <!-- Video Controls -->
                     <div class="btn-group">
                         <!-- Video Toggle Button -->
-                        <button class="btn btn-video-control" id="toggleVideo">
-                            <i class="bi bi-camera-video-off"></i> Video
+                        <button class="btn btn-sm btn-outline-secondary" id="toggleVideo" type="button">
+                            <i class="bi bi-camera-video-fill" id="videoIcon"></i> Video
                         </button>
                         <!-- Video Device Selection Dropdown -->
                         <div class="btn-group dropup">
                             <button class="btn btn-video-control dropdown-toggle" type="button"
                                     data-bs-toggle="dropdown" aria-expanded="false">
                             </button>
-                            <ul class="dropdown-menu">
-                                <!-- Dynamically populate device list here -->
-                                <li><a class="dropdown-item" href="#">Camera 1</a></li>
-                                <li><a class="dropdown-item" href="#">Camera 2</a></li>
+                            <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="videoDropdown"
+                                id="video_devices_list">
+                                <!-- Video options will be populated dynamically -->
                             </ul>
                         </div>
                     </div>
@@ -65,10 +63,14 @@
                     <i class="bi bi-play-fill"></i>
                 </button>
 
+                <!-- Hidden File Input -->
+                <input type="file" id="videoFile" accept="video/*" style="display: block;">
+
                 <!-- Open File Button -->
-                <button class="btn btn-secondary btn-video-control me-2" id="openButton">
+                <button class="btn btn-secondary btn-video-control me-2" id="fileButton">
                     <i class="bi bi-folder2-open"></i>
                 </button>
+
 
                 <!-- Loop Button -->
                 <button class="btn btn-secondary btn-video-control disabled" id="loopButton">

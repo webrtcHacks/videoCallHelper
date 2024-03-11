@@ -1,5 +1,4 @@
 import {Impairment} from "../../badConnection/scripts/impairment.mjs";
-import {VideoPlayerFromVideoElement} from "../../videoPlayer/scripts/videoPlayer.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 👷${self.name} `);
 debug(`I am worker ${self.name}`);
@@ -117,45 +116,11 @@ onmessage = async (event) => {
     const {command, data} = event.data;
 
     // temp for videoPlayer setup
-    if (command === 'player') {
+    if (command === 'player_start') {
         debug("player command received with data", event.data);
         usePlayer = true;
         const {reader} = event.data;
         playerReader = reader.getReader();
-
-
-        /*
-        function base64ToBuffer(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        // Static file testing
-        // reminder: only can grab this because it is cleared in manifest.json
-        // ToDo: remove this from manifest.json after testing
-        // const response = await fetch('chrome-extension://hldemhckblekkflopgophngikeomfecc/bbb_360p_30s.webm');
-        // const response = await fetch('chrome-extension://hldemhckblekkflopgophngikeomfecc/frag_bunny.mp4');
-        // const arrayBuffer = await response.arrayBuffer();
-
-
-        const arrayBuffer = base64ToBuffer(data.buffer);
-
-        // const videoPlayer = new VideoPlayer(arrayBuffer, debug);
-        await videoPlayer.play();
-
-        const transformManager = new TransformStream(
-            { transform: async (frame, controller) => {
-                frame.close();
-                const newFrame = await videoPlayer.frame;
-                controller.enqueue(newFrame);
-            }});
-
-         */
 
         /*
         await reader
@@ -171,7 +136,11 @@ onmessage = async (event) => {
         // const {reader, writer, id, kind, settings, impairmentState} = event.data;
         // await loadImpairment(reader, self.writer, id, kind, settings, impairmentState);
     }
-
+    else if (command === 'player_stop') {
+        usePlayer = false;
+        playerReader.releaseLock();
+        debug("player stopped");
+    }
     else if (command === 'setup'){
         const {reader, writer, id, kind, settings, impairmentState} = event.data;
         self.writer = writer;

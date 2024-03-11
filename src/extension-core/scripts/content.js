@@ -156,7 +156,7 @@ storage.addListener('player', async (newValue) => {
         videoPlayer.loop = loop;
         videoPlayer.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
         videoPlayer.preload = "auto";
-        // videoPlayer.hidden = true;
+        videoPlayer.hidden = true;
         videoPlayer.muted = true;
         // set the style to fit to cover
         // videoPlayer.style.cssText = "object-fit:cover;";
@@ -175,13 +175,12 @@ storage.addListener('player', async (newValue) => {
             const playbackOffset = (videoTimeOffsetMs + transmissionDelay) / 1000;
             videoPlayer.currentTime = playbackOffset;
             debug("Adjusted playback to match sync", playbackOffset);
-            mh.sendMessage('inject', m.PLAYER_READY, {id: videoPlayer.id});
+            mh.sendMessage('inject', m.PLAYER_START, {id: videoPlayer.id});
         };
 
         const arrayBuffer = base64ToBuffer(buffer);
         const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
         videoPlayer.src = URL.createObjectURL(blob);
-
 
 
         // ToDo: revoke the blobURL when it is no longer needed

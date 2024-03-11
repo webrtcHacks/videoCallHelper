@@ -30,6 +30,7 @@ body {
   background-color: rgba(0, 0, 0, 0.5);
   text-align: center;
   padding-top: 5px; /* Add padding to position the text slightly lower */
+  z-index: 100;
 }
 
 .video-controls {
@@ -40,7 +41,7 @@ body {
   transform: translateX(-50%); /* Centering the button group horizontally */
 }
 
-.btn-video-control {
+.btn {
   opacity: 0.7;
   color: #fff; /* Button text color */
   background-color: #007bff; /* Button background color */
@@ -48,7 +49,7 @@ body {
   transition: opacity 0.3s;
 }
 
-.btn-video-control:hover {
+.btn:hover {
   opacity: 1;
 }
 
@@ -81,9 +82,10 @@ body {
   }
 }
 
-.recording {
+.blinking {
   animation: blinking 1s infinite;
 }
+
 
 .control-group {
   border: 1px solid #ccc; /* Adds a border around the group */
@@ -92,4 +94,12 @@ body {
   padding: 0; /* Some padding inside the group */
   display: inline-flex; /* Aligns the buttons in a row */
   align-items: center; /* Centers the buttons vertically */
+}
+
+.dropdown-item .bi-check {
+  display: none; /* Hide check by default */
+}
+
+.dropdown-item.selected .bi-check {
+  display: inline; /* Show the checkmark when the item is selected */
 }

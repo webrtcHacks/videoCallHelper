@@ -140,7 +140,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                  */
             });
 
-            mh.addListener(m.PLAYER_READY, async (data) => {
+            mh.addListener(m.PLAYER_START, async (data) => {
                 debug("player loaded: ", data);
                 const videoPlayer = document.querySelector(`video#${data.id}`);
                 debug(this.sourceTrack.getSettings());
@@ -229,12 +229,16 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
 
                 const reader = processor.readable;
                 this.worker.postMessage({
-                    command: "player",
+                    command: "player_start",
                     reader: reader,
                 }, [reader]);
 
             });
 
+            mh.addListener(m.PLAYER_STOP, async (data) => {
+                debug("player stopped: ", data);
+                this.worker.postMessage({command: "player_stop"});
+            });
 
             this.worker.onmessage = async (e) => {
                 // debug("worker message: ", e.data);

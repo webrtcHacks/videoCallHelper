@@ -405,7 +405,6 @@ audioMenu.addEventListener('click', async (e) => {
         }
         await storage.update("deviceManager", {selectedDeviceLabels});
 
-
         // Log the selected device
         debug(`Selected audio device: ${label}`);
     }
@@ -605,6 +604,7 @@ const injectButton = document.querySelector('button#injectButton');
 
 let arrayBuffer = null;
 let previewAspectRatio = 16/9;
+let lastRecordingTime = 0;
 // let blob = null;
 
 // local video preview
@@ -615,19 +615,39 @@ mh.addListener(m.FRAME_CAPTURE, (data) => {
 });
 // Todo: width value is off above
 
-// see if there is any video in storage already
-if(storage.contents['player']?.buffer) {
+// Need a UI interaction in the dash before the video will play
+document.addEventListener('click', async (e) => {
+    // see if there is any video in storage already
+    if(storage.contents['player']?.buffer) {
 
-    // Play the buffer in the video element
-    const buffer = storage.contents['player'].buffer;
-    const mimeType = storage.contents['player'].mimeType;
+        // Play the buffer in the video element
+        const buffer = storage.contents['player'].buffer;
+        const mimeType = storage.contents['player'].mimeType;
 
-    arrayBuffer = base64ToBuffer(buffer);
-    const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
-    playerPreview.src = URL.createObjectURL(blob);
-    playerPreview.currentTime = 120;    // ToDo: remove
+        arrayBuffer = base64ToBuffer(buffer);
+        const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
+        playerPreview.src = URL.createObjectURL(blob);
+        playerPreview.load();
+        await playerPreview.play();
+    }
+});
 
+//
+localVideoPreview.onclick = async () => {
+    // await storage.update('player', {status: true});
+    // ToDo: route from dash to inject not working
+    mh.sendMessage('inject', m.PLAYER_STOP, {});
 }
+
+storage.addListener('player', (newValue) => {
+    debug("player new data received", newValue);
+    if(newValue.buffer && newValue.currentTime > lastRecordingTime) {
+        arrayBuffer = base64ToBuffer(newValue.buffer);
+        const blob = new Blob([arrayBuffer], { type: newValue.mimeType }); // Ensure the MIME type matches the video format
+        playerPreview.src = URL.createObjectURL(blob);
+        lastRecordingTime = newValue.currentTime;
+    }
+});
 
 /*
 openButton.onclick = async () => {
@@ -683,24 +703,16 @@ playButton.onclick = () => {
 }
 
 injectButton.onclick = async () => {
-    if(!arrayBuffer) {
+    if(!storage.contents['player']?.buffer) {
         debug("no blob to send");
         return;
-    }
-    function arrayBufferToBase64(buffer) {
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return window.btoa(binary);
     }
 
     const data = {
         mimeType: 'video/mp4',
+        // status: 'inject',
         loop: true,
-        buffer: arrayBufferToBase64(arrayBuffer),
+        buffer: storage.contents['player'].buffer,
         videoTimeOffsetMs: playerPreview.currentTime * 1000,
         currentTime: new Date().getTime()
     }
@@ -712,10 +724,11 @@ injectButton.onclick = async () => {
 
 }
 
-let mediaRecorder;
-let recordedChunks = [];
 const recordButton = document.querySelector('#recordButton');
 
+/*
+let mediaRecorder;
+let recordedChunks = [];
 async function startRecording() {
     // get settings for constraints
 
@@ -764,15 +777,16 @@ async function startRecording() {
 function stopRecording() {
     mediaRecorder.stop();
 }
+ */
 
 // Toggle recording on button click
-recordButton.addEventListener('click', async () => {
-    const recorderUrl = chrome.runtime.getURL('pages/recorder.html');
+recordButton.onclick = async () => {
     // set the pop-out window size to be roughly 1/4 of the screen but not larger than 1280x720 while keeping the aspect ratio
-    const chromeUrlBarHeight = 67;
-
     const popoutWidth = Math.min(window.screen.width / 2, 1280);
     const popoutHeight = Math.min(popoutWidth / previewAspectRatio, 720);
+
+    const recorderUrl = chrome.runtime.getURL('pages/recorder.html') + `?aspectRatio=${previewAspectRatio}`;
+    const chromeUrlBarHeight = 67;
 
     debug("preview aspect ratio:", previewAspectRatio, "popout size:", popoutWidth, popoutHeight);
     const popOutWindow = window.open(recorderUrl, '_blank', `
@@ -782,7 +796,7 @@ recordButton.addEventListener('click', async () => {
         status=no,
         scrollbars=no,
         width=${popoutWidth},
-        height=${popoutHeight - chromeUrlBarHeight}
+        height=${popoutHeight}
         `);
 
     /*
@@ -793,7 +807,6 @@ recordButton.addEventListener('click', async () => {
     }
      */
 
-});
-
+}
 
 /************ END InsertPlayer ************/

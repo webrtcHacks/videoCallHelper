@@ -22,7 +22,9 @@
     const video = document.getElementById('user_video');
     const insertCheckbox = document.getElementById('insert');
 
-    const createMediaStreamTrackFromVideoFile = (videoFile) => {
+    let mediaElement;
+
+    const createMediaStreamFromVideoFile = (videoFile) => {
         return new Promise((resolve, reject) => {
             // Create a video element
             const videoElement = document.createElement('video');
@@ -38,8 +40,10 @@
                 videoElement.play().then(() => {
                     // Capture the stream from the video element
                     const stream = videoElement.captureStream();
-                    const [videoTrack] = stream.getVideoTracks();
-                    resolve(videoTrack);
+                    // const [videoTrack] = stream.getVideoTracks();
+
+                    mediaElement = videoElement;
+                    resolve(stream);
                 }).catch(reject);
             };
 
@@ -50,63 +54,79 @@
         });
     };
 
-    // Usage
-    const videoTrack = await createMediaStreamTrackFromVideoFile('frag_bunny_10s.webm');
-    console.log("video file videoTrack:", videoTrack)
-
-    const showBtn = document.getElementById('show');
-    showBtn.addEventListener('click', async () => {
-        video.srcObject = new MediaStream([videoTrack]);
-    });
+    insertCheckbox.onclick = () => {
+        mediaElement.muted = !insertCheckbox.checked;
+    };
 
     cameraButton.onclick = async () => {
         cameraButton.disabled = true;
         insertCheckbox.disabled = false;
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            const [track] = stream.getVideoTracks();
-
-            const generator = new MediaStreamTrackGenerator({kind: "video"});
-            video.srcObject = new MediaStream([generator]);
-            const cameraProcessor = new MediaStreamTrackProcessor(track);
-
-            const videoProcessor = new MediaStreamTrackProcessor(videoTrack);
-            const videoReader = videoProcessor.readable.getReader();
-
-            await cameraProcessor.readable.
-            pipeThrough(new TransformStream({
-                transform(cameraFrame, controller) {
-                    if(insertCheckbox.checked) {
-                        videoReader.read().then(({done, value}) => {
-                            if(done) {
-                                controller.close();
-                                console.log("videoReader done");
-                            }
-                            else {
-                                cameraFrame.close();
-                                controller.enqueue(value);
-                            }
-                        });
-
-                    }
-                    else {
-                        // console.log(frame);
-                        controller.enqueue(cameraFrame);
-                    }
+            const constraints = {
+                video: true,
+                audio: {
+                    echoCancellation: false,
                 }
-            }))
-                .pipeTo(generator.writable);
+            };
+            const cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            const mediaStream = await createMediaStreamFromVideoFile('BigBuckBunny_360p30.mp4');
 
+            const videoGenerator = new MediaStreamTrackGenerator({kind: "video"});
+            const audioGenerator = new MediaStreamTrackGenerator({kind: "audio"});
 
+            video.srcObject = new MediaStream([videoGenerator, audioGenerator]);
 
+            const cameraVideoProcessor = new MediaStreamTrackProcessor(cameraStream.getVideoTracks()[0]);
+            const cameraAudioProcessor = new MediaStreamTrackProcessor(cameraStream.getAudioTracks()[0]);
+
+            const mediaVideoProcessor = new MediaStreamTrackProcessor(mediaStream.getVideoTracks()[0]);
+            const mediaAudioProcessor = new MediaStreamTrackProcessor(mediaStream.getAudioTracks()[0]);
+
+            const mediaVideoReader = mediaVideoProcessor.readable.getReader();
+            const mediaAudioReader = mediaAudioProcessor.readable.getReader();
+
+            await cameraVideoProcessor.readable
+                .pipeThrough(new TransformStream({
+                    transform(cameraFrame, controller) {
+                        if (insertCheckbox.checked) {
+                            mediaVideoReader.read().then(({done, value}) => {
+                                if (done) {
+                                    controller.close();
+                                } else {
+                                    cameraFrame.close();
+                                    controller.enqueue(value);
+                                }
+                            });
+                        } else {
+                            controller.enqueue(cameraFrame);
+                        }
+                    }
+                }))
+                .pipeTo(videoGenerator.writable);
+
+            await cameraAudioProcessor.readable
+                .pipeThrough(new TransformStream({
+                    transform(cameraFrame, controller) {
+                        if (insertCheckbox.checked) {
+                            mediaAudioReader.read().then(({done, value}) => {
+                                if (done) {
+                                    controller.close();
+                                } else {
+                                    cameraFrame.close();
+                                    controller.enqueue(value);
+                                }
+                            });
+                        } else {
+                            controller.enqueue(cameraFrame);
+                        }
+                    }
+                }))
+                .pipeTo(audioGenerator.writable);
         } catch (error) {
             console.error('Error accessing media devices.', error);
         }
     };
-
-
-
 </script>
 
 </body>
