@@ -8,7 +8,7 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch️ 🕵📸️`);
 
-const sendMessage = new MessageHandler('content').sendMessage;
+const mh = new MessageHandler('content');
 let storage = await new StorageHandler("local", debug);
 
 let captureInterval;
@@ -156,7 +156,7 @@ export async function grabFrames(newStream) {
         if (imgData.value){
             const {deviceId, width, height} = imgData.value;
             debug(`New image ${width}x${height} from ${deviceId}`);
-            await sendMessage('all', m.FRAME_CAPTURE, imgData.value);
+            await mh.sendMessage('all', m.FRAME_CAPTURE, imgData.value);
         }
 
         if (imgData.done) {

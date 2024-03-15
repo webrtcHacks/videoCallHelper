@@ -14,9 +14,8 @@ let processTrackSwitch = true;
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉`);
 
-const mh = new MessageHandler('inject', debug);
-// const sendMessage = mh.sendMessage;
-if(process.env.NODE_ENV) window.mh = mh; // ToDo: debug
+const mh = new MessageHandler('inject');
+// if(process.env.NODE_ENV) window.mh = mh;
 
 // get settings from storage
 async function getSettings() {

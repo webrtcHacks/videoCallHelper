@@ -9,7 +9,7 @@ import {settings} from "./settings.mjs";
 // import impairmentWorkerScript from '../../badConnection/scripts/worker.js';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
 
-const mh = new MessageHandler('inject'); //, debug);
+const mh = new MessageHandler('inject');
 
 /**
  * Modifies a MediaStreamTrack to simulate a bad connection
