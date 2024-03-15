@@ -14,8 +14,8 @@ import {settings as badConnectionSettingsProto} from "../../badConnection/script
 // import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
 // import '../../modules/lovefield';
 
-const debug = Function.prototype.bind.call(console.log, console, `👷`);
-
+const debug = Function.prototype.bind.call(console.log, console, `🫥`);
+debug(`Environment: ${process.env.NODE_ENV}`);
 
 let streamTabs; // Not currently used
 //let storage = await chrome.storage.local.get();
@@ -26,6 +26,7 @@ self.storage = storage; // for debugging
 let trackData = [];
 
 const mh = new MessageHandler('background', debug);
+self.mh = mh;
 
 // ToDo: see if I need these tab tacking functions - test with multiple webrtc tabs
 /*
@@ -158,7 +159,7 @@ chrome.runtime.onInstalled.addListener(async () => {
         type: "popup",
         url: chrome.runtime.getURL("pages/video.html"),
 
-    }
+    };
     const window = await chrome.windows.create(windowOpts);
     log(window);
      */
@@ -167,14 +168,14 @@ chrome.runtime.onInstalled.addListener(async () => {
     /*
     const url = chrome.runtime.getURL("pages/webgazer.html");
     const videoTab = await chrome.tabs.create({url});
-    log(`webgazer tab ${videoTab.id}`)
+    log(`webgazer tab ${videoTab.id}`);
      */
 
     // Do this to load a help page
     /*
     let url = chrome.runtime.getURL("onInstallPage.html");
     let inputTab = await chrome.tabs.create({url});
-    console.log(`inputTab ${inputTab.id}`)
+    console.log(`inputTab ${inputTab.id}`);
      */
 
     // chrome.runtime.openOptionsPage();

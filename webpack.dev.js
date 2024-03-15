@@ -1,9 +1,8 @@
 const { merge } = require('webpack-merge');
 const commonConfigs = require('./webpack.common.js');
 const path = require("path");
+const webpack = require('webpack');
 
-
-//
 class BuildTimePlugin {
     apply(compiler) {
         compiler.hooks.done.tap('BuildTimePlugin', (compilation) => {
@@ -27,7 +26,11 @@ const devConfig = {
             path.resolve(__dirname, 'dist/dev/scripts'),
         clean: true
     },
-    plugins: [new BuildTimePlugin()]
+    plugins: [
+        new BuildTimePlugin(),
+        new webpack.DefinePlugin({
+            'process.env.NODE_ENV': JSON.stringify('development')
+        })]
 };
 
 const [workerConfig, extensionConfig] = commonConfigs;

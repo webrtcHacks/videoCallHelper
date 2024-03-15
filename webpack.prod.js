@@ -1,4 +1,5 @@
 const { merge } = require('webpack-merge');
+const webpack = require('webpack');
 const commonConfig = require('./webpack.common.js');
 const path = require("path");
 const commonConfigs = require("./webpack.common");
@@ -12,6 +13,11 @@ const prodConfig = {
             path.resolve(__dirname, 'dist/extension/scripts'),
         clean: true
     },
+    plugins: [
+        new webpack.DefinePlugin({
+            'process.env.NODE_ENV': JSON.stringify('production')
+        })
+    ]
 };
 
 const [workerConfig, extensionConfig] = commonConfigs;
