@@ -25,6 +25,7 @@ const extensionConfig = {
     },
     entry: {
         background: './src/extension-core/scripts/background.js',
+        options: './src/extension-core/scripts/options.js',
         content: './src/extension-core/scripts/content.js',
         inject: './src/extension-core/scripts/inject.js',
         dash: './src/dash/dash.js',
@@ -79,9 +80,10 @@ const extensionConfig = {
     plugins: [
         new HtmlWebpackPlugin({
             title: 'Options page',
-            chunks: [''],
+            chunks: ['options'],
             template: "src/extension-core/pages/options.html",
             filename: "../pages/options.html",
+            inject: "body"
         }),
         new HtmlWebpackPlugin({
             title: 'Pop-up Dashboard',
