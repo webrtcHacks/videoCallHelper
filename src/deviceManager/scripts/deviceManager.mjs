@@ -49,7 +49,7 @@ function arraysOfObjectsAreEqual(arr1, arr2) {
 
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️🥸`);
-const mh = new MessageHandler('inject', debug);
+const mh = new MessageHandler('inject');
 
 
 export class DeviceManager {

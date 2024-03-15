@@ -25,7 +25,7 @@ self.storage = storage; // for debugging
 // added for presence
 let trackData = [];
 
-const mh = new MessageHandler('background', debug);
+const mh = new MessageHandler('background');
 self.mh = mh;
 
 // ToDo: see if I need these tab tacking functions - test with multiple webrtc tabs

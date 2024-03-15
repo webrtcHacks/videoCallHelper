@@ -14,9 +14,8 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵`);
 debug(`content.js loaded on ${window.location.href}`);
 // debug('content.js URL: ', chrome.runtime.getURL('content.js'));
 
-const mh = new MessageHandler('content', debug);
-// const sendMessage = mh.sendMessage;
-if(process.env.NODE_ENV) window.mh = mh;
+const mh = new MessageHandler('content');
+// if(process.env.NODE_ENV) window.mh = mh;
 
 
 let storage = await new StorageHandler("local", debug);
