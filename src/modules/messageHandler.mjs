@@ -6,7 +6,7 @@
  * - inject: inject script
  * - background: background script
  * - dash: drop-down dash iFrame
- * - worker: worker script
+ * - worker: worker script // Todo:implement worker contexts
  *
  * Relays
  *  - content relays between background, dash, and inject
@@ -25,11 +25,9 @@ export class MessageHandler {
     /**
      * @constructor - follows the singleton pattern
      * @param {string} context - the context of the instance use one of [content, inject, background, dash, worker]
-     * @param {boolean} debug - whether to log debug messages   // ToDo: remove from code
-     * @param {boolean} listen - whether to listen for messages
      * @returns {*} - returns the instance of the MessageHandler
      */
-    constructor(context, debug = false, listen = true) {
+    constructor(context) {
 
 
         // Set up debug logging based on context
@@ -58,23 +56,22 @@ export class MessageHandler {
         }
 
         // Setup listeners
-        if (listen) {
-            if (context === 'content') {
-                this.#documentListener();
-                this.#runtimeListener();
-                this.#iFrameListener();
-            } else if (context === 'inject') {
-                this.#documentListener();
-            } else if (context === 'dash') {
-                this.#runtimeListener();
-            } else if (context === 'background') {
-                this.#runtimeListener();
-            } else if (context === 'worker') {
+        if (context === 'content') {
+            this.#documentListener();
+            this.#runtimeListener();
+            this.#iFrameListener();
+        } else if (context === 'inject') {
+            this.#documentListener();
+        } else if (context === 'dash') {
+            this.#runtimeListener();
+        } else if (context === 'background') {
+            this.#runtimeListener();
+        } else if (context === 'worker') {
 
-                // this.#runtimeListener('worker', this.#listeners);
-            } else
-                this.debug(`invalid context for listener ${context}`);
-        }
+            // this.#runtimeListener('worker', this.#listeners);
+        } else
+            this.debug(`invalid context for listener ${context}`);
+
 
         this.context = context;
 
@@ -111,13 +108,7 @@ export class MessageHandler {
                 const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
                 document.dispatchEvent(toContentEvent);
             }
-                // ToDo: working on this
-                // this works from console
-                //  content context: window.addEventListener('message', (e) => console.log("context", e));
-            //  dash context: parent.postMessage({message: "test"}, "*");
             else if (this.context === 'dash' && to !== 'background') {
-                // const dashEvent = new CustomEvent('vch', {detail: messageToSend});
-                // document.dispatchEvent(dashEvent);
                 window.parent.postMessage(messageToSend, "*");
             }
                 // Handle worker comms

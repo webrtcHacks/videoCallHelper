@@ -7,7 +7,7 @@ const storage = await new StorageHandler("local", debug);
 window.storage = storage; // for debugging
 
 import {MessageHandler, MESSAGE as m} from '../modules/messageHandler.mjs';
-const mh = new MessageHandler('dash', debug);
+const mh = new MessageHandler('dash');
 
 /*
 // Remnants from past experiments

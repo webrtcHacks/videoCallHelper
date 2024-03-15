@@ -190,7 +190,7 @@ export async function grabFrames(newStream = currentStream) {
  * @param {boolean}thumbnail -  to resize the image to thumbnail size, defaults to false
  * */
 export class ImageStream {
-     constructor(stream = currentStream, captureIntervalMs = 250, destination = 'dash', thumbnail = false) {
+     constructor(stream = currentStream, captureIntervalMs = 1000, destination = 'dash', thumbnail = false) {
         this.stream = stream;
         this.captureIntervalMs = captureIntervalMs;
         this.destination = destination;
@@ -200,7 +200,8 @@ export class ImageStream {
     }
 
     /**
-     * Periodically stream of images - intended for preview function in dash
+     * Starts periodic stream of images - intended for preview function in dash
+     * interval is set in constructor
      * @returns {Promise<void>} -
      */
     async start() {
@@ -224,7 +225,7 @@ export class ImageStream {
 
                 if (value) {
                     // debug("Preview image", value);
-                    await sendMessage(this.destination, m.FRAME_CAPTURE, value);
+                    await mh.sendMessage(this.destination, m.FRAME_CAPTURE, value);
                 }
 
                 if (done) {
