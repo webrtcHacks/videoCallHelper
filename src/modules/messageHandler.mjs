@@ -1,54 +1,91 @@
 /*
- * Communicate with the background worker context
+ * Relays messages between contexts in a consistent way
  *
- * content can send to 'all', 'background', and 'inject' and relays to and from inject
+ * Contexts
+ * - content: content script
+ * - inject: inject script
+ * - background: background script
+ * - dash: drop-down dash iFrame
+ * - worker: worker script
+ *
+ * Relays
+ *  - content relays between background, dash, and inject
+ *  - TODO: inject relays to workers
  */
 
 export class MessageHandler {
 
+    static instance;    // singleton instance
+
     #listeners = [];
+
     // context;
-    tabId;
 
-    // Attempt to make this a singleton stopped the extension from loading
-    // Static map to store instances to make this a singleton
-    // static _instances = new Map();
 
-    constructor(context, debug = ()=>{}, listen = true) {
+    /**
+     * @constructor - follows the singleton pattern
+     * @param {string} context - the context of the instance use one of [content, inject, background, dash, worker]
+     * @param {boolean} debug - whether to log debug messages   // ToDo: remove from code
+     * @param {boolean} listen - whether to listen for messages
+     * @returns {*} - returns the instance of the MessageHandler
+     */
+    constructor(context, debug = false, listen = true) {
 
-        /*
-        // Generate a unique key for the combination of context and debug reference
-        const key = `${context}_${debug.toString()}`;
-        // If there's an existing instance in the map, return that
-        if (MessageHandler._instances.has(key)) {
-            // return MessageHandler._instances.get(key);
-            debug(`instance already exists for ${key}`);
+
+        // Set up debug logging based on context
+
+        const contextSymbols = {
+            'content': "🕵",
+            'inject': "💉",
+            'background': "🫥",
+            'dash': "📈️‍",
+            'worker': "👷",
+        };
+        const debugSymbol = contextSymbols[context] || "";
+
+        if (process.env.NODE_ENV)
+            this.debug = Function.prototype.bind.call(console.debug, console, `vch ${debugSymbol} messageHandler[${context}] `);
+        else
+            this.debug = () => {};
+
+        // Singleton pattern
+        if (MessageHandler.instance) {
+            this.debug(`instance already exists for ${context}`);
+            return MessageHandler.instance;
+        } else {
+            MessageHandler.instance = this;
+            this.debug(`creating new MessageHandler for ${context}`);
         }
-         */
 
-        this.context = context;
-        this.debug = debug; // debug function
-        if(listen){
-            if(context === 'content'){
-                this.#documentListener('content', this.#listeners);
-                this.#runtimeListener('content', this.#listeners);
-            }
-            else if(context === 'inject')
-                this.#documentListener('inject', this.#listeners);
-            else if(context === 'dash')
-                this.#runtimeListener('dash', this.#listeners);
-            else if(context === 'background')
-                this.#runtimeListener('background', this.#listeners);
-            else
+        // Setup listeners
+        if (listen) {
+            if (context === 'content') {
+                this.#documentListener();
+                this.#runtimeListener();
+                this.#iFrameListener();
+            } else if (context === 'inject') {
+                this.#documentListener();
+            } else if (context === 'dash') {
+                this.#runtimeListener();
+            } else if (context === 'background') {
+                this.#runtimeListener();
+            } else if (context === 'worker') {
+
+                // this.#runtimeListener('worker', this.#listeners);
+            } else
                 this.debug(`invalid context for listener ${context}`);
         }
 
-        // Store the new instance in the map
-        // MessageHandler._instances.set(key, this);
+        this.context = context;
 
     }
 
-    // Reminder: use arrow function if you want to inherit the class's `this`
+    /**
+     * Sends a message to another extension context
+     * @param {string} to - the context to send the message to
+     * @param {string} message - the message to send
+     * @param {object} data - the data to send with the message
+     */
     sendMessage = (to = 'all', message, data = {}) => {
         if (this.context === to)
             return;
@@ -62,32 +99,50 @@ export class MessageHandler {
                 data: data
             };
 
-            if(this.context === 'background'){
+            if (this.context === 'background') {
                 // const tabId = data.tabId; // ToDo: error checking
                 this.debug(`target tabId: ${this.tabId}`); // was data.tabId
                 chrome.tabs.sendMessage(this.tabId, {...messageToSend})
-            }
-            else if(this.context === 'content' && to==='inject'){
+            } else if (this.context === 'content' && to === 'inject') {
                 const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
                 document.dispatchEvent(toInjectEvent);
-            }
-            else if(this.context === 'inject'){
+            } else if (this.context === 'inject') {
                 messageToSend.data = JSON.stringify(messageToSend.data);  // can't pass objects:
                 const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
                 document.dispatchEvent(toContentEvent);
             }
-            else if(this.context === 'dash' && to !== 'background'){
-                const dashEvent = new CustomEvent('vch', {detail: messageToSend});
-                document.dispatchEvent(dashEvent);
+                // ToDo: working on this
+                // this works from console
+                //  content context: window.addEventListener('message', (e) => console.log("context", e));
+            //  dash context: parent.postMessage({message: "test"}, "*");
+            else if (this.context === 'dash' && to !== 'background') {
+                // const dashEvent = new CustomEvent('vch', {detail: messageToSend});
+                // document.dispatchEvent(dashEvent);
+                window.parent.postMessage(messageToSend, "*");
             }
-            else{
+                // Handle worker comms
+            /*
+            else if (this.context === 'worker') {
+                this.workerInstance.postMessage({ message, data });
+            } else if (this.context === 'inject' && to === 'worker') {
+                // Assuming workerInstance is available in the inject script
+                this.workerInstance.postMessage({ message, data });
+            } else if (this.context === 'dash' && to === 'worker') {
+                // Send message to worker from dash
+                // You need a reference to the worker in the dash context
+                this.workerInstance.postMessage({ message, data });
+            }
+             */
+
+
+            else {
                 // this should only handle content -> background
                 // ToDo: debug
                 this.debug(`${this.context} -> background`, messageToSend);
-                chrome.runtime.sendMessage(messageToSend, {}, response =>{
+                chrome.runtime.sendMessage(messageToSend, {}, response => {
                     if (chrome.runtime.lastError)
                         this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
-                    });
+                });
             }
 
             this.debug(`sent "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
@@ -96,12 +151,9 @@ export class MessageHandler {
         }
     }
 
-    #sendMessageToTab = (tabId, message)=>{
-        message.from = this.context;
-        chrome.tabs.sendMessage(tabId, {...message})
-    }
-
-    // to and from content and background
+    /**
+     * Adds a listener for messages between content and background
+     */
     #runtimeListener() {
         chrome.runtime.onMessage.addListener(
             async (request, sender, sendResponse) => {
@@ -111,10 +163,10 @@ export class MessageHandler {
                 let data = request?.data || {};
 
                 // background doesn't its own tabId in sender
-                // We need it in cases when background is responding to a request from content
+                // We need it in cases when background is responding to a request from content,
                 // so it is appended as `data.tabId` there
                 const tabId = sender?.tab?.id || data?.tabId;
-                if(tabId){
+                if (tabId) {
                     data.tabId = tabId;
                     this.tabId = tabId;
                 }
@@ -124,18 +176,21 @@ export class MessageHandler {
 
                 // this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 
+                // skip messages not sent to this listener's context
+                if (to !== this.context && to !== 'all')
+                    return
                 // ignore messages to self
-                if (from === this.context) // && (to === this.context || to !== 'all'))
+                else if (from === this.context) // && (to === this.context || to !== 'all'))
                     return
 
                 // this.debug(this.#listeners);
                 this.#listeners.forEach(listener => {
                     // this.debug("trying this listener", listener);
                     //this.debug("with this callback args", listener.callback.arguments);
-                    if (message === listener.message){ //&& (from === null || from === listener.from)){
+                    if (message === listener.message) { //&& (from === null || from === listener.from)){
                         //this.debug(listener.callback.arguments);
                         // ToDo: listener.arguments doesn't exist - should I make that?
-                        if(this.context === 'background')
+                        if (this.context === 'background')
                             listener.callback.call(listener.callback, data, listener.arguments);
                         else
                             listener.callback.call(listener.callback, data, listener.arguments);
@@ -147,22 +202,26 @@ export class MessageHandler {
             })
     }
 
-    // This is only for content from inject
+    /**
+     * Adds a listener for messages from inject to content
+     */
     #documentListener() {
         document.addEventListener('vch', async e => {
-            if(!e.detail){
-               this.debug('ERROR: no e.detail', e)
-               return
+            if (!e.detail) {
+                this.debug('ERROR: no e.detail', e)
+                return
             }
 
             const {to, from, message, data} = e.detail;
 
-            // if (from !== 'inject')
             // ignore messages to self
             if (from === this.context) // && (to === this.context || to !== 'all'))
                 return
+            else if (data.origin === 'dash') {
+                // ToDo: ???
+            }
             // relay the message to background
-            else if ( to === 'all' || to === 'background') {
+            else if (to === 'all' || to === 'background') {
                 await this.sendMessage(to, message, JSON.parse(data));
             }
 
@@ -170,8 +229,8 @@ export class MessageHandler {
 
             this.#listeners.forEach(listener => {
                 // this.debug("trying this listener", listener);
-                if (message === listener.message){
-                    let dataObj = typeof data === 'string'? JSON.parse(data): data;
+                if (message === listener.message) {
+                    let dataObj = typeof data === 'string' ? JSON.parse(data) : data;
                     // ToDo: listener.arguments doesn't exist - should I make that?
                     listener.callback.call(listener.callback, dataObj, listener.arguments);
                 }
@@ -179,20 +238,72 @@ export class MessageHandler {
         });
     }
 
-    addListener = (message = "", callback = null, tabId = null) => {
+    /**
+     * Adds a listener for messages from dash to content
+     */
+    #iFrameListener() {
+        // ToDo: move this into #iFrame listener
+        const extensionOrigin = new URL(chrome.runtime.getURL('/')).origin;
+        window.addEventListener('message', (e) => {
+            const {to, from, message, data} = e.data;
+            if (e.origin !== extensionOrigin || from !== 'dash') return;    // only dash should use this
+            this.debug(`content iFrame listener receiving "${message}" from "${from}" to "${to}" in context "${this.context}"`, e.data);
+
+
+            // ToDo: this is triggering repeat messages
+            // b/c multiple calls to content context?
+
+            // relay to inject
+            if (to === 'inject' || to === 'worker') {
+                e.data.origin = "dash";
+                const toInjectEvent = new CustomEvent('vch', {detail: e.data});
+                document.dispatchEvent(toInjectEvent);
+            }
+            // relay to background
+            else if (to === 'background') {
+                e.data.origin = "dash";
+                this.sendMessage('background', message, e.data);
+            } else if (to === 'content') {
+                this.#listeners.forEach(listener => {
+                    if (message === listener.message) {
+                        let dataObj = typeof data === 'string' ? JSON.parse(data) : data;
+                        listener.callback.call(listener.callback, dataObj, listener.arguments);
+                    }
+                });
+            }
+
+        });
+    }
+
+    /**
+     * Adds a listener for messages from worker to content
+     *
+     * @param {string} message - the message to listen for
+     * @param {function} callback - the function to call when the message is received
+     * @param {string} tabId - the tabId to listen for messages from
+     */
+    addListener = (message = "", callback = null, tabId) => {
         // ToDo: return an error if the listener isn't active
         this.#listeners.push({message, callback, tabId});
         this.debug(`added listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
     }
 
     // ToDo: test this - all copilot
-    removeListener = (message = "", callback = null, tabId = null) => {
+    /**
+     * Removes a listener for messages from worker to content
+     *
+     * @param {string} message - the message to listen for
+     * @param {function} callback - the function to call when the message is received
+     * @param {string} tabId - the tabId to listen for messages from
+     */
+    removeListener = (message = "", callback = null, tabId) => {
         this.#listeners = this.#listeners.filter(listener => {
             return listener.message !== message || listener.callback !== callback || listener.tabId !== tabId;
         });
         this.debug(`removed listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
     }
 }
+
 
 export const MESSAGE = {
     // used in inject.js

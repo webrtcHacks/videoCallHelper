@@ -14,7 +14,9 @@ debug(`content.js loaded on ${window.location.href}`);
 // debug('content.js URL: ', chrome.runtime.getURL('content.js'));
 
 const mh = new MessageHandler('content', debug);
-const sendMessage = mh.sendMessage;
+// const sendMessage = mh.sendMessage;
+if(process.env.NODE_ENV) window.mh = mh;
+
 
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 let storage = await new StorageHandler("local", debug);
@@ -48,12 +50,12 @@ await storage.update('deviceManager', deviceSettings);
 // Dash UI enabled change should be propagated to inject
 await storage.addListener('deviceManager', (newValue) => {
     debug("deviceManager settings changed", newValue);
-    sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, newValue);
+    mh.sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, newValue);
 });
 
 // Inject (fakeDeviceManager) should ask for these settings when it loads
 mh.addListener(m.GET_DEVICE_SETTINGS, () => {
-    sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, storage.contents['deviceManager']);
+    mh.sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, storage.contents['deviceManager']);
 });
 
 // Inject should send content UPDATE_DEVICE_SETTINGS on any deviceChange or permission change
@@ -84,12 +86,12 @@ const bcsInitSettings = {
 await storage.update('badConnection', bcsInitSettings);
 await storage.addListener('badConnection', (newValue) => {
     debug("badConnection settings changed", newValue);
-    sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, newValue);
+    mh.sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, newValue);
 });
 
 // ToDo: initialize badConnection settings on start like deviceManager
 mh.addListener(m.GET_BAD_CONNECTION_SETTINGS, () => {
-    sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, bcsInitSettings);
+    mh.sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, bcsInitSettings);
 });
 
 // if a peerConnection is open and badConnection is not enabled then permanently disable it
@@ -179,7 +181,7 @@ async function syncTrackInfo() {
     debug("syncTrackInfo:: selected stream", stream)
     stream.onremovetrack = async (track) => {
         debug("track removed", track);
-        await sendMessage('video', 'tab', 'remove_track', track.id);
+        await mh.sendMessage('video', 'tab', 'remove_track');
         trackInfos = trackInfos.filter(info => info.id !== track.id);
         debug("updated trackInfos", trackInfos);
     };
@@ -193,11 +195,11 @@ async function syncTrackInfo() {
     };
 
     videoTrack.onmute = async e => {
-        await sendMessage('video', 'tab', 'mute', e.srcElement.id)
+        await mh.sendMessage('video', 'tab', 'mute')
         debug("track muted: ", e.srcElement)
     };
     videoTrack.onunmute = async e => {
-        await sendMessage('video', 'tab', 'unmute', e.srcElement.id)
+        await mh.sendMessage('video', 'tab', 'unmute')
         debug("track unmuted: ", e.srcElement)
     };
 
@@ -217,7 +219,7 @@ async function syncTrackInfo() {
     debug("syncTrackInfo:: updated trackInfos", trackInfos);
 
     trackInfos.push(settings);
-    await sendMessage('video', 'tab', 'track_info', {trackInfo: settings});
+    await mh.sendMessage('video', 'tab', 'track_info');
     // Keep for debugging
     /*
     streams.forEach( stream => {
@@ -276,12 +278,12 @@ async function monitorTrack(track, streamId) {
     }
 
     if (track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
-        await sendMessage('background', m.NEW_TRACK, trackData);
+        await mh.sendMessage('background', m.NEW_TRACK, trackData);
 
     // Note: this only fires if the browser forces the track to stop; not for most user actions
     track.addEventListener('ended', async () => {
         trackData.readyState = 'ended';
-        await sendMessage('background', m.TRACK_ENDED, trackData);
+        await mh.sendMessage('background', m.TRACK_ENDED, trackData);
         await checkActiveStreams();
     });
 
@@ -290,7 +292,7 @@ async function monitorTrack(track, streamId) {
     const monitor = setInterval(async () => {
         if (track.readyState === 'ended') {
             trackData.readyState = 'ended';
-            await sendMessage('background', m.TRACK_ENDED, trackData);
+            await mh.sendMessage('background', m.TRACK_ENDED, trackData);
             clearInterval(monitor);
         }
     }, 2000);
@@ -300,12 +302,12 @@ async function monitorTrack(track, streamId) {
     /*
     track.addEventListener('mute', async (e) => {
         trackData.state = 'muted';
-        await sendMessage('background', m.TRACK_MUTE, trackData);
+        await mh.sendMessage('background', m.TRACK_MUTE, trackData);
     });
 
     track.addEventListener('unmute', async (e) => {
         trackData.state = 'unmuted';
-        await sendMessage('background', m.TRACK_UNMUTE, trackData);
+        await mh.sendMessage('background', m.TRACK_UNMUTE, trackData);
     });
      */
 }
@@ -315,7 +317,7 @@ async function checkActiveStreams() {
     for (const stream of streams) {
         if (stream.getTracks().length === 0
             || stream.getTracks().every(track => track.readyState === 'ended')) {
-            await sendMessage('all', m.GUM_STREAM_STOP);
+            await mh.sendMessage('all', m.GUM_STREAM_STOP, {});
             // remove the stream
             const index = streams.findIndex(stream => stream.id === stream.id);
             if (index !== -1) {
@@ -340,7 +342,7 @@ async function gumStreamStart(data) {
 
     if (video.srcObject.getTracks().length === 0) {
         debug("no tracks found in stream", video.srcObject);
-        await sendMessage('inject', m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
+        await mh.sendMessage('inject', m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
         return;
     }
 
@@ -354,7 +356,7 @@ async function gumStreamStart(data) {
     });
 
     // send a message back to inject to remove the temp video element
-    await sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
+    await mh.sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
 
     // Clean-up the DOM since I don't use this anymore
     document.body.removeChild(video);
