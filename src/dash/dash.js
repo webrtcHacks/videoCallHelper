@@ -781,12 +781,14 @@ function stopRecording() {
 
 // Toggle recording on button click
 recordButton.onclick = async () => {
+    // mh.sendMessage('background', 'player_record', {aspectRatio: previewAspectRatio});
+
     // set the pop-out window size to be roughly 1/4 of the screen but not larger than 1280x720 while keeping the aspect ratio
     const popoutWidth = Math.min(window.screen.width / 2, 1280);
     const popoutHeight = Math.min(popoutWidth / previewAspectRatio, 720);
 
     const recorderUrl = chrome.runtime.getURL('pages/recorder.html') + `?aspectRatio=${previewAspectRatio}`;
-    const chromeUrlBarHeight = 67;
+    const chromeUrlBarHeight = 66;
 
     debug("preview aspect ratio:", previewAspectRatio, "popout size:", popoutWidth, popoutHeight);
     const popOutWindow = window.open(recorderUrl, '_blank', `
@@ -799,14 +801,12 @@ recordButton.onclick = async () => {
         height=${popoutHeight}
         `);
 
-    /*
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        stopRecording();
-    } else {
-        await startRecording();
-    }
-     */
-
 }
+/*
+// ToDo: for testing - delete
+document.querySelector('button#expandButton').onclick = () => {
+    mh.sendMessage('inject', 'dash-to-inject-test', {foo: 'bar'});
+}
+ */
 
 /************ END InsertPlayer ************/

@@ -9,7 +9,7 @@
  * The start function changes the operation to 'impair'
  * The config setter applies an impairment configuration
  * Static class objects are included for a moderation and severe impairment
- * @type {Impairment} - a TransformStream object
+ * @class Impairment - a class that sets up a transform stream that can add an impairment
  * @param {string} kind - 'audio' or 'video'
  * @param {MediaStreamTrackSettings} settings - the track settings object
  * @param {string} id - an optional id for the impairment
@@ -317,6 +317,7 @@ export class Impairment {
 
     }
 
+    /** @type {TransformStream} */
     get transformStream() {
         return new TransformStream({
             start: (controller) => this.#controller = controller,

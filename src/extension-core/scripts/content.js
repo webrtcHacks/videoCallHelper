@@ -216,6 +216,7 @@ async function toggleDash() {
     // add the iframe
     if (!iframe) {
         iframe = document.createElement('iframe');
+        vch.dash = iframe;   // for debugging
         iframe.style.cssText = dashStyle;
         iframe.src = chrome.runtime.getURL("/pages/dash.html");
         iframe.id = "vch_dash";
