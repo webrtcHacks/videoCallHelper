@@ -50,7 +50,7 @@ export class MessageHandler {
 
         // Singleton pattern
         if (MessageHandler.instance) {
-            this.debug(`instance already exists for ${context}`);
+            if(VERBOSE) this.debug(`instance already exists for ${context}`);
             return MessageHandler.instance;
         } else {
             MessageHandler.instance = this;
@@ -87,10 +87,10 @@ export class MessageHandler {
      *  from col to row
      * |            | background                    | content                      | inject                    | dash                           |
      * |------------|-------------------------------|------------------------------|---------------------------|--------------------------------|
-     * | background | // n/a                        | chrome.runtime.sendMessage   | // relay via context      | chrome.runtime.sendMessage      |
+     * | background | // n/a                        | chrome.runtime.sendMessage   | // relay via content      | chrome.runtime.sendMessage      |
      * | content    | chrome.tabs.sendMessage       | // n/a                       | document.dispatchEvent    | window.parent.postMessage       |
-     * | inject     | // relay via context          | document.dispatchEvent       | // n/a                    | // relay via context            |
-     * | dash       | chrome.tabs.sendMessage       | chrome.runtime.sendMessage   | // relay via context      | // n/a                          |
+     * | inject     | // relay via content          | document.dispatchEvent       | // n/a                    | // relay via content            |
+     * | dash       | chrome.tabs.sendMessage       | chrome.runtime.sendMessage   | // relay via content      | // n/a                          |
      *
      */
 
@@ -118,7 +118,7 @@ export class MessageHandler {
 
             switch (this.context) {
                 case 'background':
-                    if (to === 'content') {
+                    if (to === 'content' || to === 'inject') {
                         this.debug(`target tabId: ${this.tabId}`);
                         chrome.tabs.sendMessage(this.tabId, { ...messageToSend });
                     } else if (to === 'dash') {
@@ -137,18 +137,17 @@ export class MessageHandler {
                     }
                     break;
                 case 'inject':
-                    if (to === 'content') {
-                        messageToSend.data = JSON.stringify(messageToSend.data);
-                        const toContentEvent = new CustomEvent('vch', { detail: messageToSend });
-                        document.dispatchEvent(toContentEvent);
-                    }
+                    messageToSend.data = JSON.stringify(messageToSend.data);
+                    const toContentEvent = new CustomEvent('vch', { detail: messageToSend });
+                    document.dispatchEvent(toContentEvent);
                     break;
                 case 'dash':
+                    this.debug(`sending "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
+
                     if (to === 'background') {
                         chrome.runtime.sendMessage({ ...messageToSend });
-                    } else if (to === 'content') {
-                        const extensionOrigin = new URL(chrome.runtime.getURL('/')).origin;
-                        window.parent.postMessage(messageToSend, extensionOrigin);
+                    } else {
+                        window.parent.postMessage( {...messageToSend}, "*");    // parent origin is the user page
                     }
                     break;
                 default:
@@ -168,20 +167,18 @@ export class MessageHandler {
      * @param {object} data - the data to send with the message
      */
     #relayHandler(from, to, message, data){
-        // 1. background to inject
-        // 2. inject to background
-        // 3. dash to inject
 
         // Relay scenarios
         switch (`${from}→${to}`){
             case 'background→inject':
             case 'inject→background':
             case 'dash→inject':
-                this.debug(`relayHandler for "${from}→${to}" via ${this.context} for ${message} with data ${JSON.stringify(data)}`);
+                if(VERBOSE)
+                    this.debug(`relayHandler for "${from}→${to}" via ${this.context} for ${message} with data ${JSON.stringify(data)}`);
                 this.sendMessage(to, message, data, from);
                 break;
             default:
-
+                return
         }
     }
 
@@ -254,7 +251,8 @@ export class MessageHandler {
                 return;
             }
 
-            this.debug(`documentListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, e.detail);
+            if(VERBOSE)
+                this.debug(`documentListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, e.detail);
 
             this.#listeners.forEach(listener => {
                 if (message === listener.message) {
@@ -272,10 +270,11 @@ export class MessageHandler {
     #iFrameListener() {
         // ToDo: move this into #iFrame listener
         const extensionOrigin = new URL(chrome.runtime.getURL('/')).origin;
-        window.addEventListener('message', (e) => {
+        window.addEventListener('message', e=> {
+            const {to, from, message, data} = e.data;
+
             if (e.origin !== extensionOrigin || from !== 'dash') return;    // only dash should use this
 
-            const {to, from, message, data} = e.data;
             if (from === this.context)
                 return
             if(to !== this.context){
@@ -283,8 +282,8 @@ export class MessageHandler {
                 return;
             }
 
-            this.debug(`content iFrame listener receiving "${message}" from "${from}" to "${to}" in context "${this.context}"`, e.data);
-
+            if(VERBOSE)
+                this.debug(`content iFrame listener receiving "${message}" from "${from}" to "${to}" in context "${this.context}"`, e.data);
 
             this.#listeners.forEach(listener => {
                 if (message === listener.message) {
@@ -323,7 +322,9 @@ export class MessageHandler {
     }
 }
 
-
+/**
+ * Message types for communication between extension contexts
+ */
 export const MESSAGE = {
     // used in inject.js
     GET_ALL_SETTINGS: 'get_all_settings',
