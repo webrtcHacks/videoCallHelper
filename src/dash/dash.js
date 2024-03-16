@@ -456,18 +456,19 @@ async function handleExcludeMenuClose() {
         }
     });
 
-    debug('Excluded devices:', excludedDevices);
+    // debug('Excluded devices:', excludedDevices);
     await storage.update('deviceManager', {excludedDevices});
 }
 
 // document.querySelector('.dropup').addEventListener('hide.bs.dropdown'
 // document.addEventListener('click', function(event) {
-document.addEventListener('click', async function (event) {
+document.querySelector('div#device_manager_div').addEventListener('click', async function (event) {
     let excludeMenu = document.getElementById('exclude_devices_menu');
 
     let isClickInsideMenu = excludeMenu.contains(event.target);
     let isClickOnDropdownBtn = excludeDropdown.contains(event.target);
 
+    // ToDo: do something better than this
     // If the click was neither inside the menu nor the dropdown button, handle it
     if (!isClickInsideMenu && !isClickOnDropdownBtn) {
         await handleExcludeMenuClose();
@@ -594,18 +595,21 @@ storage.addListener('badConnection', () => {
 
 
 /************ START InsertPlayer ************/
-import {base64ToBuffer} from "../videoPlayer/scripts/videoPlayer.mjs";
+import {arrayBufferToBase64, base64ToBuffer} from "../videoPlayer/scripts/videoPlayer.mjs";
 
+const cameraDiv = document.querySelector('div#cameraPreview');
+const playerDiv = document.querySelector('div#playerPreview');
 const localVideoPreview = document.querySelector('img#localVideo');
 const playerPreview = document.querySelector('video#recordedVideo');
+
 const playButton = document.querySelector('button#playButton');
+const recordButton = document.querySelector('#recordButton');
 const openButton = document.querySelector('button#openButton');
 const injectButton = document.querySelector('button#injectButton');
 
 let arrayBuffer = null;
 let previewAspectRatio = 16/9;
 let lastRecordingTime = 0;
-// let blob = null;
 
 // local video preview
 mh.addListener(m.FRAME_STREAM, (data) => {
@@ -615,29 +619,37 @@ mh.addListener(m.FRAME_STREAM, (data) => {
 });
 // Todo: width value is off above
 
+
+// see if there is any video in storage already
+if(storage.contents['player']?.buffer) {
+
+    // Play the buffer in the video element
+    const buffer = storage.contents['player'].buffer;
+    const mimeType = storage.contents['player'].mimeType;
+
+    arrayBuffer = base64ToBuffer(buffer);
+    const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
+    playerPreview.src = URL.createObjectURL(blob);
+    playerPreview.load();
+}
+
+/*
 // Need a UI interaction in the dash before the video will play
 document.addEventListener('click', async (e) => {
-    // see if there is any video in storage already
-    if(storage.contents['player']?.buffer) {
-
-        // Play the buffer in the video element
-        const buffer = storage.contents['player'].buffer;
-        const mimeType = storage.contents['player'].mimeType;
-
-        arrayBuffer = base64ToBuffer(buffer);
-        const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
-        playerPreview.src = URL.createObjectURL(blob);
-        playerPreview.load();
-        await playerPreview.play();
+    if(playerPreview.src || playerPreview.srcObject) {
+        playerPreview.play();
     }
 });
+ */
 
 //
-localVideoPreview.onclick = async () => {
-    // await storage.update('player', {status: true});
-    // ToDo: route from dash to inject not working
+cameraDiv.addEventListener('click',  async () => {
+    debug("cameraDiv clicked");
+    playerDiv.classList.remove('selected');
+    cameraDiv.classList.add('selected');
+    // this is not working
     mh.sendMessage('inject', m.PLAYER_STOP, {});
-}
+});
 
 storage.addListener('player', (newValue) => {
     debug("player new data received", newValue);
@@ -649,57 +661,51 @@ storage.addListener('player', (newValue) => {
     }
 });
 
-/*
-openButton.onclick = async () => {
-    const assetURL = chrome.runtime.getURL('BigBuckBunny_360p30.mp4');
-    const response = await fetch(assetURL);
-    arrayBuffer = await response.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: 'video/mp4' }); //; codecs="vp8"' }); // Adjust the MIME type if necessary
 
-    // const blob = await response.blob()
-    const blobUrl = URL.createObjectURL(blob);
-    playerPreview.src = blobUrl;
-    playerPreview.currentTime = 240; // ToDo: remove
-}
- */
-
-// ToDo: Cross origin sub frames aren't allowed to show a file picker. Need to load this via background or inject
 openButton.onclick = async () => {
     try {
-        // Show the file picker
-        const [fileHandle] = await window.showOpenFilePicker({
-            types: [{
-                description: 'Video files',
-                accept: {'video/*': ['.mp4', '.webm', '.ogg']}
-            }],
-            multiple: false // Allow only one file to be selected
+        // use the fileInput to open a file
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'video/*';
+        fileInput.click();
+        const [file] = await new Promise((resolve, reject) => {
+            fileInput.onchange = () => resolve(fileInput.files);
         });
 
-        // Get a File object from the file handle
-        const file = await fileHandle.getFile();
-        const url = URL.createObjectURL(file);
+        arrayBuffer = await file.arrayBuffer();
 
-        // Set the video source to the selected file
-        playerPreview.src = url;
-        playerPreview.currentTime = 0; // Optional: Reset time to start
-
-        // Listen for the 'loadedmetadata' event to revoke the object URL
-        playerPreview.addEventListener('loadedmetadata', () => {
-            URL.revokeObjectURL(url);
-        }, { once: true });
+        playerPreview.src = URL.createObjectURL(file);
+        playerPreview.currentTime = 1; // Optional: Reset time to start
+        playerPreview.load(); // Load the new source
+        // playerPreview.play(); // Play the new source
 
     } catch (err) {
-        // Handle errors or cancellation
-        console.error(err);
+        // ToDo: Handle errors or cancellation
+        debug(err);
     }
 };
 
+// change the icon to a stop icon and make it blink
+playerPreview.onplaying = () => {
+    playButton.innerHTML = '<i class="bi bi-stop-fill blinking"></i>';
+}
 
+// change the icon to a play icon and stop blinking
+playerPreview.onpause = () => {
+    playButton.innerHTML = '<i class="bi bi-play-fill"></i>';
+}
 
 // recordedVideo.src = chrome.runtime.getURL('bbb_360p_30s.webm');
-playButton.onclick = () => {
-    playerPreview.play();
-    debug("playing video");
+playButton.onclick = async () => {
+    // if video is playing then pause it
+    if(playerPreview.paused) {
+        await playerPreview.play();
+        debug("playing video");
+    } else {
+        playerPreview.pause();
+        debug("pausing video");
+    }
 }
 
 injectButton.onclick = async () => {
@@ -709,35 +715,36 @@ injectButton.onclick = async () => {
     }
 
     const data = {
-        mimeType: 'video/mp4',
+        mimeType: storage.contents['player'].mimeType,
         // status: 'inject',
         loop: true,
-        buffer: storage.contents['player'].buffer,
+        buffer: arrayBufferToBase64(arrayBuffer),
         videoTimeOffsetMs: playerPreview.currentTime * 1000,
         currentTime: new Date().getTime()
     }
 
-    debug("saving video arrayBuffer:", arrayBuffer);
     // mh.sendMessage('inject', m.PLAYER_URL, {buffer: arrayBuffer })
     await storage.update('player', data);
-    playerPreview.play();
+    // playerPreview.play();
+    debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
+
+    // switch "selected"
+    cameraDiv.classList.remove('selected');
+    playerDiv.classList.add('selected');
 
 }
 
-const recordButton = document.querySelector('#recordButton');
-
-/*
 let mediaRecorder;
 let recordedChunks = [];
 async function startRecording() {
     // get settings for constraints
 
-    // ToDo: get the last stream from the array
-    const lastStream = window.vch.streams.slice(-1)[0];
-    const videoConstraints = lastStream.getVideoTracks()[0].getConstraints() || false;
-    const audioConstraints = lastStream.getAudioTracks()[0].getConstraints() || false;
-    debug("videoConstraints", videoConstraints, "audioConstraints", audioConstraints);
-    let stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: audioConstraints});
+    // ToDo: get the best current gUM stream
+    // const lastStream = window.vch.streams.slice(-1)[0];
+    // const videoConstraints = lastStream.getVideoTracks()[0].getConstraints() || false;
+    // const audioConstraints = lastStream.getAudioTracks()[0].getConstraints() || false;
+    // debug("videoConstraints", videoConstraints, "audioConstraints", audioConstraints);
+    let stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true});
     mediaRecorder = new MediaRecorder(stream);
     playerPreview.srcObject = stream;
 
@@ -760,6 +767,7 @@ async function startRecording() {
         const url = URL.createObjectURL(recordedBlob);
         debug("recording:", recordedBlob, url);
         playerPreview.src = url;
+        playerPreview.loop = true;
         playerPreview.load(); // Load the new source
 
         // Save the recording
@@ -770,15 +778,31 @@ async function startRecording() {
     mediaRecorder.start();
 
     // Update the record button to indicate recording
-    recordButton.innerHTML = '<i class="bi bi-stop-fill"></i>'; // Change to stop icon
-    recordButton.classList.add('recording'); // Add class to handle animation
+    recordButton.innerHTML = '<i class="bi bi-stop-fill blinking"></i>'; // Change to stop icon
+    // recordButton.classList.add('recording'); // Add class to handle animation
 }
-
 function stopRecording() {
     mediaRecorder.stop();
+    recordButton.innerHTML = '<i class="bi bi-record-circle"></i>';
+    // recordButton.classList.remove('blinking');
+}
+
+recordButton.onclick = async () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        stopRecording();
+    } else {
+        await startRecording();
+    }
+}
+
+/*
+document.querySelector('button#expandButton').onclick = async () => {
+    debug("expand button clicked");
+    mh.sendMessage('inject', 'hello_there', {});
 }
  */
 
+/*
 // Toggle recording on button click
 recordButton.onclick = async () => {
     // mh.sendMessage('background', 'player_record', {aspectRatio: previewAspectRatio});
@@ -802,11 +826,7 @@ recordButton.onclick = async () => {
         `);
 
 }
-/*
-// ToDo: for testing - delete
-document.querySelector('button#expandButton').onclick = () => {
-    mh.sendMessage('inject', 'dash-to-inject-test', {foo: 'bar'});
-}
  */
+/*
 
 /************ END InsertPlayer ************/

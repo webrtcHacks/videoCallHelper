@@ -164,36 +164,33 @@
                 <div class="tab-pane fade" id="injectPlayer" role="tabpanel" aria-labelledby="inject-player-tab">
                     <div class="d-flex justify-content-between h-100">
                         <!-- Left Video Container -->
-                        <div class="video-container selected">
+                        <div id="cameraPreview" class="video-container selected">
                             <img id="localVideo" class="video-element" alt="current local video"></img>
                             <div class="video-overlay">Camera Stream</div>
                         </div>
 
                         <!-- Right Video Container -->
-                        <div class="video-container">
-                            <video id="recordedVideo" class="video-element" autoplay></video>
+                        <div id="playerPreview" class="video-container">
+                            <video id="recordedVideo" class="video-element" controls muted></video>
                             <div class="video-overlay">Inject Stream</div>
 
                             <!-- Control Buttons Overlay -->
                             <div class="video-controls btn-group" role="group" aria-label="Video controls">
-                                <button class="btn btn-sm btn-light btn-video-control" id="recordButton">
-                                    <i class="bi bi-record-circle"></i>
-                                </button>
                                 <button class="btn btn-sm btn-light btn-video-control" id="playButton">
                                     <i class="bi bi-play-fill"></i>
                                 </button>
-                                <button class="btn btn-sm btn-light btn-video-control" id="injectButton">
-                                    <i class="bi bi-box-arrow-down"></i>
+                                <button class="btn btn-sm btn-light btn-video-control" id="recordButton">
+                                    <i class="bi bi-record-circle"></i>
                                 </button>
                                 <button class="btn btn-sm btn-light btn-video-control" id="openButton">
                                     <i class="bi bi-folder2-open"></i>
                                 </button>
-                                <button class="btn btn-sm btn-light btn-video-control" id="clearButton">
-                                    <i class="bi bi-trash"></i>
+                                <input type="file" id="fileInput" accept="video/*" hidden="hidden">
+                                <button class="btn btn-sm btn-light btn-video-control" id="injectButton">
+                                    <i class="bi bi-box-arrow-down"></i>
                                 </button>
-                                <!--input type="file" id="fileInput" accept="video/*"-->
-                                <button class="btn btn-sm btn-light btn-video-control" id="expandButton">
-                                    <i class="bi bi-arrows-fullscreen"></i>
+                                <!--button class="btn btn-sm btn-light btn-video-control" id="expandButton">
+                                    <i class="bi bi-arrows-fullscreen"></i-->
                                 </button>
                             </div>
                        </div>

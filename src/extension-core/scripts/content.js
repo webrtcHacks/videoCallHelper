@@ -130,7 +130,7 @@ let imagePreview = null; // used to hold the gUM preview image generator
  */
 async function showPreview(){
     const stream = streams.at(-1);  // get the last stream  // ToDo: get the highest res gUM stream
-    debug("showPreview:: stream", stream);
+    // debug("showPreview:: stream", stream);
     if(stream){
         imagePreview = new ImageStream(stream, 200, 'dash', true);
         await imagePreview.start();

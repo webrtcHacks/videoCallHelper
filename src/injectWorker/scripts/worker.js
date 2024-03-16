@@ -105,41 +105,24 @@ async function loadImpairment(reader, writer, id, kind, settings, impairmentStat
             debug(`Insertable stream error`, err);
             self.postMessage({response: "error", error: err});
         });
-
-    // self.postMessage({response: "ready"});
 }
-
 
 // Message handler
 onmessage = async (event) => {
-    debug("received message", event.data);
+    // debug("received message", event.data);
     const {command, data} = event.data;
 
     // temp for videoPlayer setup
     if (command === 'player_start') {
-        debug("player command received with data", event.data);
+        debug("player start", data);
         usePlayer = true;
         const {reader} = event.data;
         playerReader = reader.getReader();
-
-        /*
-        await reader
-            // ToDo: abstract the transformStream so I can swap them
-            .pipeThrough(impairment.transformStream)
-            .pipeTo(writer)
-            .catch(async err => {
-                // ToDo: don't throw error on muted - backpressure?
-                debug(`Insertable stream error`, err);
-                self.postMessage({response: "error", error: err});
-            });
-         */
-        // const {reader, writer, id, kind, settings, impairmentState} = event.data;
-        // await loadImpairment(reader, self.writer, id, kind, settings, impairmentState);
     }
     else if (command === 'player_stop') {
+        debug("stopping player");
         usePlayer = false;
-        playerReader.releaseLock();
-        debug("player stopped");
+        // playerReader.releaseLock();
     }
     else if (command === 'setup'){
         const {reader, writer, id, kind, settings, impairmentState} = event.data;
