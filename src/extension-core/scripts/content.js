@@ -8,26 +8,23 @@ const streams = [];
 let trackInfos = [];
 
 
+// if(process.env.NODE_ENV)
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵`);
-
 
 debug(`content.js loaded on ${window.location.href}`);
 // debug('content.js URL: ', chrome.runtime.getURL('content.js'));
-
-const mh = new MessageHandler('content');
-// if(process.env.NODE_ENV) window.mh = mh;
-
 
 let storage = await new StorageHandler("local", debug);
 const settings = storage.contents;
 debug("storage contents: ", settings);
 
+const mh = new MessageHandler('content');
+
 window.vch = {
     streams: streams,
     trackInfos: trackInfos,
+    mh: mh
 };
-
-
 
 mh.addListener(m.GET_ALL_SETTINGS, async() => {
     await mh.sendMessage('inject', m.ALL_SETTINGS, storage.contents);
@@ -133,7 +130,7 @@ let imagePreview = null; // used to hold the gUM preview image generator
  */
 async function showPreview(){
     const stream = streams.at(-1);  // get the last stream  // ToDo: get the highest res gUM stream
-    // debug("showPreview:: stream", stream);
+    debug("showPreview:: stream", stream);
     if(stream){
         imagePreview = new ImageStream(stream, 200, 'dash', true);
         await imagePreview.start();
@@ -191,6 +188,13 @@ storage.addListener('player', async (newValue) => {
 
     }
 });
+
+/*
+mh.addListener('hello_there', async (data) => {
+    debug("hello_there", data);
+});
+
+ */
 
 /************ END video player ************/
 
@@ -415,7 +419,8 @@ async function checkActiveStreams() {
     for (const stream of streams) {
         if (stream.getTracks().length === 0
             || stream.getTracks().every(track => track.readyState === 'ended')) {
-            await mh.sendMessage('all', m.GUM_STREAM_STOP, {});
+            // await mh.sendMessage('inject', m.GUM_STREAM_STOP, {});
+            await mh.sendMessage('dash', m.GUM_STREAM_STOP, {});
             // remove the stream
             const index = streams.findIndex(stream => stream.id === stream.id);
             if (index !== -1) {

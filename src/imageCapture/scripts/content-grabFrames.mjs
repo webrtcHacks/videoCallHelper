@@ -169,7 +169,7 @@ export async function grabFrames(newStream = currentStream) {
         if (imgData.value) {
             const {deviceId, width, height} = imgData.value;
             debug(`New image ${width}x${height} from ${deviceId}`);
-            await mh.sendMessage('all', m.FRAME_CAPTURE, imgData.value);
+            await mh.sendMessage('background', m.FRAME_CAPTURE, imgData.value);
         }
 
         if (imgData.done) {
@@ -182,71 +182,6 @@ export async function grabFrames(newStream = currentStream) {
     await storage.update('imageCapture', {active: true});
 
 }
-
-/** Class that regularly generates images from a stream
- * @param {MediaStream} stream - defaults to currentStream global
- * @param {number} captureIntervalMs - how often to send the image, defaults to 1000ms
- * @param {string} destination- where to send the image, defaults to dash
- * @param {boolean}thumbnail -  to resize the image to thumbnail size, defaults to false
- * */
-export class ImageStream {
-     constructor(stream = currentStream, captureIntervalMs = 1000, destination = 'dash', thumbnail = false) {
-        this.stream = stream;
-        this.captureIntervalMs = captureIntervalMs;
-        this.destination = destination;
-        this.thumbnail = thumbnail;
-        this.running = false;
-        this.captureInterval = null;
-    }
-
-    /**
-     * Starts periodic stream of images - intended for preview function in dash
-     * interval is set in constructor
-     * @returns {Promise<void>} -
-     */
-    async start() {
-
-        const getImg = await getImages(this.stream, this.thumbnail);
-        return new Promise(async (resolve, reject) => {
-
-            if (!this.stream?.getVideoTracks()[0]) {
-                reject("No video tracks to capture from", this.stream);
-                return
-            }
-
-            this.captureInterval = setInterval(async () => {
-
-                if (!this.stream?.active) {
-                    clearInterval(this.captureInterval);
-                    resolve("imageStream stream is no longer active", this.stream)
-                }
-
-                const {value, done} = await getImg.next();
-
-                if (value) {
-                    // debug("Preview image", value);
-                    await mh.sendMessage(this.destination, m.FRAME_CAPTURE, value);
-                }
-
-                if (done) {
-                    clearInterval(this.captureInterval);
-                    resolve("No more image data")
-                }
-            }, this.captureIntervalMs);
-        });
-    }
-
-    /**
-     * Stops the image stream
-     * @returns {Promise<void>} -
-     */
-    async stop() {
-        clearInterval(this.captureInterval);
-    }
-
-
-}
-
 
 // check for settings changes
 storage.addListener('imageCapture', async (newValue) => {
@@ -272,3 +207,72 @@ storage.addListener('imageCapture', async (newValue) => {
     }
 
 });
+
+
+
+/** Class that regularly generates images from a stream
+ * @param {MediaStream} stream - defaults to currentStream global
+ * @param {number} captureIntervalMs - how often to send the image, defaults to 1000ms
+ * @param {string} destination- where to send the image, defaults to dash
+ * @param {boolean}thumbnail -  to resize the image to thumbnail size, defaults to false
+ * */
+export class ImageStream {
+     constructor(stream = currentStream, captureIntervalMs = 1000, destination = 'dash', thumbnail = false) {
+        this.stream = stream;
+        this.captureIntervalMs = captureIntervalMs;
+        this.destination = destination;
+        this.thumbnail = thumbnail;
+        this.running = false;
+        this.captureInterval = null;
+    }
+
+    /**
+     * Starts periodic stream of images - intended for preview function in dash
+     * interval is set in constructor
+     * @returns {Promise<void>} -
+     */
+    async start() {
+
+        if (!this.stream?.active)
+            debug("No active stream to grab frames from", this.stream);
+
+        const getImg = await getImages(this.stream, this.thumbnail);
+        return new Promise(async (resolve, reject) => {
+
+            if (!this.stream?.getVideoTracks()[0]) {
+                reject("No video tracks to capture from", this.stream);
+                return
+            }
+
+            this.captureInterval = setInterval(async () => {
+
+                if (!this.stream?.active) {
+                    clearInterval(this.captureInterval);
+                    resolve("imageStream stream is no longer active", this.stream)
+                }
+
+                const {value, done} = await getImg.next();
+
+                if (value) {
+                    // debug("Preview image", value);
+                    await mh.sendMessage(this.destination, m.FRAME_STREAM, value);
+                }
+
+                if (done) {
+                    clearInterval(this.captureInterval);
+                    resolve("No more image data")
+                }
+            }, this.captureIntervalMs);
+        });
+    }
+
+    /**
+     * Stops the image stream
+     * @returns {Promise<void>} -
+     */
+    async stop() {
+        clearInterval(this.captureInterval);
+    }
+
+
+}

@@ -1,3 +1,5 @@
+const VERBOSE = false;  // this is chatty
+
 /*
  * Relays messages between contexts in a consistent way
  *
@@ -6,7 +8,7 @@
  * - inject: inject script
  * - background: background script
  * - dash: drop-down dash iFrame
- * - worker: worker script // Todo:implement worker contexts
+ * - worker: worker script // Todo: implement worker contexts - that will be a lot of work
  *
  * Relays
  *  - content relays between background, dash, and inject
@@ -57,21 +59,18 @@ export class MessageHandler {
 
         // Setup listeners
         if (context === 'content') {
-            this.#documentListener();
-            this.#runtimeListener();
-            this.#iFrameListener();
+            this.#documentListener();   // from inject
+            this.#runtimeListener();    // from background
+            this.#iFrameListener();     // from dash
         } else if (context === 'inject') {
-            this.#documentListener();
+            this.#documentListener();   // from content
         } else if (context === 'dash') {
-            this.#runtimeListener();
+            this.#runtimeListener();    // from background
         } else if (context === 'background') {
-            this.#runtimeListener();
-        } else if (context === 'worker') {
-
-            // this.#runtimeListener('worker', this.#listeners);
-        } else
+            this.#runtimeListener();    // from content
+        }
+        else
             this.debug(`invalid context for listener ${context}`);
-
 
         this.context = context;
 
@@ -82,63 +81,107 @@ export class MessageHandler {
      * @param {string} to - the context to send the message to
      * @param {string} message - the message to send
      * @param {object} data - the data to send with the message
+     * @param {string} origin - the original context the message is coming from
+     *
+     * Communication Methods Table:
+     *  from col to row
+     * |            | background                    | content                      | inject                    | dash                           |
+     * |------------|-------------------------------|------------------------------|---------------------------|--------------------------------|
+     * | background | // n/a                        | chrome.runtime.sendMessage   | // relay via context      | chrome.runtime.sendMessage      |
+     * | content    | chrome.tabs.sendMessage       | // n/a                       | document.dispatchEvent    | window.parent.postMessage       |
+     * | inject     | // relay via context          | document.dispatchEvent       | // n/a                    | // relay via context            |
+     * | dash       | chrome.tabs.sendMessage       | chrome.runtime.sendMessage   | // relay via context      | // n/a                          |
+     *
      */
-    sendMessage = (to = 'all', message, data = {}) => {
-        if (this.context === to)
+
+    sendMessage = (to, message, data = {}, origin = this.context) => {
+        if (this.context === to || !to || !message)
             return;
 
         try {
             let messageToSend = {
                 from: this.context,
+                origin: origin,
                 to: to,
                 message: message,
-                timestamp: (new Date).toLocaleString(),
+                timestamp: (new Date()).toLocaleString(),
                 data: data
             };
 
-            if (this.context === 'background') {
-                // const tabId = data.tabId; // ToDo: error checking
-                this.debug(`target tabId: ${this.tabId}`); // was data.tabId
-                chrome.tabs.sendMessage(this.tabId, {...messageToSend})
-            } else if (this.context === 'content' && to === 'inject') {
-                const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
-                document.dispatchEvent(toInjectEvent);
-            } else if (this.context === 'inject') {
-                messageToSend.data = JSON.stringify(messageToSend.data);  // can't pass objects:
-                const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
-                document.dispatchEvent(toContentEvent);
-            }
-            else if (this.context === 'dash' && to !== 'background') {
-                window.parent.postMessage(messageToSend, "*");
-            }
-                // Handle worker comms
-            /*
-            else if (this.context === 'worker') {
-                this.workerInstance.postMessage({ message, data });
-            } else if (this.context === 'inject' && to === 'worker') {
-                // Assuming workerInstance is available in the inject script
-                this.workerInstance.postMessage({ message, data });
-            } else if (this.context === 'dash' && to === 'worker') {
-                // Send message to worker from dash
-                // You need a reference to the worker in the dash context
-                this.workerInstance.postMessage({ message, data });
-            }
-             */
+            // Logging for debug
+            if(VERBOSE)
+                if(this.context !== origin)
+                    this.debug(`sending "${message}" from "${origin}" via "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
+                else
+                    this.debug(`sending "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
 
 
-            else {
-                // this should only handle content -> background
-                // ToDo: debug
-                this.debug(`${this.context} -> background`, messageToSend);
-                chrome.runtime.sendMessage(messageToSend, {}, response => {
-                    if (chrome.runtime.lastError)
-                        this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
-                });
+            switch (this.context) {
+                case 'background':
+                    if (to === 'content') {
+                        this.debug(`target tabId: ${this.tabId}`);
+                        chrome.tabs.sendMessage(this.tabId, { ...messageToSend });
+                    } else if (to === 'dash') {
+                        chrome.runtime.sendMessage({ ...messageToSend });
+                    }
+                    break;
+                case 'content':
+                    if (to === 'background' || to === 'dash') {
+                        chrome.runtime.sendMessage(messageToSend, {}, response => {
+                            if (chrome.runtime.lastError)
+                                this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
+                        });
+                    } else if (to === 'inject') {
+                        const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
+                        document.dispatchEvent(toInjectEvent);
+                    }
+                    break;
+                case 'inject':
+                    if (to === 'content') {
+                        messageToSend.data = JSON.stringify(messageToSend.data);
+                        const toContentEvent = new CustomEvent('vch', { detail: messageToSend });
+                        document.dispatchEvent(toContentEvent);
+                    }
+                    break;
+                case 'dash':
+                    if (to === 'background') {
+                        chrome.runtime.sendMessage({ ...messageToSend });
+                    } else if (to === 'content') {
+                        const extensionOrigin = new URL(chrome.runtime.getURL('/')).origin;
+                        window.parent.postMessage(messageToSend, extensionOrigin);
+                    }
+                    break;
+                default:
+                    this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
+                    break;
             }
-
-            this.debug(`sent "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
         } catch (err) {
             this.debug(`ERROR on "${message}"`, err);
+        }
+    }
+
+    /**
+     * Relays a message to another extension context
+     * @param {string} from - the original context the message is coming from
+     * @param {string} to - the context to send the message to
+     * @param {string} message - the message to send
+     * @param {object} data - the data to send with the message
+     */
+    #relayHandler(from, to, message, data){
+        // 1. background to inject
+        // 2. inject to background
+        // 3. dash to inject
+
+        // Relay scenarios
+        switch (`${from}→${to}`){
+            case 'background→inject':
+            case 'inject→background':
+            case 'dash→inject':
+                this.debug(`relayHandler for "${from}→${to}" via ${this.context} for ${message} with data ${JSON.stringify(data)}`);
+                this.sendMessage(to, message, data, from);
+                break;
+            default:
+
         }
     }
 
@@ -149,7 +192,6 @@ export class MessageHandler {
         chrome.runtime.onMessage.addListener(
             async (request, sender, sendResponse) => {
 
-                // ToDo: tabId not coming through
                 const {to, from, message} = request;
                 let data = request?.data || {};
 
@@ -165,21 +207,20 @@ export class MessageHandler {
                 //  Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
                 //  the below is what shows up normally
 
-                // this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 
-                // skip messages not sent to this listener's context
-                if (to !== this.context && to !== 'all')
+                // skip messages not sent to this listener's context and ignore messages to self
+                if (from === this.context)
                     return
-                // ignore messages to self
-                else if (from === this.context) // && (to === this.context || to !== 'all'))
-                    return
+                if(to !== this.context){
+                    this.#relayHandler(from, to, message, data);
+                    return;
+                }
 
-                // this.debug(this.#listeners);
+                if(VERBOSE)
+                    this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
+
                 this.#listeners.forEach(listener => {
-                    // this.debug("trying this listener", listener);
-                    //this.debug("with this callback args", listener.callback.arguments);
                     if (message === listener.message) { //&& (from === null || from === listener.from)){
-                        //this.debug(listener.callback.arguments);
                         // ToDo: listener.arguments doesn't exist - should I make that?
                         if (this.context === 'background')
                             listener.callback.call(listener.callback, data, listener.arguments);
@@ -194,7 +235,7 @@ export class MessageHandler {
     }
 
     /**
-     * Adds a listener for messages from inject to content
+     * Adds a listener for messages from inject to content and content to inject
      */
     #documentListener() {
         document.addEventListener('vch', async e => {
@@ -206,20 +247,16 @@ export class MessageHandler {
             const {to, from, message, data} = e.detail;
 
             // ignore messages to self
-            if (from === this.context) // && (to === this.context || to !== 'all'))
+            if (from === this.context)
                 return
-            else if (data.origin === 'dash') {
-                // ToDo: ???
-            }
-            // relay the message to background
-            else if (to === 'all' || to === 'background') {
-                await this.sendMessage(to, message, JSON.parse(data));
+            if(to !== this.context){
+                this.#relayHandler(from, to, message, data);
+                return;
             }
 
             this.debug(`documentListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, e.detail);
 
             this.#listeners.forEach(listener => {
-                // this.debug("trying this listener", listener);
                 if (message === listener.message) {
                     let dataObj = typeof data === 'string' ? JSON.parse(data) : data;
                     // ToDo: listener.arguments doesn't exist - should I make that?
@@ -236,33 +273,25 @@ export class MessageHandler {
         // ToDo: move this into #iFrame listener
         const extensionOrigin = new URL(chrome.runtime.getURL('/')).origin;
         window.addEventListener('message', (e) => {
-            const {to, from, message, data} = e.data;
             if (e.origin !== extensionOrigin || from !== 'dash') return;    // only dash should use this
+
+            const {to, from, message, data} = e.data;
+            if (from === this.context)
+                return
+            if(to !== this.context){
+                this.#relayHandler(from, to, message, data);
+                return;
+            }
+
             this.debug(`content iFrame listener receiving "${message}" from "${from}" to "${to}" in context "${this.context}"`, e.data);
 
 
-            // ToDo: this is triggering repeat messages
-            // b/c multiple calls to content context?
-
-            // relay to inject
-            if (to === 'inject' || to === 'worker') {
-                e.data.origin = "dash";
-                const toInjectEvent = new CustomEvent('vch', {detail: e.data});
-                document.dispatchEvent(toInjectEvent);
-            }
-            // relay to background
-            else if (to === 'background') {
-                e.data.origin = "dash";
-                this.sendMessage('background', message, e.data);
-            } else if (to === 'content') {
-                this.#listeners.forEach(listener => {
-                    if (message === listener.message) {
-                        let dataObj = typeof data === 'string' ? JSON.parse(data) : data;
-                        listener.callback.call(listener.callback, dataObj, listener.arguments);
-                    }
-                });
-            }
-
+            this.#listeners.forEach(listener => {
+                if (message === listener.message) {
+                    let dataObj = typeof data === 'string' ? JSON.parse(data) : data;
+                    listener.callback.call(listener.callback, dataObj, listener.arguments);
+                }
+            });
         });
     }
 
@@ -274,9 +303,8 @@ export class MessageHandler {
      * @param {string} tabId - the tabId to listen for messages from
      */
     addListener = (message = "", callback = null, tabId) => {
-        // ToDo: return an error if the listener isn't active
         this.#listeners.push({message, callback, tabId});
-        this.debug(`added listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
+        if(VERBOSE) this.debug(`added listener "${message}" ` + `${tabId ? " for " + tabId : ""}`);
     }
 
     // ToDo: test this - all copilot
@@ -354,5 +382,10 @@ export const MESSAGE = {
     // bad connection
     GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
     UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
+
+    // player
+    PLAYER_START: 'player_start',
+    PLAYER_STOP: 'player_stop',
+    FRAME_STREAM: 'frame_stream',
 
 }

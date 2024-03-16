@@ -608,7 +608,7 @@ let lastRecordingTime = 0;
 // let blob = null;
 
 // local video preview
-mh.addListener(m.FRAME_CAPTURE, (data) => {
+mh.addListener(m.FRAME_STREAM, (data) => {
     // debug("frame capture data received", data);
     localVideoPreview.src = data.blobUrl;
     previewAspectRatio = localVideoPreview.naturalWidth / localVideoPreview.naturalHeight;     // needed for recording window
