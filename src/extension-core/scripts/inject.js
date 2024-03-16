@@ -63,7 +63,7 @@ async function transferStream(stream, message = m.GUM_STREAM_START, data = {}) {
     document.body.appendChild(video);
     video.oncanplay = () => {
         video.oncanplay = null;
-        mh.sendMessage('all', message, {id: video.id, ...data});
+        mh.sendMessage('content', message, {id: video.id, ...data});
     }
 }
 
@@ -85,14 +85,14 @@ async function processTrack(track, sourceLabel = "") {
     // ToDo: do I really need to enumerate the object here?
     const {id, kind, label, readyState, deviceId} = track;
     const trackData = {id, kind, label, readyState, deviceId};
-    mh.sendMessage('all', `${sourceLabel}_track_added`, {trackData});
+    mh.sendMessage('background', `${sourceLabel}_track_added`, {trackData});
 
     async function trackEventHandler(event) {
         const type = event.type;
         const {id, kind, label, readyState, enabled, contentHint, muted, deviceId} = event.target;
         const trackData = {id, kind, label, readyState, enabled, contentHint, muted, deviceId};
         debug(`${sourceLabel}_${type}`, trackData);
-        mh.sendMessage('all', `${sourceLabel}_track_${type}`, {trackData});
+        mh.sendMessage('background', `${sourceLabel}_track_${type}`, {trackData});
     }
 
     track.addEventListener('ended', trackEventHandler);
@@ -121,7 +121,7 @@ function monitorAudio(peerConnection) {
             const avg = audioLevels.reduce((p, c) => p + c, 0) / audioLevels.length;
             // debug("audioLevel", avg);
             // ToDo: stop this when it is null or the PC is closed
-            mh.sendMessage('all', m.LOCAL_AUDIO_LEVEL, {audioLevel: avg, totalAudioEnergy});
+            mh.sendMessage('background', m.LOCAL_AUDIO_LEVEL, {audioLevel: avg, totalAudioEnergy});
             audioLevels.length = 0;
             counter = 0
         }
@@ -355,7 +355,7 @@ else {
     RTCPeerConnection.prototype.setRemoteDescription = function () {
 
         // ToDo: do this as part of onconnectionstatechange
-        mh.sendMessage('all', m.PEER_CONNECTION_OPEN, {});
+        mh.sendMessage('background', m.PEER_CONNECTION_OPEN, {});
 
         // Remove audio level monitoring
         /*
@@ -394,7 +394,7 @@ else {
     const origPeerConnClose = RTCPeerConnection.prototype.close;
     RTCPeerConnection.prototype.close = function () {
         debug("closing PeerConnection ", this);
-        mh.sendMessage('all', m.PEER_CONNECTION_CLOSED, this);
+        mh.sendMessage('background', m.PEER_CONNECTION_CLOSED, this);
         return origPeerConnClose.apply(this, arguments)
     };
 
