@@ -4,10 +4,16 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 📈️�
 
 import {StorageHandler} from '../modules/storageHandler.mjs';
 const storage = await new StorageHandler("local", debug);
-window.storage = storage; // for debugging
 
 import {MessageHandler, MESSAGE as m} from '../modules/messageHandler.mjs';
 const mh = new MessageHandler('dash');
+
+// To help with debugging
+window.vch = {
+    storage: storage,
+    mh: mh,
+    player: {}
+}
 
 /*
 // Remnants from past experiments
@@ -679,6 +685,8 @@ openButton.onclick = async () => {
         playerPreview.currentTime = 1; // Optional: Reset time to start
         playerPreview.load(); // Load the new source
         // playerPreview.play(); // Play the new source
+
+        window.vch.player.lastFile = file;
 
     } catch (err) {
         // ToDo: Handle errors or cancellation

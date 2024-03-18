@@ -1,6 +1,5 @@
 'use strict';
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
-// import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
 import {AlterStream} from "../../badConnection/scripts/alterTrack.mjs";
 
@@ -16,13 +15,15 @@ let processTrackSwitch = true;
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉`);
 
 const mh = new MessageHandler('inject');
-// if(process.env.NODE_ENV) window.mh = mh;
+
+// exit if shim already loaded for some reason
+if (window.vch) throw new Error("vch already loaded");
 
 // get settings from storage
 async function getSettings() {
     return new Promise((resolve, reject) => {
 
-       debug("get initial settings timer started");
+        debug("get initial settings timer started");
         const timeout = setTimeout(() => {
             debug("get initial settings timeout");
             reject("get initial settings timeout")
@@ -41,13 +42,13 @@ async function getSettings() {
 }
 
 // Call the function
-const settings = await getSettings().catch(err => debug("error getting initial settings", err));
-debug("initial settings", settings);
+const vchSettings = await getSettings().catch(err => debug("error getting initial settings", err));
+debug("initial settings", vchSettings);
 
 // ToDo: use the settings to initialize any other inject context modules
 
 // ForDeviceManager
-const deviceManager = new DeviceManager(settings['deviceManager'] ?? null);
+const deviceManager = new DeviceManager(vchSettings['deviceManager'] ?? null);
 
 
 // Put the stream in a temp DOM element for transfer to content.js context
@@ -135,145 +136,136 @@ function monitorAudio(peerConnection) {
     });
 }
 
-if (window.videoCallHelper) {
-    debug("shims already loaded");
-}
 // Load shims
-else {
 
 // ToDo: Google Meet doesn't use this
 // ToDo: make a switch for this - not sure I need to shim this now
-    /*
-    // getDisplayMedia Shim
-    const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
-    navigator.mediaDevices.getDisplayMedia = async (constraints) => {
-        const gdmStream = await origGetDisplayMedia(constraints);
-        // ToDo: check for audio too?
-        const [track] = gdmStream.getVideoTracks();
-        debug(`getDisplayMedia tracks: `, gdmStream.getTracks());
-        await processTrack(track, "gdm");
-        return gdmStream
-    }
-     */
+/*
+// getDisplayMedia Shim
+const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+navigator.mediaDevices.getDisplayMedia = async (constraints) => {
+    const gdmStream = await origGetDisplayMedia(constraints);
+    // ToDo: check for audio too?
+    const [track] = gdmStream.getVideoTracks();
+    debug(`getDisplayMedia tracks: `, gdmStream.getTracks());
+    await processTrack(track, "gdm");
+    return gdmStream
+}
+ */
 
 // getUserMedia Shim
 
-    const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
-    // shim getUserMedia; return alterStream track if vch-audio or vch-video is in the constraints
-    async function shimGetUserMedia(constraints) {
-        // ToDo: need to handle the case when a subsequent gUM call asks for vch-(audio|video) when
-        //  it was already created - do I force the stop of the old one and start a new worker? Reuse?
-        //  Does track.stop() even stop the worker?
+// shim getUserMedia; return alterStream track if vch-audio or vch-video is in the constraints
+async function shimGetUserMedia(constraints) {
+    // ToDo: need to handle the case when a subsequent gUM call asks for vch-(audio|video) when
+    //  it was already created - do I force the stop of the old one and start a new worker? Reuse?
+    //  Does track.stop() even stop the worker?
 
-        if(deviceManager.useFakeDevices(constraints)) {
-            const fakeStream = await deviceManager.fakeDeviceStream(constraints, origGetUserMedia);
-            await transferStream(deviceManager.unalteredStream);
-            // await transferStream(fakeStream);
-            return fakeStream;
-        }
-        // ToDo: initial testing
-        else if(true) {
-            const stream = await origGetUserMedia(constraints);
-            await transferStream(stream);
-            const alteredStream = await new AlterStream(stream);
-            debug("returning alteredStream", alteredStream);
-            return alteredStream;
-        }
-        else {
-            debug("gUM with no fakeDevices using constraints:", constraints);
-            const stream = await origGetUserMedia(constraints);
-            await transferStream(stream);
-            return stream;
-        }
-
+    if (deviceManager.useFakeDevices(constraints)) {
+        const fakeStream = await deviceManager.fakeDeviceStream(constraints, origGetUserMedia);
+        await transferStream(deviceManager.unalteredStream);
+        // await transferStream(fakeStream);
+        return fakeStream;
+    }
+    // ToDo: make badConnection and injectPlayer the same enabled switch
+    else if (vch?.settings['badConnection']?.enabled) {
+        const stream = await origGetUserMedia(constraints);
+        await transferStream(stream);
+        const alteredStream = await new AlterStream(stream);
+        debug("returning alteredStream", alteredStream);
+        return alteredStream;
+    } else {
+        debug("gUM with no fakeDevices using constraints:", constraints);
+        const stream = await origGetUserMedia(constraints);
+        await transferStream(stream);
+        return stream;
     }
 
-    navigator.mediaDevices.getUserMedia = async (constraints) => {
-        debug("navigator.mediaDevices.getUserMedia called");
+}
 
-        if (!appEnabled) {
-            return origGetUserMedia(constraints)
-        }
+navigator.mediaDevices.getUserMedia = async (constraints) => {
+    debug("navigator.mediaDevices.getUserMedia called");
 
-        return await shimGetUserMedia(constraints);
-
+    if (!appEnabled) {
+        return origGetUserMedia(constraints)
     }
 
-    let _webkitGetUserMedia = async function (constraints, onSuccess, onError) {
-        if (!appEnabled) {
-            return _webkitGetUserMedia(constraints, onSuccess, onError)
-        }
+    return await shimGetUserMedia(constraints);
 
+}
+
+let _webkitGetUserMedia = async function (constraints, onSuccess, onError) {
+    if (!appEnabled) {
+        return _webkitGetUserMedia(constraints, onSuccess, onError)
+    }
+
+    debug("navigator.webkitUserMedia called");
+    try {
         debug("navigator.webkitUserMedia called");
-        try {
-            debug("navigator.webkitUserMedia called");
-            const stream = await shimGetUserMedia(constraints);
-            return onSuccess(stream)
-        } catch (err) {
-            debug("_webkitGetUserMedia error!:", err);
-            return onError(err);
-        }
-    };
+        const stream = await shimGetUserMedia(constraints);
+        return onSuccess(stream)
+    } catch (err) {
+        debug("_webkitGetUserMedia error!:", err);
+        return onError(err);
+    }
+};
 
-    navigator.webkitUserMedia = _webkitGetUserMedia;
-    navigator.getUserMedia = _webkitGetUserMedia;
-    navigator.mediaDevices.getUserMedia = shimGetUserMedia;
+navigator.webkitUserMedia = _webkitGetUserMedia;
+navigator.getUserMedia = _webkitGetUserMedia;
+navigator.mediaDevices.getUserMedia = shimGetUserMedia;
 
 
 // This doesn't seem to be used by Google Meet
-    const origMediaStreamAddTrack = MediaStream.prototype.addTrack;
-    MediaStream.prototype.addTrack = function (track) {
-        debug(`addTrack shimmed on MediaStream`, this, track);
-        debug("MediaStream track settings", track.getSettings());
-        return origMediaStreamAddTrack.apply(this, arguments);
-    }
+const origMediaStreamAddTrack = MediaStream.prototype.addTrack;
+MediaStream.prototype.addTrack = function (track) {
+    debug(`addTrack shimmed on MediaStream`, this, track);
+    debug("MediaStream track settings", track.getSettings());
+    return origMediaStreamAddTrack.apply(this, arguments);
+}
 
 
 // peerConnection shims
 
-    window.pcTracks = [];
-    window.pcStreams = [];      // streams always empty
-    window.pcs = [];
+const origAddTrack = RTCPeerConnection.prototype.addTrack;
+RTCPeerConnection.prototype.addTrack = function (track, stream) {
+    let streams = [...arguments].slice(1);
+    debug(`addTrack shimmed on peerConnection`, this, track, ...streams);
+    debug("peerConnection local track settings", track.getSettings());
+    // vch.pcTracks.push(track);
+    processTrack(track, "local").catch(err => debug("processTrack error", err));
 
-    const origAddTrack = RTCPeerConnection.prototype.addTrack;
-    RTCPeerConnection.prototype.addTrack = function (track, stream) {
-        let streams = [...arguments].slice(1);
-        debug(`addTrack shimmed on peerConnection`, this, track, ...streams);
-        debug("peerConnection local track settings", track.getSettings());
-        // window.pcTracks.push(track);
-        processTrack(track, "local").catch(err => debug("processTrack error", err));
+    // ToDo: handle if the switch is changed
+    // ToDo: no check to see if this is an audio track?
+    if (monitorAudioSwitch)
+        monitorAudio(this);
 
-        // ToDo: handle if the switch is changed
-        // ToDo: no check to see if this is an audio track?
-        if (monitorAudioSwitch)
-            monitorAudio(this);
+    return origAddTrack.apply(this, arguments)
+};
 
-        return origAddTrack.apply(this, arguments)
-    };
+const origPeerConnAddStream = RTCPeerConnection.prototype.addStream;
+RTCPeerConnection.prototype.addStream = function (stream) {
+    debug(`addStream shimmed on peerConnection`, this, stream);
+    const tracks = stream.getTracks();
+    tracks.forEach(track => processTrack(track, "local"));
 
-    const origPeerConnAddStream = RTCPeerConnection.prototype.addStream;
-    RTCPeerConnection.prototype.addStream = function (stream) {
-        debug(`addStream shimmed on peerConnection`, this, stream);
-        const tracks = stream.getTracks();
-        tracks.forEach(track => processTrack(track, "local"));
+    /*
+    // I shouldn't need to do this anymore if using vch-device approach
+    const alteredTracks = tracks.map(track => {
+        alterTrack(track);
+        vch.pcTracks.push(track);
+    });
 
-        /*
-        // I shouldn't need to do this anymore if using vch-device approach
-        const alteredTracks = tracks.map(track => {
-            alterTrack(track);
-            window.pcTracks.push(track);
-        });
+    const alteredStream = new MediaStream(alteredTracks);
+    transferStream(alteredStream, m.PEER_CONNECTION_LOCAL_ADD_TRACK)
+        .catch(err => debug("transferStream error", err));
+    debug("changing addStream stream (source, change)", stream, alteredStream);
+    return origPeerConnAddStream.apply(this, [alteredStream, ...arguments])
+     */
 
-        const alteredStream = new MediaStream(alteredTracks);
-        transferStream(alteredStream, m.PEER_CONNECTION_LOCAL_ADD_TRACK)
-            .catch(err => debug("transferStream error", err));
-        debug("changing addStream stream (source, change)", stream, alteredStream);
-        return origPeerConnAddStream.apply(this, [alteredStream, ...arguments])
-         */
-
-        return origPeerConnAddStream.apply(this, arguments)
-    };
+    return origPeerConnAddStream.apply(this, arguments)
+};
 
 //  It looks like Google Meet has its own addStream shim that does a track replacement instead of addTrack
 //  try to shim RTCRtpSender.replaceTrack() - from MDN: https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpSender
@@ -281,172 +273,186 @@ else {
 //    performing renegotiation. This method can be used, for example, to toggle between the front- and
 //    rear-facing cameras on a device.
 
-    const origSenderReplaceTrack = RTCRtpSender.prototype.replaceTrack;
-    RTCRtpSender.prototype.replaceTrack = function (track) {
-        debug(`replaceTrack shimmed on RTCRtpSender`, this, track);
-        debug("RTC sender track settings", track.getSettings());
+const origSenderReplaceTrack = RTCRtpSender.prototype.replaceTrack;
+RTCRtpSender.prototype.replaceTrack = function (track) {
+    debug(`replaceTrack shimmed on RTCRtpSender`, this, track);
+    debug("RTC sender track settings", track.getSettings());
 
-        window.pcTracks.push(track);
+    vch.pcTracks.push(track);
 
-        /*
-        if (track.sourceTrack) {
-            debug("track already altered");
-        } else {
-            const alteredTrack = alterTrack(track);
-            arguments[0] = alteredTrack;
-            transferStream(new MediaStream([alteredTrack]), m.PEER_CONNECTION_LOCAL_REPLACE_TRACK)
-                .catch(err => debug("transferStream error", err));
-
-        }
-         */
-
-        return origSenderReplaceTrack.apply(this, arguments);
+    /*
+    if (track.sourceTrack) {
+        debug("track already altered");
+    } else {
+        const alteredTrack = alterTrack(track);
+        arguments[0] = alteredTrack;
+        transferStream(new MediaStream([alteredTrack]), m.PEER_CONNECTION_LOCAL_REPLACE_TRACK)
+            .catch(err => debug("transferStream error", err));
 
     }
+     */
+
+    return origSenderReplaceTrack.apply(this, arguments);
+
+}
 
 
-    const origAddTransceiver = RTCPeerConnection.prototype.addTransceiver;
-    RTCPeerConnection.prototype.addTransceiver = function () {
-        // const init = arguments[1] || undefined;
-        debug(`addTransceiver shimmed on peerConnection`, this, arguments);
-        window.pcs.push(this);
-        if (typeof (arguments[0]) !== 'string') {  // could be MediaStreamTrack, Canvas, Generator, etc
-            const track = arguments[0];
-            window.pcTracks.push(track);
+const origAddTransceiver = RTCPeerConnection.prototype.addTransceiver;
+RTCPeerConnection.prototype.addTransceiver = function () {
+    // const init = arguments[1] || undefined;
+    debug(`addTransceiver shimmed on peerConnection`, this, arguments);
+    vch.pcs.push(this);
+    if (typeof (arguments[0]) !== 'string') {  // could be MediaStreamTrack, Canvas, Generator, etc
+        const track = arguments[0];
+        vch.pcTracks.push(track);
 
-            /*
-            const alteredTrack = alterTrack(track);
-            debug("changing transceiver track (source, change)", track, alteredTrack);
-            arguments[0] = alteredTrack;
-             */
-
-            return origAddTransceiver.apply(this, arguments)
-        }
         /*
-        else if((init?.direction === 'sendrecv' || init?.direction === 'sendonly') && init?.streams){
-            init.streams.forEach( (stream, idx) => {
-                debug("addTransceiver stream", stream);
-                debug("addTransceiver stream tracks", stream.getTracks());
-                window.pcStreams.push(stream);
+        const alteredTrack = alterTrack(track);
+        debug("changing transceiver track (source, change)", track, alteredTrack);
+        arguments[0] = alteredTrack;
+         */
 
-                // This doesn't do anything
-                stream.addEventListener('addtrack', (event) => {
-                    debug("addTransceiver stream addtrack event", event);
-                    const track = event.track;
-                    window.pcTracks.push(track);
-                });
+        return origAddTransceiver.apply(this, arguments)
+    }
+    /*
+    else if((init?.direction === 'sendrecv' || init?.direction === 'sendonly') && init?.streams){
+        init.streams.forEach( (stream, idx) => {
+            debug("addTransceiver stream", stream);
+            debug("addTransceiver stream tracks", stream.getTracks());
+            vch.pcStreams.push(stream);
+
+            // This doesn't do anything
+            stream.addEventListener('addtrack', (event) => {
+                debug("addTransceiver stream addtrack event", event);
+                const track = event.track;
+                vch.pcTracks.push(track);
             });
+        });
 
-            const newArguments = [arguments[0], init];
-            // return origAddTransceiver.apply(this, newArguments)
-            debug("addTransceiver changed [debug]", newArguments);
-            return origAddTransceiver.apply(this, arguments)
+        const newArguments = [arguments[0], init];
+        // return origAddTransceiver.apply(this, newArguments)
+        debug("addTransceiver changed [debug]", newArguments);
+        return origAddTransceiver.apply(this, arguments)
 
-        }
-
-         */
-        else {
-            debug("addTransceiver no change");
-            return origAddTransceiver.apply(this, arguments)
-        }
     }
 
-    const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
-    RTCPeerConnection.prototype.setRemoteDescription = function () {
+     */
+    else {
+        debug("addTransceiver no change");
+        return origAddTransceiver.apply(this, arguments)
+    }
+}
 
-        // ToDo: do this as part of onconnectionstatechange
-        mh.sendMessage('background', m.PEER_CONNECTION_OPEN, {});
+const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
+RTCPeerConnection.prototype.setRemoteDescription = function () {
 
-        // Remove audio level monitoring
-        /*
-        // ToDo: average this locally before sending?
-        let interval = setInterval(() =>
-            this.getReceivers().forEach(receiver => {
-                const {track: {id, kind, label}, transport} = receiver;
-                // const {id, kind, label} = track;
-                if (transport?.state !== 'connected') {
-                    // debug("not connected", transport.state);
-                    clearInterval(interval);
-                    return
-                }
+    // ToDo: do this as part of onconnectionstatechange
+    mh.sendMessage('background', m.PEER_CONNECTION_OPEN, {});
 
-                if (kind === 'audio' && monitorAudioSwitch) {
-                    const sources = receiver.getSynchronizationSources();
-                    sources.forEach(syncSource => {
-                        const {audioLevel, source} = syncSource;
-                        sendMessage('all', m.REMOTE_AUDIO_LEVEL, {audioLevel, source, id, kind, label});
-                        // debug(`${source} audioLevel: ${audioLevel}`)
-                    })
-                }
-            }), 1000);
+    // Remove audio level monitoring
+    /*
+    // ToDo: average this locally before sending?
+    let interval = setInterval(() =>
+        this.getReceivers().forEach(receiver => {
+            const {track: {id, kind, label}, transport} = receiver;
+            // const {id, kind, label} = track;
+            if (transport?.state !== 'connected') {
+                // debug("not connected", transport.state);
+                clearInterval(interval);
+                return
+            }
 
-         */
+            if (kind === 'audio' && monitorAudioSwitch) {
+                const sources = receiver.getSynchronizationSources();
+                sources.forEach(syncSource => {
+                    const {audioLevel, source} = syncSource;
+                    sendMessage('all', m.REMOTE_AUDIO_LEVEL, {audioLevel, source, id, kind, label});
+                    // debug(`${source} audioLevel: ${audioLevel}`)
+                })
+            }
+        }), 1000);
 
-        this.addEventListener('track', (e) => {
-            const track = e.track;
-            processTrack(track, "remote").catch(err => debug("processTrack error", err));
-            debug(`setRemoteDescription track event on peerConnection`, this, track)
-        });
-        return origPeerConnSRD.apply(this, arguments)
-    };
+     */
+
+    this.addEventListener('track', (e) => {
+        const track = e.track;
+        processTrack(track, "remote").catch(err => debug("processTrack error", err));
+        debug(`setRemoteDescription track event on peerConnection`, this, track)
+    });
+    return origPeerConnSRD.apply(this, arguments)
+};
 
 
-    const origPeerConnClose = RTCPeerConnection.prototype.close;
-    RTCPeerConnection.prototype.close = function () {
-        debug("closing PeerConnection ", this);
-        mh.sendMessage('background', m.PEER_CONNECTION_CLOSED, this);
-        return origPeerConnClose.apply(this, arguments)
-    };
+const origPeerConnClose = RTCPeerConnection.prototype.close;
+RTCPeerConnection.prototype.close = function () {
+    debug("closing PeerConnection ", this);
+    mh.sendMessage('background', m.PEER_CONNECTION_CLOSED, this);
+    return origPeerConnClose.apply(this, arguments)
+};
 
 // Enumerate Devices Shim
 
-    const origEnumerateDevices = navigator.mediaDevices.enumerateDevices.bind(navigator.mediaDevices);
-    navigator.mediaDevices.enumerateDevices = async function () {
-        debug("navigator.mediaDevices.enumerateDevices called");
+const origEnumerateDevices = navigator.mediaDevices.enumerateDevices.bind(navigator.mediaDevices);
+navigator.mediaDevices.enumerateDevices = async function () {
+    debug("navigator.mediaDevices.enumerateDevices called");
 
-        if (!appEnabled || !deviceManager.enabled)
-            return origEnumerateDevices();
+    if (!appEnabled || !deviceManager.enabled)
+        return origEnumerateDevices();
 
-        const devices = await origEnumerateDevices();
-        mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {currentDevices: devices});
+    const devices = await origEnumerateDevices();
+    mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {currentDevices: devices});
 
-        // Only add fake devices if there are other devices
-        // In the future when adding generated sources w/o gUM, it may make sense to have a device even with no permissions
-        if (devices !== undefined && Array.isArray(devices))
-            return deviceManager.modifyDevices(devices);
-    }
+    // Only add fake devices if there are other devices
+    // In the future when adding generated sources w/o gUM, it may make sense to have a device even with no permissions
+    if (devices !== undefined && Array.isArray(devices))
+        return deviceManager.modifyDevices(devices);
+}
 
 // devicechange shim
-    const originalAddEventListener = navigator.mediaDevices.addEventListener.bind(navigator.mediaDevices);
+const originalAddEventListener = navigator.mediaDevices.addEventListener.bind(navigator.mediaDevices);
 
-    navigator.mediaDevices.addEventListener = function (type, listener) {
-        debug(`navigator.mediaDevices.addEventListener called with "${type}" and listener:`, listener);
+navigator.mediaDevices.addEventListener = function (type, listener) {
+    debug(`navigator.mediaDevices.addEventListener called with "${type}" and listener:`, listener);
 
-        if (type === 'devicechange') {
-            // debug(`navigator.mediaDevices.addEventListener called with "devicechange"`);
-            deviceManager.deviceChangeListeners.push(listener);
+    if (type === 'devicechange') {
+        // debug(`navigator.mediaDevices.addEventListener called with "devicechange"`);
+        deviceManager.deviceChangeListeners.push(listener);
+    }
+
+    return originalAddEventListener(type, listener);
+};
+
+const originalRemoveEventListener = navigator.mediaDevices.removeEventListener.bind(navigator.mediaDevices);
+navigator.mediaDevices.removeEventListener = function (type, listener) {
+    if (type === 'devicechange') {
+        debug('navigator.mediaDevices.removeEventListener called with "devicechange"');
+        const index = deviceManager.deviceChangeListeners.indexOf(listener);
+        if (index > -1) {
+            deviceManager.deviceChangeListeners.splice(index, 1); // Remove this listener
         }
+        return;
+    }
+    return originalRemoveEventListener(type, listener);
+};
 
-        return originalAddEventListener(type, listener);
-    };
-
-    const originalRemoveEventListener = navigator.mediaDevices.removeEventListener.bind(navigator.mediaDevices);
-    navigator.mediaDevices.removeEventListener = function (type, listener) {
-        if (type === 'devicechange') {
-            debug('navigator.mediaDevices.removeEventListener called with "devicechange"');
-            const index = deviceManager.deviceChangeListeners.indexOf(listener);
-            if (index > -1) {
-                deviceManager.deviceChangeListeners.splice(index, 1); // Remove this listener
-            }
-            return;
-        }
-        return originalRemoveEventListener(type, listener);
-    };
-
-    window.videoCallHelper = true;
-}
+// Settings updates that impact the inject context
+mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
+    debug("UPDATE_BAD_CONNECTION_SETTINGS", data);
+    vch.settings.badConection = data;
+});
 
 /*
  * debugging
  */
 debug("injected");
+
+const vch = {
+    mh,
+    settings: vchSettings,
+    deviceManager,
+    pcTracks: [],
+    // pcStreams: [],      // streams always empty
+    pcs: [],
+}
+
+if (process.env.NODE_ENV) window.vch = vch;
