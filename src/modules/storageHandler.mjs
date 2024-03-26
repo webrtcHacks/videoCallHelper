@@ -10,6 +10,9 @@ let instance;
 //  until I figure out a better global debug function
 let storageDebug = Function.prototype.bind.call(console.debug, console, `vch 🗄️`);
 
+/**
+ * Class to handle chrome storage
+ */
 export class StorageHandler {
 
     area = "local";
@@ -17,11 +20,17 @@ export class StorageHandler {
 
     static contents = {};
 
-    //  Add a context check to manage different contexts? - i.e. "background", "dash", etc.
-    constructor(area = "local", debug = () => {}) {
+    /**
+     * Create a new instance of the storage handler
+     * @param {string} area - chrome storage area: local, sync, managed
+     * @param {function} debug - debug function
+     * @returns {*|Promise<StorageHandler>} - the storage handler instance
+     */
+    constructor(area = "local", debug = () => {
+    }) {
         // singleton pattern
         if (instance) {
-            storageDebug = typeof storageDebug === "object" ? storageDebug :  debug;
+            storageDebug = typeof storageDebug === "object" ? storageDebug : debug;
             // console.info("existing instance");
             return instance;
         }
@@ -73,11 +82,17 @@ export class StorageHandler {
 
     }
 
+    /**
+     * Find and return the changed values between two objects
+     * @param {object} oldValue
+     * @param {object} newValue
+     * @returns {*[]|{}} - the changed values
+     */
     static #findChangedValues(oldValue, newValue) {
         let changedValues = Array.isArray(newValue) ? [] : {};
         for (let key in newValue) {
             if (newValue.hasOwnProperty(key)) {
-                if(!oldValue || !oldValue[key])  // handle if the key didn't exist
+                if (!oldValue || !oldValue[key])  // handle if the key didn't exist
                     changedValues[key] = newValue[key];
                 else if (typeof newValue[key] === "object" && oldValue[key]) {
                     let nestedChange = StorageHandler.#findChangedValues(oldValue[key], newValue[key]);
@@ -93,6 +108,12 @@ export class StorageHandler {
     }
 
 
+    /**
+     * Update an key with changed values in storage
+     * @param {string} key - key to update
+     * @param {object} newValue - new values to change or add
+     * @returns {Promise<*>}  - the updated contents for the key
+     */
     async update(key = "", newValue = {}) {
 
         if (key === "" || !key) {
@@ -101,11 +122,10 @@ export class StorageHandler {
         }
 
         try {
-            if(StorageHandler.contents[key]){
+            if (StorageHandler.contents[key]) {
                 const updatedValue = Object.assign(StorageHandler.contents[key], newValue);
                 Object.assign(StorageHandler.contents, {[key]: updatedValue});
-            }
-            else
+            } else
                 StorageHandler.contents[key] = newValue;
 
             await this.storage.set(StorageHandler.contents)
@@ -118,7 +138,12 @@ export class StorageHandler {
         }
     }
 
-    async get(key = null) {
+    /**
+     * Get a stored object from a key
+     * @param {string }key - key to get
+     * @returns {Promise<unknown>} - the value of the key
+     */
+    async get(key = "") {
         if (key) {
             const obj = await this.storage.get(key);
             return Object.values(obj)[0];
@@ -126,24 +151,64 @@ export class StorageHandler {
         // return await this.storage.get();
     }
 
+    /**
+     * Set a key in storage
+     * @param {string} key - key to set
+     * @param {object} value - value to set
+     * @returns {Promise<*>} - the value set
+     */
     async set(key = "", value = {}) {
         Object.assign(StorageHandler.contents, {[key]: value});
         await this.storage.set({[key]: value});
         return value;
     }
 
+    /**
+     * Delete a key from storage
+     * @param {strong} key
+     * @returns {Promise<void>} - void
+     */
+    async delete(key) {
+        if (!key) {
+            this.debug("No key provided - can't delete");
+            return;
+        }
+
+        if (!StorageHandler.contents.hasOwnProperty(key)) {
+            this.debug(`Key "${key}" not found in storage - can't delete`);
+            return;
+        }
+
+        await this.storage.remove(key);
+        delete StorageHandler.contents[key];
+        this.debug(`Deleted key "${key}" from storage`);
+    }
+
+    /**
+     * Add a listener storage changes on a key
+     * @param {string} key - key to listen to
+     * @param {function} callback - callback function to run on change
+     */
     addListener = (key, callback = null) => {
         this.#listeners.push({key, callback});
         this.debug(`added storage listener "${key}"`);
     }
 
+    /**
+     * Return the all contents of the storage
+     * @returns {{}} - the contents of the storage
+     */
     get contents() {
         return StorageHandler.contents;
     }
 
     // ToDo: removeListener test
+    /**
+     * Remove a storage listener
+     * @param {string} key - key to remove listener from
+     */
     removeListener = (key) => {
-        if(!key){
+        if (!key) {
             debug("no key provided - can't remove listener");
             return;
         }
