@@ -129,8 +129,8 @@ const extensionConfig = {
         }),
         new CopyPlugin({
             patterns: [
-                // The extension manifeet
-                {from: "src/manifest.json", to: "../manifest.json"},
+                // The extension manifest
+                 //  {from: "src/manifest.json", to: "../manifest.json"},
                 // Icons
                 {from: "src/static/icons", to: "../icons"},
                 // Video player testing
@@ -138,8 +138,6 @@ const extensionConfig = {
                 // The worker so it is inlined
                 // { from: path.resolve(__dirname, 'temp/worker-bundle.js'), to: 'worker-bundle.js' }
                 // { from: 'temp/worker-bundle.js', to: 'worker-bundle.js' }
-
-
             ],
         }),
     ],

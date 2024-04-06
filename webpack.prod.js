@@ -3,6 +3,7 @@ const webpack = require('webpack');
 const commonConfig = require('./webpack.common.js');
 const path = require("path");
 const commonConfigs = require("./webpack.common");
+const CopyPlugin = require("copy-webpack-plugin");
 
 // ToDo: update this to use multiple configs in commonConfig
 const prodConfig = {
@@ -16,7 +17,12 @@ const prodConfig = {
     plugins: [
         new webpack.DefinePlugin({
             'process.env.NODE_ENV': JSON.stringify('production')
-        })
+        }),
+        new CopyPlugin({
+            patterns: [
+                // The extension manifest
+                {from: "src/manifest.json", to: "../manifest.json"}
+                ]}),
     ]
 };
 

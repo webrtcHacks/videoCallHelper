@@ -2,6 +2,8 @@ const { merge } = require('webpack-merge');
 const commonConfigs = require('./webpack.common.js');
 const path = require("path");
 const webpack = require('webpack');
+const CopyPlugin = require("copy-webpack-plugin");
+
 
 class BuildTimePlugin {
     apply(compiler) {
@@ -30,7 +32,30 @@ const devConfig = {
         new BuildTimePlugin(),
         new webpack.DefinePlugin({
             'process.env.NODE_ENV': JSON.stringify('development')
-        })]
+        }),
+        new CopyPlugin({
+            // add "dev" to the manifest defaults to help identify vs. prod
+            patterns: [
+                {
+                    from: 'src/manifest.json',
+                    to: '../manifest.json',
+                    transform(content) {
+                        let jsonContent = content.toString();
+
+                        // Remove BOM
+                        if (jsonContent.charCodeAt(0) === 0xFEFF) {
+                            jsonContent = jsonContent.slice(1);
+                        }
+
+                        jsonContent = JSON.parse(jsonContent);
+                        jsonContent.name = 'Video Call Helper (dev)';
+                        jsonContent.action.default_title = 'Video Call Helper (dev)';
+                        return JSON.stringify(jsonContent, null, 2);
+                    },
+                },
+            ],
+        }),
+    ]
 };
 
 const [workerConfig, extensionConfig] = commonConfigs;
