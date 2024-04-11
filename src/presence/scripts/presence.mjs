@@ -1,6 +1,6 @@
 // ToDo: handle debug function
 
-// dont repeat on webhook for each track
+// don't repeat on webhook for each track
 let webhookIsActive = false;
 
 const debug = Function.prototype.bind.call(console.log, console, `👷presence:`);
@@ -48,6 +48,7 @@ function callWebhook(state, settings, debug = console.log) {
             fetchParams.body = postBody;    // JSON.stringify(postBody);    // not sure why I need the parse all of the sudden
     }
 
+    // ToDo: JSON parse issues
     if (headers !== "")
         fetchParams.headers = JSON.parse(headers);
 

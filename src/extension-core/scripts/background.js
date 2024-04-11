@@ -17,8 +17,6 @@ import {settings as badConnectionSettingsProto} from "../../badConnection/script
 const debug = Function.prototype.bind.call(console.log, console, `🫥`);
 debug(`Environment: ${process.env.NODE_ENV}`);
 
-let streamTabs; // Not currently used
-//let storage = await chrome.storage.local.get();
 let storage = await new StorageHandler("local", debug);
 self.storage = storage; // for debugging
 
@@ -223,51 +221,24 @@ async function presenceOff(){
                 debug("turn presence off here");
                 chrome.action.setIcon({path: "../icons/v_128.png"});
 
-                if(storage.contents?.presence?.active)
+                if(storage.contents?.presence?.active){
                     webhook('off', storage.contents.presence);
+                    await storage.update('presence', {active: false});
+                }
 
                 // ToDo: check HID permissions
                 if(storage.contents?.presence?.hid === true)
                     await glow([0,0,0]);
 
-                await storage.update('presence', {active: false});
             }
             else
                 debug("presenceOff: some tracks are still live");
             resolve();
         }, 2000));
     }
-
 }
 
-// Attempt to debounce didn't have any impact
-/*
-let lastPresenceOnCallTime = 0;
-const debounceDelay = 1000;  // delay in milliseconds
-
-
-async function presenceOn(){
-    const currentTime = Date.now();
-    const shouldCallWebhook = currentTime - lastPresenceOnCallTime > debounceDelay;
-
-    debug("turn presence on here");
-
-    await storage.update("presence", {active: true});
-
-    if(shouldCallWebhook){
-        lastPresenceOnCallTime = currentTime;
-        webhook('on', storage.contents.presence, debug);
-    }
-
-    if(storage.contents.presence?.hid === true)
-        await glow([255,0,0]);
-    await chrome.action.setIcon({path: "../icons/v_rec.png"});
-}
- */
-
-
-
-
+// ToDo: refactor this so that it checks the trackData array for live tracks and storage
 async function presenceOn(){
     debug("turn presence on here");
 
@@ -281,7 +252,7 @@ async function presenceOn(){
 }
 
 
-
+// turns the presence indicator on and off if the enabled state changes
 storage.addListener('presence', async (newValue) => {
 
     debug(`presence storage changes: `, newValue);
@@ -298,12 +269,10 @@ storage.addListener('presence', async (newValue) => {
 async function handleTabRemoved(tabId){
     trackData = trackData.filter(td => td.tabId !== tabId);
 
-    // something is switching storage.contents.presence.active to false before this point
     if(storage.contents?.presence?.active){
         await presenceOff();
     }
 
-    // ToDo: this is annoying for debugging - uncommented above
     // just call presence off everytime - it won't do anything if there is an active track
     // await presenceOff();
 
@@ -334,7 +303,7 @@ mh.addListener(m.NEW_TRACK, async data=>{
     } else {
         // Presence handling
         if(!trackData.some(td => td.readyState === 'live')){
-            if(storage.contents.presence && storage.contents.presence.enabled){
+            if(storage.contents?.presence?.enabled){
                 await presenceOn();
             } else debug("presence already active");
         }
@@ -345,20 +314,9 @@ mh.addListener(m.NEW_TRACK, async data=>{
 
 mh.addListener(m.TRACK_ENDED, async data=>{
     trackData = trackData.filter(td => td.id !== data.id);
-    // wait 2 seconds to see if another track is started
-    // these are in presence off
-        // await new Promise(resolve => setTimeout(resolve, 2000));
-        // if(!trackData.some(td => td.readyState === 'live'))
-    if(storage.contents.presence && storage.contents.presence.active)
-        await presenceOff();
-});
 
-// ToDo: remove
-/* Bad connection experiments */
-mh.addListener('alter_stream', async data=>{
-    debug('alter_stream', data);
-    // This didn't work - never responds
-    debug("alter_stream video read: ", await data.streams.videoReader.getReader().read());
+    if(storage.contents?.presence?.active)
+        await presenceOff();
 });
 
 
@@ -369,6 +327,12 @@ mh.addListener('alter_stream', async data=>{
 // ToDo: change to pageAction?
 chrome.action.onClicked.addListener(async (tab)=>{
     // debug(`icon clicked on tab ${tab.id}`);
+
+    if(!tab?.id){
+        debug("lost sync with tab", tab);
+        return;
+    }
+
     const messageToSend = {
         to: 'content',
         from: 'background',
