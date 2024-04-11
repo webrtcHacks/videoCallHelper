@@ -207,48 +207,59 @@ mh.addListener(m.FRAME_CAPTURE, frameCap);
 // Presence handling
 // Note: switched from tracking streams to tracks
 
-async function presenceOff(){
+function isTrackLive() {
+    return trackData.some(td => td.readyState === 'live');
+}
+function isPresenceEnabled() {
+    return storage.contents?.presence?.enabled;
+}
+async function presenceOn() {
+    if(isTrackLive() && isPresenceEnabled()){
+        debug("turn presence on here");
+        const color = [255,0,0];
+        const iconPath = "../icons/v_rec.png";
 
-    if(trackData.some(td => td.readyState === 'live')){
-        debug("presenceOff check: some tracks still live", trackData);
-    }
-    else {
-        // Wait to see if another track is enabled within 2 seconds as can happen with device changes
-        debug("presenceOff: waiting 2 seconds for changes");
+        await chrome.action.setIcon({path: iconPath});
 
-        await new Promise(resolve => setTimeout(async () => {
-            if (!trackData.some(td => td.readyState === 'live')) {
-                debug("turn presence off here");
-                chrome.action.setIcon({path: "../icons/v_128.png"});
+        if(storage.contents?.presence?.hid === true)
+            await glow(color);
 
-                if(storage.contents?.presence?.active){
-                    webhook('off', storage.contents.presence);
-                    await storage.update('presence', {active: false});
-                }
-
-                // ToDo: check HID permissions
-                if(storage.contents?.presence?.hid === true)
-                    await glow([0,0,0]);
-
-            }
-            else
-                debug("presenceOff: some tracks are still live");
-            resolve();
-        }, 2000));
+        if(storage.contents?.presence?.active !== true){
+            webhook('on', storage.contents.presence);
+            await storage.update('presence', {active: true});
+        }
+    } else {
+        debug("presence already active or not enabled");
     }
 }
 
-// ToDo: refactor this so that it checks the trackData array for live tracks and storage
-async function presenceOn(){
-    debug("turn presence on here");
+async function presenceOff() {
+    if(isTrackLive()){
+        debug("presenceOff check: some tracks still live", trackData);
+    }
+    else {
+        // debug("presenceOff: waiting 2 seconds for changes");
+        await new Promise(resolve => setTimeout(async () => {
+            if (!isTrackLive()) {
+                debug("turn presence off here");
+                const color = [0,0,0];
+                const iconPath = "../icons/v_128.png";
 
-    await storage.update("presence", {active: true});
+                await chrome.action.setIcon({path: iconPath});
 
-    webhook('on', storage.contents.presence);
-    if(storage.contents.presence?.hid === true)
-        await glow([255,0,0]);
-    await chrome.action.setIcon({path: "../icons/v_rec.png"});
+                if(storage.contents?.presence?.hid === true)
+                    await glow(color);
 
+                if(storage.contents?.presence?.active !== false){
+                    webhook('off', storage.contents.presence);
+                    await storage.update('presence', {active: false});
+                }
+            }
+            // else
+            //    debug("presenceOff: some tracks are still live");
+            resolve();
+        }, 2000));
+    }
 }
 
 
@@ -256,9 +267,9 @@ async function presenceOn(){
 storage.addListener('presence', async (newValue) => {
 
     debug(`presence storage changes: `, newValue);
-    if (trackData.some(td => td.readyState === 'live') && newValue.enabled === true) {
+    if (newValue.enabled) {
         await presenceOn();
-    } else if (storage.contents.active === true && newValue.enabled === false) {
+    } else if (newValue.enabled) {
         await presenceOff();
     }
 });
@@ -269,13 +280,7 @@ storage.addListener('presence', async (newValue) => {
 async function handleTabRemoved(tabId){
     trackData = trackData.filter(td => td.tabId !== tabId);
 
-    if(storage.contents?.presence?.active){
-        await presenceOff();
-    }
-
-    // just call presence off everytime - it won't do anything if there is an active track
-    // await presenceOff();
-
+    await presenceOff();
     // await removeTab(tabId);  // if addTab is used again
 }
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
@@ -302,11 +307,7 @@ mh.addListener(m.NEW_TRACK, async data=>{
         debug(`track ${id} already in trackData array`);
     } else {
         // Presence handling
-        if(!trackData.some(td => td.readyState === 'live')){
-            if(storage.contents?.presence?.enabled){
-                await presenceOn();
-            } else debug("presence already active");
-        }
+        await presenceOn();
         trackData.push(data);
         debug(`added ${id} to trackData array`, trackData);
     }
@@ -314,9 +315,7 @@ mh.addListener(m.NEW_TRACK, async data=>{
 
 mh.addListener(m.TRACK_ENDED, async data=>{
     trackData = trackData.filter(td => td.id !== data.id);
-
-    if(storage.contents?.presence?.active)
-        await presenceOff();
+    await presenceOff();
 });
 
 
