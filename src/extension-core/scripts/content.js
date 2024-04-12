@@ -399,7 +399,6 @@ async function monitorTrack(track, streamId) {
         }
     }, 2000);
 
-
     // OBS making this go on and off
     /*
     track.addEventListener('mute', async (e) => {

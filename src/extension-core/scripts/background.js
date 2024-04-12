@@ -1,28 +1,26 @@
 import {get, set as idbSet, update} from "idb-keyval";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-import {webhook} from "../../presence/scripts/presence.mjs";
-import {glow} from "../../presence/scripts/embrava.mjs";
+import {presenceOn, presenceOff} from "../../presence/scripts/background.mjs";
 
 // storage prototypes for each applet used for initialization
-import {settings as presenceSettingsProto} from "../../presence/scripts/settings.mjs";
 import {settings as imageCaptureSettingsProto} from "../../imageCapture/scripts/settings.mjs";
 import {settings as deviceManagerSettingsProto} from "../../deviceManager/scripts/settings.mjs";
 import {settings as selfViewSettingsProto} from "../../selfView/scripts/settings.mjs";
 import {settings as badConnectionSettingsProto} from "../../badConnection/scripts/settings.mjs";
 
-const debug = Function.prototype.bind.call(console.log, console, `🫥`);
+const  debug = Function.prototype.bind.call(console.log, console, `🫥`);
 debug(`Environment: ${process.env.NODE_ENV}`);
 
-let streamTabs; // Not currently used
-//let storage = await chrome.storage.local.get();
 let storage = await new StorageHandler("local", debug);
 self.storage = storage; // for debugging
 
-// added for presence
-let trackData = [];
+// added for presence, here in case it is useful elsewhere
+await storage.set('trackData', []);
 
 const mh = new MessageHandler('background');
+
+self.debug = debug;
 self.mh = mh;
 
 // ToDo: see if I need these tab tacking functions - test with multiple webrtc tabs
@@ -82,10 +80,7 @@ async function getVideoTabId(){
 
 async function initStorage(){
 
-    // presence settings
-    if(!storage.contents['presence'])
-        await storage.set('presence', presenceSettingsProto);
-    // else await storage.update('presence', {active:false});
+    // Presence settings moved to module
 
     // Image capture
     if(!storage.contents['imageCapture'])
@@ -203,109 +198,30 @@ async function frameCap(data){
 // Q: is it better to use storage for this?
 mh.addListener(m.FRAME_CAPTURE, frameCap);
 
-// Presence handling
-// Note: switched from tracking streams to tracks
-
-async function presenceOff(){
-
-    if(trackData.some(td => td.readyState === 'live')){
-        debug("presenceOff check: some tracks still live", trackData);
-    }
-    else {
-        // Wait to see if another track is enabled within 2 seconds as can happen with device changes
-        debug("presenceOff: waiting 2 seconds for changes");
-
-        await new Promise(resolve => setTimeout(async () => {
-            if (!trackData.some(td => td.readyState === 'live')) {
-                debug("turn presence off here");
-                chrome.action.setIcon({path: "../icons/v_128.png"});
-
-                if(storage.contents?.presence?.active)
-                    webhook('off', storage.contents.presence);
-
-                // ToDo: check HID permissions
-                if(storage.contents?.presence?.hid === true)
-                    await glow([0,0,0]);
-
-                await storage.update('presence', {active: false});
-            }
-            else
-                debug("presenceOff: some tracks are still live");
-            resolve();
-        }, 2000));
-    }
-
-}
-
-// Attempt to debounce didn't have any impact
-/*
-let lastPresenceOnCallTime = 0;
-const debounceDelay = 1000;  // delay in milliseconds
-
-
-async function presenceOn(){
-    const currentTime = Date.now();
-    const shouldCallWebhook = currentTime - lastPresenceOnCallTime > debounceDelay;
-
-    debug("turn presence on here");
-
-    await storage.update("presence", {active: true});
-
-    if(shouldCallWebhook){
-        lastPresenceOnCallTime = currentTime;
-        webhook('on', storage.contents.presence, debug);
-    }
-
-    if(storage.contents.presence?.hid === true)
-        await glow([255,0,0]);
-    await chrome.action.setIcon({path: "../icons/v_rec.png"});
-}
- */
-
-
-
-
-async function presenceOn(){
-    debug("turn presence on here");
-
-    await storage.update("presence", {active: true});
-
-    webhook('on', storage.contents.presence);
-    if(storage.contents.presence?.hid === true)
-        await glow([255,0,0]);
-    await chrome.action.setIcon({path: "../icons/v_rec.png"});
-
-}
-
-
-
-storage.addListener('presence', async (newValue) => {
-
-    debug(`presence storage changes: `, newValue);
-    if (trackData.some(td => td.readyState === 'live') && newValue.enabled === true) {
-        await presenceOn();
-    } else if (storage.contents.active === true && newValue.enabled === false) {
-        await presenceOff();
-    }
-});
-
 
 // Note: https://developer.chrome.com/blog/page-lifecycle-api/ says don't do `beforeunload`
 
+/**
+ * Handles tab removal, removing any tracks associated with that tab, updates presence
+ * @param tabId
+ * @returns {Promise<void>}
+ */
 async function handleTabRemoved(tabId){
-    trackData = trackData.filter(td => td.tabId !== tabId);
 
-    // something is switching storage.contents.presence.active to false before this point
-    if(storage.contents?.presence?.active){
+    // remove any tracks for that tab
+    const trackData = await storage.contents.trackData;
+    const newTrackData = trackData.filter(td => td.tabId !== tabId);
+    await storage.set('trackData', newTrackData);
+
+    if(newTrackData.length === 0)
         await presenceOff();
-    }
-
-    // ToDo: this is annoying for debugging - uncommented above
-    // just call presence off everytime - it won't do anything if there is an active track
-    // await presenceOff();
-
     // await removeTab(tabId);  // if addTab is used again
 }
+
+
+/**
+ * Tab event listeners
+ */
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
     debug(`tab ${tabId} removed`);
     await handleTabRemoved(tabId);
@@ -314,7 +230,6 @@ chrome.tabs.onReplaced.addListener(async (tabId, removeInfo)=>{
     debug(`tab ${tabId} replaced`);
     await handleTabRemoved(tabId);
 });
-
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo)=>{
     if (changeInfo.status === 'complete') {
         debug(`tab ${tabId} refreshed`);
@@ -322,40 +237,35 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo)=>{
     }
 });
 
+
+/**
+ * listens for new track messages and adds the track to trackData, sets presence
+ */
 mh.addListener(m.NEW_TRACK, async data=>{
     debug("new track", data);
     const {id, kind, label, state, streamId, tabId} = data;
     // check if track is already in memory
-    if(trackData.some(td => td.id === id)){
+    const trackData = storage.contents.trackData;
+    if(storage.contents.trackData.some(td => td.id === id)){
         debug(`track ${id} already in trackData array`);
     } else {
-        // Presence handling
-        if(!trackData.some(td => td.readyState === 'live')){
-            if(storage.contents.presence && storage.contents.presence.enabled){
-                await presenceOn();
-            } else debug("presence already active");
-        }
         trackData.push(data);
+        await storage.set('trackData', trackData);
         debug(`added ${id} to trackData array`, trackData);
+        await presenceOn();         // Presence handling
     }
 });
 
+/**
+ * Listens for track ended messages and removes the track from trackData
+ */
 mh.addListener(m.TRACK_ENDED, async data=>{
-    trackData = trackData.filter(td => td.id !== data.id);
-    // wait 2 seconds to see if another track is started
-    // these are in presence off
-        // await new Promise(resolve => setTimeout(resolve, 2000));
-        // if(!trackData.some(td => td.readyState === 'live'))
-    if(storage.contents.presence && storage.contents.presence.active)
-        await presenceOff();
-});
+    debug("track ended", data);
+    // Remove the track from trackData
+    const trackData = storage.contents.trackData;
+    await storage.set('trackData', trackData.filter(td => td.id !== data.id));
 
-// ToDo: remove
-/* Bad connection experiments */
-mh.addListener('alter_stream', async data=>{
-    debug('alter_stream', data);
-    // This didn't work - never responds
-    debug("alter_stream video read: ", await data.streams.videoReader.getReader().read());
+    await presenceOff();
 });
 
 
@@ -366,6 +276,12 @@ mh.addListener('alter_stream', async data=>{
 // ToDo: change to pageAction?
 chrome.action.onClicked.addListener(async (tab)=>{
     // debug(`icon clicked on tab ${tab.id}`);
+
+    if(!tab?.id){
+        debug("lost sync with tab", tab);
+        return;
+    }
+
     const messageToSend = {
         to: 'content',
         from: 'background',

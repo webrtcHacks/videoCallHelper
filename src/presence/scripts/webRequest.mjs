@@ -1,12 +1,12 @@
 // ToDo: handle debug function
 
-// dont repeat on webhook for each track
+// don't repeat on webhook for each track
 let webhookIsActive = false;
 
-const debug = Function.prototype.bind.call(console.log, console, `👷presence:`);
+const debug = Function.prototype.bind.call(console.log, console, `🟢`);
 
 // ToDo: error checking on these entered values
-function callWebhook(state, settings, debug = console.log) {
+function callWebRequest(state, settings, debug = console.log) {
 
     // Failed attempt to limit repeated API calls
     // this was causing the state to get out-of-whack
@@ -48,6 +48,7 @@ function callWebhook(state, settings, debug = console.log) {
             fetchParams.body = postBody;    // JSON.stringify(postBody);    // not sure why I need the parse all of the sudden
     }
 
+    // ToDo: JSON parse issues
     if (headers !== "")
         fetchParams.headers = JSON.parse(headers);
 
@@ -91,5 +92,5 @@ function throttle(fn, limit) {
     }
 }
 
-export const webhook = throttle(callWebhook, 5000);
+export const webRequest = throttle(callWebRequest, 5000);
 

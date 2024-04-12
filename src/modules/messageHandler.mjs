@@ -190,7 +190,8 @@ export class MessageHandler {
             async (request, sender, sendResponse) => {
 
                 const {to, from, message} = request;
-                let data = request?.data || {};
+                // Todo: something is sending data as a string: "{}"
+                let data = typeof request?.data === 'string' ? JSON.parse(request.data): request?.data || {};
 
                 // background doesn't its own tabId in sender
                 // We need it in cases when background is responding to a request from content,
