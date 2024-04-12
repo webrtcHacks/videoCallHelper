@@ -11,9 +11,6 @@ import {settings as deviceManagerSettingsProto} from "../../deviceManager/script
 import {settings as selfViewSettingsProto} from "../../selfView/scripts/settings.mjs";
 import {settings as badConnectionSettingsProto} from "../../badConnection/scripts/settings.mjs";
 
-// import {trainingMessages as train} from "../../modules/trainingMessages.mjs";
-// import '../../modules/lovefield';
-
 const debug = Function.prototype.bind.call(console.log, console, `🫥`);
 debug(`Environment: ${process.env.NODE_ENV}`);
 
