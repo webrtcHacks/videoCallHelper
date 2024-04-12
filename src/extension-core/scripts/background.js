@@ -1,10 +1,9 @@
-import {get, set as idbSet, update} from "idb-keyval";
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 import {presenceOn, presenceOff} from "../../presence/scripts/background.mjs";
+import "../../imageCapture/scripts/background.mjs";
 
 // storage prototypes for each applet used for initialization
-import {settings as imageCaptureSettingsProto} from "../../imageCapture/scripts/settings.mjs";
 import {settings as deviceManagerSettingsProto} from "../../deviceManager/scripts/settings.mjs";
 import {settings as selfViewSettingsProto} from "../../selfView/scripts/settings.mjs";
 import {settings as badConnectionSettingsProto} from "../../badConnection/scripts/settings.mjs";
@@ -82,10 +81,7 @@ async function initStorage(){
 
     // Presence settings moved to module
 
-    // Image capture
-    if(!storage.contents['imageCapture'])
-        await storage.set('imageCapture', imageCaptureSettingsProto);
-    // else await storage.update('imageCapture', {active:false});
+    // Image capture settings moved to module
 
     // device manager settings
     if(!storage.contents['deviceManager']) {
@@ -173,31 +169,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     // chrome.runtime.openOptionsPage();
 
 });
-
-
-async function frameCap(data){
-    const imageBlob = await fetch(data.blobUrl).then(response => response.blob());
-
-    const imgData = {
-        url: data.url,
-        date: data.date,
-        deviceId: data.deviceId,
-        image: imageBlob,
-        width: data.width,
-        height: data.height
-    }
-
-    const id = `image_${(Math.random() + 1).toString(36).substring(2)}`;
-    const dataToSave = {};
-    dataToSave[id] = imgData;
-
-    await idbSet(id, imgData);
-}
-
-
-// Q: is it better to use storage for this?
-mh.addListener(m.FRAME_CAPTURE, frameCap);
-
 
 // Note: https://developer.chrome.com/blog/page-lifecycle-api/ says don't do `beforeunload`
 
