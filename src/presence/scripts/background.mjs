@@ -13,7 +13,7 @@ import {webRequest} from "./webRequest.mjs";                        // web reque
 
 const PRESENCE_OFF_DELAY = 2000; // time to wait before turning off presence after all tracks are done
 
-const debug = Function.prototype.bind.call(console.log, console, `🟢`);
+const debug = Function.prototype.bind.call(console.log, console, `🫥🟢`);
 const storage = await new StorageHandler("local", debug);
 
 // helpers for brevity
