@@ -3,10 +3,10 @@
 // don't repeat on webhook for each track
 let webhookIsActive = false;
 
-const debug = Function.prototype.bind.call(console.log, console, `👷presence:`);
+const debug = Function.prototype.bind.call(console.log, console, `🟢`);
 
 // ToDo: error checking on these entered values
-function callWebhook(state, settings, debug = console.log) {
+function callWebRequest(state, settings, debug = console.log) {
 
     // Failed attempt to limit repeated API calls
     // this was causing the state to get out-of-whack
@@ -92,5 +92,5 @@ function throttle(fn, limit) {
     }
 }
 
-export const webhook = throttle(callWebhook, 5000);
+export const webRequest = throttle(callWebRequest, 5000);
 

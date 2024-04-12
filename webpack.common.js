@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
 
 // build the worker file first since it needs to be referenced by the extension
+// ToDo: this isn't building first - WebpackShellPlugin to build this first or webpack-dependency-suite
 const workerConfig = {
     mode: 'development',
     entry: './src/injectWorker/scripts/worker.js',
@@ -32,7 +33,7 @@ const extensionConfig = {
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
         framing: './src/framing/scripts/framingAnalysis.js',
-        presence: './src/presence/scripts/presenceSettings.mjs',
+        presence: './src/presence/scripts/presenceConfig.mjs',
         recorder: './src/videoPlayer/scripts/recorder.mjs',
         bootstrap: './node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
         bootstrapIcons: './node_modules/bootstrap-icons/font/bootstrap-icons.scss',

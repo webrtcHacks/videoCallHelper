@@ -1,7 +1,7 @@
 // UI handler for standalone settings page
 
 import {glow, disconnect} from "./embrava.mjs"
-import {webhook} from "./presence.mjs";
+import {webRequest} from "./webRequest.mjs";
 import {settings as presenceSettingsProto} from "./settings.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
@@ -145,7 +145,7 @@ embravaCheck.onclick = async () => {
 // ToDo: think through how manual `active` impacts the automatic state changes
 async function busyHandler() {
     await storage.update('presence', {active: true});
-    webhook("on", settings);
+    webRequest("on", settings);
     if(embravaCheck.checked)
         await glow([255, 0, 0]);
     displaySettings();
@@ -153,7 +153,7 @@ async function busyHandler() {
 
 async function notBusyHandler() {
     await storage.update('presence', {active: false});
-    webhook("off", settings);
+    webRequest("off", settings);
     if(embravaCheck.checked)
         await glow([0, 0, 0]);
     displaySettings();

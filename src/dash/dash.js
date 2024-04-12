@@ -51,13 +51,7 @@ document.querySelector("button#open_sampling").onclick = async () => {
 
 /************ START presence ************/
 // backend functions
-import {webhook} from "../presence/scripts/presence.mjs";
-
-/*
-if (!storage.contents['presence']) {
-    await storage.set('presence', presenceSettingsPrototype);
-}
- */
+import {webRequest} from "../presence/scripts/webRequest.mjs";
 
 const statusSpanElem = document.querySelector('span#presence_status');
 const enabledCheck = document.querySelector('input#enable_presence_check');
@@ -82,13 +76,13 @@ enabledCheck.onclick = async () => {
 
 btnBusy.onclick = async () => {
     await storage.update('presence', {active: true});
-    webhook("on", storage.contents['presence']);
+    webRequest("on", storage.contents['presence']);
     // ToDo: handle embrava
 };
 
 btnNotBusy.onclick = async () => {
     await storage.update('presence', {active: false});
-    webhook("off", storage.contents['presence']);
+    webRequest("off", storage.contents['presence']);
     // ToDo: handle embrava
 }
 
