@@ -46,7 +46,7 @@ async function presenceOn() {
         if (storage.contents?.presence?.hid === true)
             await glow(color);
 
-        webRequest('on', storage.contents.presence);
+        webRequest('on', storage.contents.presence, debug);
         await storage.update('presence', {active: true});
     } else {
         debug("presence already active or not enabled");
@@ -69,7 +69,7 @@ async function presenceOff() {
         if (storage.contents?.presence?.hid === true)
             await glow(color);
 
-        webRequest('off', storage.contents.presence);
+        webRequest('off', storage.contents.presence, debug);
         await storage.update('presence', {active: false});
     }
 
@@ -99,12 +99,13 @@ storage.addListener('presence', async (newValue, changedValue) => {
     }
 });
 
+// Check if a track was still live on tab close
 chrome.tabs.onRemoved.addListener(async ()=> await presenceOff());
 
 /**
  * Listeners for track changes and calls the presenceOn and presenceOff functions
  */
-mh.addListener(m.NEW_TRACK, async () => await presenceOn());
-mh.addListener(m.TRACK_ENDED, async()=> await presenceOff());
+mh.addListener(m.NEW_TRACK, async () => {await presenceOn()} );
+mh.addListener(m.TRACK_ENDED, async()=> {await presenceOff()} );
 
 // debug("presence background script loaded");

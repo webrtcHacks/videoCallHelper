@@ -1,25 +1,15 @@
-// ToDo: handle debug function
-
 // don't repeat on webhook for each track
 let webhookIsActive = false;
 
-const debug = Function.prototype.bind.call(console.log, console, `🟢`);
-
 // ToDo: error checking on these entered values
-function callWebRequest(state, settings, debug = console.log) {
 
-    // Failed attempt to limit repeated API calls
-    // this was causing the state to get out-of-whack
-    /*
-    if(webhookIsActive && state === "on") {
-        debug("webhook already on");
-        return
-    }
-    else if(!webhookIsActive && state === "off"){
-        debug("webhook already off");
-        return
-    }
-     */
+/**
+ * Fetch a url with the provided settings
+ * @param {string} state  - "on" or "off"
+ * @param {presenceSettings} settings - settings object
+ * @param {function} debug - debug function
+ */
+function callWebRequest(state, settings, debug = ()=>{}) {
 
     debug("webhook settings", settings);
 
@@ -51,8 +41,6 @@ function callWebRequest(state, settings, debug = console.log) {
     // ToDo: JSON parse issues
     if (headers !== "")
         fetchParams.headers = JSON.parse(headers);
-
-    //console.log(url, fetchParams);
 
     fetch(url, fetchParams)
         // In case we care about the response someday
@@ -92,5 +80,8 @@ function throttle(fn, limit) {
     }
 }
 
+/**
+ * Throttled version of the webRequest function
+ */
 export const webRequest = throttle(callWebRequest, 5000);
 
