@@ -2,7 +2,7 @@ import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 // Applets
-import {presenceOn, presenceOff} from "../../presence/scripts/background.mjs";
+import "../../presence/scripts/background.mjs";
 import "../../imageCapture/scripts/background.mjs";
 
 // storage prototypes for each applet used for initialization
@@ -90,9 +90,6 @@ async function handleTabRemoved(tabId){
     const newTrackData = trackData.filter(td => td.tabId !== tabId);
     await storage.set('trackData', newTrackData);
 
-    if(newTrackData.length === 0)
-        await presenceOff();
-    // await removeTab(tabId);  // if addTab is used again
 }
 
 
@@ -129,7 +126,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab)=>{
 mh.addListener(m.NEW_TRACK, async data=>{
     debug("new track", data);
     const {id, kind, label, state, streamId, tabId} = data;
-    // check if track is already in memory
+    // check if track is already in storage
     const trackData = storage.contents.trackData;
     if(storage.contents.trackData.some(td => td.id === id)){
         debug(`track ${id} already in trackData array`);
@@ -137,7 +134,6 @@ mh.addListener(m.NEW_TRACK, async data=>{
         trackData.push(data);
         await storage.set('trackData', trackData);
         debug(`added ${id} to trackData array`, trackData);
-        await presenceOn();         // Presence handling
     }
 });
 
@@ -149,8 +145,6 @@ mh.addListener(m.TRACK_ENDED, async data=>{
     // Remove the track from trackData
     const trackData = storage.contents.trackData;
     await storage.set('trackData', trackData.filter(td => td.id !== data.id));
-
-    await presenceOff();
 });
 
 

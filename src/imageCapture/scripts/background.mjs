@@ -1,7 +1,7 @@
-import {settings as imageCaptureSettingsProto} from "../../imageCapture/scripts/settings.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-import {set as idbSet} from "idb-keyval";
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {settings as imageCaptureSettingsProto} from "../../imageCapture/scripts/settings.mjs";
+import {set as idbSet} from "idb-keyval";
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥📸`);
 const storage = await new StorageHandler("local", debug);

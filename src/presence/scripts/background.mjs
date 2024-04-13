@@ -6,26 +6,28 @@
  * Sets HID light
  */
 
-import {settings as presenceSettingsProto} from "../../presence/scripts/settings.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-import {glow} from "./embrava.mjs";                                 // HID light
-import {webRequest} from "./webRequest.mjs";                        // web request function
+import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {settings as presenceSettingsProto} from "../../presence/scripts/settings.mjs";
+import {glow} from "./embrava.mjs";                                                 // HID light
+import {webRequest} from "./webRequest.mjs";                                        // web request function
 
 const PRESENCE_OFF_DELAY = 2000; // time to wait before turning off presence after all tracks are done
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥🟢`);
 const storage = await new StorageHandler("local", debug);
-
-// helpers for brevity
-const isTrackLive = () => storage.contents.trackData.some(td => td.readyState === 'live');
-const isPresenceEnabled = () => storage.contents?.presence?.enabled;
-const isPresenceActive = () => storage.contents?.presence?.active;
-
+const mh = new MessageHandler('background');
 
 // initialize presence settings
 if (!storage.contents['presence']) {
     await storage.set('presence', presenceSettingsProto);
 }
+
+
+// helpers for brevity
+const isTrackLive = () => storage.contents.trackData.some(td => td.readyState === 'live');
+const isPresenceEnabled = () => storage.contents?.presence?.enabled;
+const isPresenceActive = () => storage.contents?.presence?.active;
 
 
 /**
@@ -73,11 +75,11 @@ async function presenceOff() {
 
     if (!isPresenceEnabled() && isPresenceActive())
         await off();
-    else if (isTrackLive())
-        debug("presenceOff check: some tracks still live", storage.contents.trackData);
     else {
         await new Promise(resolve => setTimeout(async () => {
-            if (isPresenceActive() && !isTrackLive()) {
+            if (isTrackLive())
+                debug("presenceOff check: some tracks still live", storage.contents.trackData);
+            else if (isPresenceActive() && !isTrackLive()) {
                 await off();
             }
             resolve();
@@ -97,8 +99,12 @@ storage.addListener('presence', async (newValue, changedValue) => {
     }
 });
 
-export {
-    presenceOn,
-    presenceOff
-}
+chrome.tabs.onRemoved.addListener(async ()=> await presenceOff());
+
+/**
+ * Listeners for track changes and calls the presenceOn and presenceOff functions
+ */
+mh.addListener(m.NEW_TRACK, async () => await presenceOn());
+mh.addListener(m.TRACK_ENDED, async()=> await presenceOff());
+
 // debug("presence background script loaded");
