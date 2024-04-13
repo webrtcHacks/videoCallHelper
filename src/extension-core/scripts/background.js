@@ -1,5 +1,7 @@
 import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
+
+// Applets
 import {presenceOn, presenceOff} from "../../presence/scripts/background.mjs";
 import "../../imageCapture/scripts/background.mjs";
 
@@ -22,61 +24,11 @@ const mh = new MessageHandler('background');
 self.debug = debug;
 self.mh = mh;
 
-// ToDo: see if I need these tab tacking functions - test with multiple webrtc tabs
-/*
-// Keep state on tabs; uses a Set to only store unique items
-async function addTab(tabId) {
-    try {
-        // const {streamTabs} = await chrome.storage.local.get('streamTabs');
-        chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-        const activeTabs = new Set(streamTabs);
-        activeTabs.add(tabId);
-        await chrome.storage.local.set({streamTabs: [...activeTabs]});
-        debug(`Added tab: ${tabId}; streamTabs: ${[...activeTabs]}`);
-    } catch (err) {
-        console.error(`Issue adding ${tabId}`, err)
-    }
-}
-
-// Keep state on tabs; uses a Set to only store unique items
-async function removeTab(tabId) {
-    try {
-        //const {streamTabs} = await chrome.storage.local.get('streamTabs');
-        chrome.storage.local.get(['streamTabs'], data=>{streamTabs = data.streamTabs});
-        const activeTabs = new Set(streamTabs);
-        activeTabs.delete(tabId);
-        await chrome.storage.local.set({activeTabs: [...activeTabs]});
-        debug(`activeTabs: ${[...activeTabs]}`);
-
-        // now clear storage
-        chrome.storage.local.get(['tabData'], async data=>{
-            if(!data.tabData)
-                return;
-
-            const arr = data.tabData.filter(data=>data.sourceId !== tabId);
-            await chrome.storage.local.set({tabData: arr});
-            // log("tabData: ", arr);
-        });
-
-    } catch (err) {
-        console.error(`Issue removing ${tabId}`, err)
-    }
-}
-
-// for video processing in an extension tab
-async function getVideoTabId(){
-    // ToDo: there is also a chrome extension method to get all extension pages
-    const url = chrome.runtime.getURL("pages/video.html"); // + `?source=${tabId}`;
-    //const [videoTab] = await chrome.tabs.query({url: url});
-    const videoTab = await chrome.tabs.query({url: url});
-         // ToDo: this isn't working - opens twice
-        const videoTabId = videoTab[0]?.id;
-        debug(`getVideoTabId:: videoTabId: ${videoTabId}`);
-        return videoTabId
-    // log("videoTab", videoTab);
-}
+/**
+ * Initializes storage with the applet settings
+ * ToDo: move these to the applet modules
+ * @returns {Promise<void>}
  */
-
 async function initStorage(){
 
     // Presence settings moved to module
@@ -108,69 +60,23 @@ async function initStorage(){
 
 }
 
-// let gumActive = false;
+/*
 chrome.runtime.onStartup.addListener(async () => {
 
     // fired when a profile that has this extension installed first starts up.
     // This event is not fired when the installed extension is disabled and re-enabled.
     // moved to initializing storage whenever background.js is loaded
-    // debug("onStartup local storage before init: ", storage.contents);
     // await initStorage();
-    // debug("onStartup local storage after init: ", storage.contents);
-
-
-    // await getVideoTabId();
 })
-
-/*
- * Inter-script messaging
- */
 
 chrome.runtime.onInstalled.addListener(async () => {
 
     // fired when the extension is first installed, when the extension is updated to a new version,
     // moved to initializing storage whenever background.js is loaded
-    // debug("onInstalled starting local storage before init: ", storage.contents);
     // await initStorage();
-    // debug("onInstalled starting local storage after init: ", storage.contents);
-
-
-    // Testing
-
-    /*
-    // Make a new window.
-    // No way to make it stay on top
-    const windowOpts = {
-        focused: true,
-        top: 0,
-        left: 0,
-        type: "popup",
-        url: chrome.runtime.getURL("pages/video.html"),
-
-    };
-    const window = await chrome.windows.create(windowOpts);
-    log(window);
-     */
-
-    // Testing if webgazer works in an extension
-    /*
-    const url = chrome.runtime.getURL("pages/webgazer.html");
-    const videoTab = await chrome.tabs.create({url});
-    log(`webgazer tab ${videoTab.id}`);
-     */
-
-    // Do this to load a help page
-    /*
-    let url = chrome.runtime.getURL("onInstallPage.html");
-    let inputTab = await chrome.tabs.create({url});
-    console.log(`inputTab ${inputTab.id}`);
-     */
-
-    // chrome.runtime.openOptionsPage();
 
 });
-
-// Note: https://developer.chrome.com/blog/page-lifecycle-api/ says don't do `beforeunload`
+*/
 
 /**
  * Handles tab removal, removing any tracks associated with that tab, updates presence
@@ -193,16 +99,24 @@ async function handleTabRemoved(tabId){
 /**
  * Tab event listeners
  */
+
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
     debug(`tab ${tabId} removed`);
     await handleTabRemoved(tabId);
 });
+
 chrome.tabs.onReplaced.addListener(async (tabId, removeInfo)=>{
     debug(`tab ${tabId} replaced`);
     await handleTabRemoved(tabId);
 });
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo)=>{
-    if (changeInfo.status === 'complete') {
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab)=>{
+
+    // ignore extension tabs
+    if (tab.url.match(/^chrome-extension:\/\//)) { // && changeInfo.status === 'complete'
+        // debug(`extension tab opened: ${tab.url}`)
+    }
+    else if (changeInfo.status === 'complete') {
         debug(`tab ${tabId} refreshed`);
         await handleTabRemoved(tabId);
     }
@@ -240,11 +154,10 @@ mh.addListener(m.TRACK_ENDED, async data=>{
 });
 
 
-/*
- *  Extension icon control
+/**
+ *  Extension icon control - toggles the dash on the current tab
+ *  Note: change to pageAction if Extension should work across multiple tabs independently
  */
-
-// ToDo: change to pageAction?
 chrome.action.onClicked.addListener(async (tab)=>{
     // debug(`icon clicked on tab ${tab.id}`);
 
@@ -268,22 +181,7 @@ chrome.action.onClicked.addListener(async (tab)=>{
         }
     });
 
-    // const url = chrome.runtime.getURL("pages/video.html");
-    // const videoTab = await chrome.tabs.create({url});
-    // log(videoTab);  // undefined
-    // log(`video tab ${videoTab.id}`)
-
 });
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    // log(`tab ${tabId} updated`, changeInfo, tab);
-
-    if (tab.url.match(/^chrome-extension:\/\//) && changeInfo.status === 'complete') {
-        debug(`extension tab opened: ${tab.url}`)
-    }
-    // else if (changeInfo.status === 'loading' && /^http/.test(tab.url)) { });
-});
-
 
 await initStorage();
 
