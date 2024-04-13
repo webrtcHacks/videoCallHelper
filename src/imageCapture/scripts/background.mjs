@@ -5,13 +5,19 @@ import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥📸`);
 const storage = await new StorageHandler("local", debug);
-
 const mh = new MessageHandler('background');
 
+
+// Initialize image capture settings
 if(!storage.contents['imageCapture'])
     await storage.set('imageCapture', imageCaptureSettingsProto);
 
 
+/**
+ * Frame capture listener function - saves image capture data to indexedDB
+ * @param {object} data - image capture data
+ * @returns {Promise<void>}
+ */
 async function frameCap(data){
     const imageBlob = await fetch(data.blobUrl).then(response => response.blob());
 
@@ -36,3 +42,4 @@ async function frameCap(data){
 mh.addListener(m.FRAME_CAPTURE, frameCap);
 
 // debug("imageCapture background module loaded");
+
