@@ -93,7 +93,6 @@ export class MessageHandler {
      * | dash       | chrome.tabs.sendMessage       | chrome.runtime.sendMessage   | // relay via content      | // n/a                          |
      *
      */
-
     sendMessage = (to, message, data = {}, origin = this.context) => {
         if (this.context === to || !to || !message)
             return;
@@ -119,6 +118,7 @@ export class MessageHandler {
             switch (this.context) {
                 case 'background':
                     if (to === 'content' || to === 'inject') {
+                        this.tabId = data.tabId; // this.tabId || data.tabId;
                         this.debug(`target tabId: ${this.tabId}`);
                         chrome.tabs.sendMessage(this.tabId, { ...messageToSend });
                     } else if (to === 'dash') {
@@ -127,10 +127,17 @@ export class MessageHandler {
                     break;
                 case 'content':
                     if (to === 'background' || to === 'dash') {
-                        chrome.runtime.sendMessage(messageToSend, {}, response => {
-                            if (chrome.runtime.lastError)
+                        try{
+                            chrome.runtime.sendMessage(messageToSend, {}, response => {
+                                if (chrome.runtime.lastError)
+                                    this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
+                            });
+                        } catch (err) {
+                            this.debug("Error sending message to background", err);
+                            if(err.message === "Disconnected from background script:")
                                 this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
-                        });
+                        }
+
                     } else if (to === 'inject') {
                         const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
                         document.dispatchEvent(toInjectEvent);

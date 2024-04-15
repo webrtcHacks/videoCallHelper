@@ -81,6 +81,13 @@ const extensionConfig = {
     plugins: [
         new HtmlWebpackPlugin({
             title: 'Options page',
+            chunks: [''],
+            template: "src/extension-core/pages/popup-error.html",
+            filename: "../pages/popup-error.html",
+            inject: "body"
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Options page',
             chunks: ['options'],
             template: "src/extension-core/pages/options.html",
             filename: "../pages/options.html",

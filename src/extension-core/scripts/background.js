@@ -58,25 +58,34 @@ async function initStorage(){
     if(!storage.contents['videoPlayer'])
         await storage.set('videoPlayer', {buffer: null});
 
-}
+    await storage.set('tabs', new Set());
 
-/*
+}
+await initStorage();
+
+
 chrome.runtime.onStartup.addListener(async () => {
 
     // fired when a profile that has this extension installed first starts up.
     // This event is not fired when the installed extension is disabled and re-enabled.
     // moved to initializing storage whenever background.js is loaded
     // await initStorage();
+
+    debug("onStartup");
 })
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener( (details) => {
 
     // fired when the extension is first installed, when the extension is updated to a new version,
     // moved to initializing storage whenever background.js is loaded
     // await initStorage();
 
+    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+        debug("onInstalled uninstalled?", details);
+        }
+    else
+        debug("onInstalled?", details);
 });
-*/
 
 /**
  * Handles tab removal, removing any tracks associated with that tab, updates presence
@@ -97,8 +106,21 @@ async function handleTabRemoved(tabId){
  * Tab event listeners
  */
 
+chrome.tabs.onCreated.addListener(async (tab)=>{
+    if(tab.url.match(/^http/)){
+        const tabs = await storage.contents.tabs;
+        tabs.add(tab.id);
+        await storage.update('tabs', tabs);
+    }
+    else
+        await chrome.action.disable(tab.id);
+});
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
     debug(`tab ${tabId} removed`);
+    const tabs = await storage.contents.tabs;
+    tabs.delete(tabId);
+    await storage.update('tabs', tabs);
+
     await handleTabRemoved(tabId);
 });
 
@@ -110,8 +132,8 @@ chrome.tabs.onReplaced.addListener(async (tabId, removeInfo)=>{
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab)=>{
 
     // ignore extension tabs
-    if (tab.url.match(/^chrome-extension:\/\//)) { // && changeInfo.status === 'complete'
-        // debug(`extension tab opened: ${tab.url}`)
+    if (!tab.url.match(/^http:\/\//)) { // && changeInfo.status === 'complete'
+        debug(`non-http tab opened: ${tab.url}`)
     }
     else if (changeInfo.status === 'complete') {
         debug(`tab ${tabId} refreshed`);
@@ -147,36 +169,47 @@ mh.addListener(m.TRACK_ENDED, async data=>{
     await storage.set('trackData', trackData.filter(td => td.id !== data.id));
 });
 
+// ToDo: debugging
+mh.addListener('hello', async data=>{
+    debug("hello", data);
+});
 
 /**
  *  Extension icon control - toggles the dash on the current tab
  *  Note: change to pageAction if Extension should work across multiple tabs independently
  */
 chrome.action.onClicked.addListener(async (tab)=>{
-    // debug(`icon clicked on tab ${tab.id}`);
+    debug(`icon clicked on tab ${tab.id}`);
 
-    if(!tab?.id){
-        debug("lost sync with tab", tab);
-        return;
+    // chrome.tabs.query({active: true, currentWindow: true}, async (tabs)=> {
+    //        console.log(tabs);});
+
+    const tabs = await storage.contents.tabs;
+    if(!tabs.has(tab.id)){
+        debug(`tab ${tab.id} not in tabs`, tabs);
+        debug("I want to show a message to teh user here");
+
     }
-
-    const messageToSend = {
-        to: 'content',
-        from: 'background',
-        message: 'toggle_dash',
-        data: {tabId: tab.id}
-    }
-
-    chrome.tabs.sendMessage(tab.id, {...messageToSend}, response => {
-        // catch if the sendMessage failed, liked when the extension is reloaded
-        if (chrome.runtime.lastError) {
-            debug("Error sending message: ", chrome.runtime.lastError.message);
-            // Additional error handling logic can go here
-        }
-    });
+    mh.sendMessage('content', m.TOGGLE_DASH, {tabId: tab.id});
 
 });
 
-await initStorage();
+
+chrome.tabs.query({}, async (tabs)=> {
+    debug("all tabs", tabs);
+    const iconPath = "../icons/v_error.png";
+    for (const tab of tabs) {
+        if(!tab.url.match(/^http/)) {
+            await chrome.action.disable(tab.id);
+            continue;
+        }
+        // debug(`tab ${tab.id}`, tab);
+        await chrome.action.setIcon({tabId: tab.id, path: iconPath});
+        // set the extension url to the popup-error page
+        const url = chrome.runtime.getURL("../pages/popup-error.html");
+
+        await chrome.action.setPopup({tabId: tab.id, popup: url})
+    }
+});
 
 debug("background.js loaded");
