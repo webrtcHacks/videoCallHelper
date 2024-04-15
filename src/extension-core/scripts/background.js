@@ -24,6 +24,10 @@ const mh = new MessageHandler('background');
 self.debug = debug;
 self.mh = mh;
 
+const DASH_OPEN_NEXT_WAIT = 1000;   // time to wait before opening the dash on the next tab reload
+let dashOpenNext;                            // flag to open the dash on the next tab reload
+
+
 /**
  * Initializes storage with the applet settings
  * ToDo: move these to the applet modules
@@ -88,7 +92,7 @@ chrome.runtime.onInstalled.addListener( (details) => {
 });
 
 /**
- * Handles tab removal, removing any tracks associated with that tab, updates presence
+ * Handles tab removal and refresh - removes any tracks associated with that tab, updates presence
  * @param tabId
  * @returns {Promise<void>}
  */
@@ -99,6 +103,13 @@ async function handleTabRemoved(tabId){
     const newTrackData = trackData.filter(td => td.tabId !== tabId);
     await storage.set('trackData', newTrackData);
 
+    // Check if we should open the dash on this reload
+    if(dashOpenNext===tabId){
+        setTimeout(async ()=>{
+            await mh.sendMessage('content', m.TOGGLE_DASH, {tabId: tabId});
+        }, DASH_OPEN_NEXT_WAIT);
+        dashOpenNext = null;
+    }
 }
 
 
@@ -137,6 +148,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab)=>{
     }
     else if (changeInfo.status === 'complete') {
         debug(`tab ${tabId} refreshed`);
+        const tabs = await storage.contents.tabs;
+        tabs.add(tabId);
         await handleTabRemoved(tabId);
     }
 });
@@ -169,10 +182,14 @@ mh.addListener(m.TRACK_ENDED, async data=>{
     await storage.set('trackData', trackData.filter(td => td.id !== data.id));
 });
 
-// ToDo: debugging
-mh.addListener('hello', async data=>{
-    debug("hello", data);
-});
+/**
+ * Set the dash open next flag
+ */
+mh.addListener(m.DASH_OPEN_NEXT, async data=>{
+    const [currentTab] = await chrome.tabs.query({active: true, currentWindow: true});
+    dashOpenNext = currentTab.id;
+})
+
 
 /**
  *  Extension icon control - toggles the dash on the current tab
@@ -185,18 +202,21 @@ chrome.action.onClicked.addListener(async (tab)=>{
     //        console.log(tabs);});
 
     const tabs = await storage.contents.tabs;
-    if(!tabs.has(tab.id)){
+    if(tabs.has(tab.id))
+        mh.sendMessage('content', m.TOGGLE_DASH, {tabId: tab.id});
+    else
         debug(`tab ${tab.id} not in tabs`, tabs);
-        debug("I want to show a message to teh user here");
-
-    }
-    mh.sendMessage('content', m.TOGGLE_DASH, {tabId: tab.id});
-
 });
 
-
+/**
+ * Extension icon control on start and refresh
+ *  - extension needs to be loaded before the page loads to override WebRTC APIs
+ *  - on a new install or reload it won't work if a tab is already open without a refresh
+ *  - Sets existing tabs to the warning icon and sets a popup on icon click to a special error page
+ *  - Sets any non-http tab to disabled
+ */
 chrome.tabs.query({}, async (tabs)=> {
-    debug("all tabs", tabs);
+    // debug("all tabs", tabs);
     const iconPath = "../icons/v_error.png";
     for (const tab of tabs) {
         if(!tab.url.match(/^http/)) {

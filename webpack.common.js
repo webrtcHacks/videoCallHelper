@@ -29,6 +29,7 @@ const extensionConfig = {
         options: './src/extension-core/scripts/options.js',
         content: './src/extension-core/scripts/content.js',
         inject: './src/extension-core/scripts/inject.js',
+        popupError: './src/extension-core/scripts/popup-error.js',
         dash: './src/dash/dash.js',
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
@@ -80,8 +81,8 @@ const extensionConfig = {
     },
     plugins: [
         new HtmlWebpackPlugin({
-            title: 'Options page',
-            chunks: [''],
+            title: 'Pop-up Error page',
+            chunks: ['bootstrap', 'bootstrapIcons', 'popupError'],
             template: "src/extension-core/pages/popup-error.html",
             filename: "../pages/popup-error.html",
             inject: "body"

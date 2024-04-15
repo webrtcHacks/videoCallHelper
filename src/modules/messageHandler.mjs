@@ -157,6 +157,12 @@ export class MessageHandler {
                         window.parent.postMessage( {...messageToSend}, "*");    // parent origin is the user page
                     }
                     break;
+                case 'popup':
+                    if(to === 'background')
+                        chrome.runtime.sendMessage({ ...messageToSend });
+                    else
+                        this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
+                    break;
                 default:
                     this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
                     break;
@@ -354,6 +360,7 @@ export const MESSAGE = {
     // background.js
     DASH_INIT: 'dash_init',
     // DASH_OPEN: 'dash_open',
+    DASH_OPEN_NEXT: 'dash_open_next',
     FRAME_CAPTURE: 'frame_cap',
     // GUM_STREAM_START: 'gum_stream_start',
     GUM_STREAM_STOP: 'gum_stream_stop',
