@@ -1,4 +1,9 @@
 // ToDo: stop button not working
+import {debug, storage} from "../../dash/dashCommon.mjs";
+
+/**
+ * Common elements and functions between dash and the image capture page
+ */
 
 // Update Chrome Local Storage image sampling settings from UI elements
 // Used for UI pages - pop-up dash, dedicated page, maybe options
@@ -10,11 +15,6 @@ const samplingStopBtn = document.querySelector('button#sampling_stop');
 const startOnPcCheck = document.querySelector('input#start_on_pc_check');
 const enabledCheck = document.querySelector('input#enable_img_cap_check');
 const captureIntervalInput  = document.querySelector('input#interval');
-
-const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵 imageCaptureSettings: `);
-
-import {StorageHandler} from "../../modules/storageHandler.mjs";
-const storage = await new StorageHandler("local"); //, debug);
 
 
 // export let settings = (await chrome.storage.local.get('imageCapture'))?.imageCapture;
@@ -76,3 +76,12 @@ function updateUI(){
 }
 
 storage.addListener('imageCapture', updateUI);
+
+/**
+ *  Button to open dedicated image capture page
+ */
+// Image capture button
+document.querySelector("button#open_sampling").onclick = async () => {
+    const url = chrome.runtime.getURL("pages/imageCapture.html");
+    await chrome.tabs.create({url});
+}

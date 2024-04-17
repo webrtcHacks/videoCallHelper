@@ -31,7 +31,6 @@ const extensionConfig = {
         inject: './src/extension-core/scripts/inject.js',
         popupError: './src/extension-core/scripts/popup-error.js',
         dash: './src/dash/dash.js',
-        deviceManagerDash: './src/deviceManager/scripts/dash.mjs',
         storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
         framing: './src/framing/scripts/framingAnalysis.js',
@@ -97,7 +96,7 @@ const extensionConfig = {
         }),
         new HtmlWebpackPlugin({
             title: 'Pop-up Dashboard',
-            chunks: ['bootstrap', 'bootstrapIcons', 'dash', 'deviceManagerDash'],
+            chunks: ['bootstrap', 'bootstrapIcons', 'dash'],
             template: "src/dash/dash.html",
             filename: "../pages/dash.html",
             inject: "body",

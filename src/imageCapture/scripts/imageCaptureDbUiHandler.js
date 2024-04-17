@@ -1,7 +1,7 @@
 // handler for standalone image capture display page
 
 import {entries, clear, delMany, get, set} from 'idb-keyval';
-import './imageCaptureSettings.mjs';
+import './dash.mjs';
 
 const showDbBtn = document.querySelector('button#db_show');
 const clearDbBtn = document.querySelector('button#db_clear');

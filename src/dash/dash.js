@@ -1,39 +1,24 @@
 /**
  * Main pop-up dash script
- * Other modules are loaded outside of here via webpack - I couldn't get them to load properly here
+ * Used to load other applet scripts
  */
 
-
 import './style.scss';
-import {StorageHandler} from '../modules/storageHandler.mjs';
-import {MessageHandler, MESSAGE as m} from '../modules/messageHandler.mjs';
-
-const debug = Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
-const storage = await new StorageHandler("local", debug);
-const mh = new MessageHandler('dash');
-export {storage, mh, debug};
+import {MESSAGE as m } from "../modules/messageHandler.mjs";
+import {debug, storage, mh} from "./dashCommon.mjs";
 
 // To help with debugging
 window.vch = {
     storage: storage,
     mh: mh,
-    debug: debug,
     player: {}
 }
 
-
-/************ START imageCapture ************/
-// ToDo: refactor this for storageHandler
-// frontend UI handlers
-import '../imageCapture/scripts/imageCaptureSettings.mjs';
-
-// Image capture button
-document.querySelector("button#open_sampling").onclick = async () => {
-    const url = chrome.runtime.getURL("pages/imageCapture.html");
-    await chrome.tabs.create({url});
-}
-/************ END imageCapture ************/
-
+/**
+ * Applet script imports
+ */
+import '../imageCapture/scripts/dash.mjs';
+import '../deviceManager/scripts/dash.mjs';
 
 /************ START presence ************/
 // backend functions
@@ -269,6 +254,7 @@ storage.addListener('badConnection', () => {
 
 /************ START InsertPlayer ************/
 import {arrayBufferToBase64, base64ToBuffer} from "../videoPlayer/scripts/videoPlayer.mjs";
+import {MESSAGE} from "../modules/messageHandler.mjs";
 
 const cameraDiv = document.querySelector('div#cameraPreview');
 const playerDiv = document.querySelector('div#playerPreview');

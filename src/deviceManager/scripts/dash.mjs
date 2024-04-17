@@ -1,4 +1,4 @@
-import {debug, storage} from "../../dash/dash.js";
+import {debug, storage} from "../../dash/dashCommon.mjs";
 debug("dash.mjs is loaded");
 
 /************ START deviceManager ************/
