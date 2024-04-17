@@ -97,6 +97,16 @@ async function handleTabRemoved(tabId){
  * Tab event listeners
  */
 
+chrome.tabs.onCreated.addListener(async (tab)=>{
+    if(tab.url.match(/^http/i)){
+        const tabs = await storage.contents.tabs;
+        tabs.add(tab.id);
+        await storage.update('tabs', tabs);
+    }
+    else
+        await chrome.action.disable(tab.id);
+});
+
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
     debug(`tab ${tabId} removed`);
     await handleTabRemoved(tabId);
@@ -108,10 +118,9 @@ chrome.tabs.onReplaced.addListener(async (tabId, removeInfo)=>{
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab)=>{
-
-    // ignore extension tabs
-    if (tab.url.match(/^chrome-extension:\/\//)) { // && changeInfo.status === 'complete'
-        // debug(`extension tab opened: ${tab.url}`)
+    // ignore non http tabs
+    if (!tab.url.match(/^http/i)) { // && changeInfo.status === 'complete'
+        debug(`non-http tab opened: ${tab.url}`)
     }
     else if (changeInfo.status === 'complete') {
         debug(`tab ${tabId} refreshed`);
