@@ -17,19 +17,19 @@ let currentStream = null;
 let running = false;
 let lastImageUrl = URL.createObjectURL(new Blob());
 
-let settings = storage.contents['imageCapture'];
+let settings = await storage.get('imageCapture');
 debug("Image Capture settings:", settings);
 
 // Set default values if storage is blank
+
 const initSettings = {
-    startOnPc: storage.contents['imageCapture']?.startOnPc || false,
-    captureIntervalMs: storage.contents['imageCapture']?.captureIntervalMs || (60 * 1000),
-    active: storage.contents['imageCapture']?.active || false,
-    enabled: storage.contents['imageCapture']?.enabled || false
+    startOnPc: settings?.startOnPc || false,
+    captureIntervalMs: settings?.captureIntervalMs || (60 * 1000),
+    active: settings?.active || false,
+    enabled: settings?.enabled || false
 };
 
-// ToDo: change this to update
-await storage.set('imageCapture', initSettings);
+await storage.update('imageCapture', initSettings);
 
 
 /**

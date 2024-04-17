@@ -23,7 +23,8 @@ const mh = new MessageHandler('content');
 window.vch = {
     streams: streams,
     trackInfos: trackInfos,
-    mh: mh
+    mh: mh,
+    storage: storage
 };
 
 mh.addListener(m.GET_ALL_SETTINGS, async() => {
@@ -257,6 +258,11 @@ async function toggleDash() {
 }
 
 mh.addListener(m.TOGGLE_DASH, toggleDash);
+mh.onDisconnectedHandler('remove_dash', () => {
+    iframe?.remove();
+    iframe = null;
+    mh.removeDisconnectHandler('remove_dash');  // only do this once
+});
 
 /************ END dash manager ************/
 
@@ -489,12 +495,12 @@ async function gumStreamStart(data) {
         new selfViewElementModifier(origStream, storage);
     }
 
-
 }
 
 mh.addListener(m.GUM_STREAM_START, gumStreamStart);
 
 /************ END gUM stream management ************/
+
 
 
 /************ START inject script injection ************/
@@ -529,4 +535,3 @@ await addScript('/scripts/inject.js');
 // debug("inject injected");
 
 /************ END inject script injection ************/
-
