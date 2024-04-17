@@ -4,9 +4,9 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 // Applets
 import "../../presence/scripts/background.mjs";
 import "../../imageCapture/scripts/background.mjs";
+import "../../deviceManager/scripts/background.mjs"
 
 // storage prototypes for each applet used for initialization
-import {settings as deviceManagerSettingsProto} from "../../deviceManager/scripts/settings.mjs";
 import {settings as selfViewSettingsProto} from "../../selfView/scripts/settings.mjs";
 import {settings as badConnectionSettingsProto} from "../../badConnection/scripts/settings.mjs";
 
@@ -39,13 +39,7 @@ async function initStorage(){
 
     // Image capture settings moved to module
 
-    // device manager settings
-    if(!storage.contents['deviceManager']) {
-        await storage.set('deviceManager', deviceManagerSettingsProto);
-        //else
-        // await storage.update('deviceManager', {active:false});
-        // await storage.set('deviceManager', deviceManagerSettings);
-    }
+    // device manager settings moved to module
 
     // self-view settings
     if(!storage.contents['selfView'])

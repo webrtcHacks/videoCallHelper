@@ -1,12 +1,14 @@
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {StorageHandler} from "../../modules/storageHandler.mjs";
+
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
 import {grabFrames, ImageStream} from "../../imageCapture/scripts/content-grabFrames.mjs";
-import {StorageHandler} from "../../modules/storageHandler.mjs";
 import {base64ToBuffer} from "../../videoPlayer/scripts/videoPlayer.mjs";
+
+import "../../deviceManager/scripts/content.mjs";
 
 const streams = [];
 let trackInfos = [];
-
 
 // if(process.env.NODE_ENV)
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵`);
@@ -30,47 +32,6 @@ window.vch = {
 mh.addListener(m.GET_ALL_SETTINGS, async() => {
     await mh.sendMessage('inject', m.ALL_SETTINGS, storage.contents);
 });
-
-/************ START deviceManager ************/
-
-// Set initial device manager values
-const deviceSettings = {
-    enabled: storage.contents['deviceManager']?.enabled ?? false,   // UI switch
-    currentDevices: storage.contents['deviceManager']?.currentDevices ?? [],
-    selectedDeviceLabels: {            // UI selections
-        audio: storage.contents['deviceManager']?.selectedDeviceLabels?.audio ?? "",
-        video: storage.contents['deviceManager']?.selectedDeviceLabels?.video ?? ""
-    },
-    excludedDevices: storage.contents['deviceManager']?.excludedDevices ?? [],
-    lastDeviceIds: {            // UI selections
-        audio: storage.contents['deviceManager']?.lastDeviceIds?.audio ?? "",
-        video: storage.contents['deviceManager']?.lastDeviceIds?.video ?? ""
-    },
-}
-// ToDo: I shouldn't really need to initialize values here if I have proper checking elsewhere (which I don't)
-// set storage values on start if they are not populated
-await storage.update('deviceManager', deviceSettings);
-
-// Dash UI enabled change should be propagated to inject
-await storage.addListener('deviceManager', (newValue) => {
-    debug("deviceManager settings changed", newValue);
-    mh.sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, newValue);
-});
-
-// Inject (fakeDeviceManager) should ask for these settings when it loads
-mh.addListener(m.GET_DEVICE_SETTINGS, () => {
-    mh.sendMessage('inject', m.UPDATE_DEVICE_SETTINGS, storage.contents['deviceManager']);
-});
-
-// Inject should send content UPDATE_DEVICE_SETTINGS on any deviceChange or permission change
-mh.addListener(m.UPDATE_DEVICE_SETTINGS, async (data) => {
-    let deviceSettings = storage.contents['deviceManager'];
-    debug("deviceManager settings updated", data);
-    Object.assign(deviceSettings, data);
-    await storage.update('deviceManager', deviceSettings);
-});
-
-/************ END deviceManager ************/
 
 
 /************ START bad connection ************/

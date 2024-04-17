@@ -1,6 +1,6 @@
 'use strict';
 import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
-import {DeviceManager} from "../../deviceManager/scripts/deviceManager.mjs";
+import {DeviceManager} from "../../deviceManager/scripts/inject.mjs";
 import {AlterStream} from "../../badConnection/scripts/alterTrack.mjs";
 
 // Todo: make this an anonymous function for prod
