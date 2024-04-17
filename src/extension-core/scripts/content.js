@@ -2,7 +2,7 @@ import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 import {selfViewElementModifier} from "../../selfView/scripts/content-selfView.mjs";
-import {grabFrames, ImageStream} from "../../imageCapture/scripts/content-grabFrames.mjs";
+import {grabFrames, ImageStream} from "../../imageCapture/scripts/content.mjs";
 import {base64ToBuffer} from "../../videoPlayer/scripts/videoPlayer.mjs";
 
 import "../../deviceManager/scripts/content.mjs";
