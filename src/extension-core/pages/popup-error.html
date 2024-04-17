@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Call Helper</title>
+</head>
+<body class="bg-dark text-white-50">
+<div class="container popup d-flex flex-column pt-3" style="height: 100vh;">
+    <div class="border-bottom border-secondary-subtle justify-content-center">
+        <h5 class="">Video Call Helper</h5>
+        <i class="bi bi-x-square-fill close-icon" id="close"></i>
+    </div>
+
+    <div class="d-flex align-items-start m-2">
+        <i class="bi bi-exclamation-triangle-fill fs-1 p-2 text-danger"></i>
+        <h4 class="text-danger align-self-center">Refresh required</h4>
+    </div>
+    <p>
+        This page must be reloaded to enable the extension. This will disconnect any calls in progress.
+    </p>
+    <button id="refresh" class="btn btn-outline-primary p-2">
+        <i class="bi bi-bootstrap-reboot"></i>
+        Reload page
+    </button>
+</div>
+</body>
+</html>

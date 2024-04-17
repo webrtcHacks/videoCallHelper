@@ -127,14 +127,18 @@ export class StorageHandler {
                 Object.assign(StorageHandler.contents, {[key]: updatedValue});
             } else
                 StorageHandler.contents[key] = newValue;
-
             await this.storage.set(StorageHandler.contents)
             return StorageHandler.contents[key];
         } catch (error) {
-            this.debug("error updating storage", error);
-            this.debug("key", key ?? null, "newValue", newValue ?? null);
-            this.debug("contents", StorageHandler.contents);
-            this.debug("storage", await this.storage.get());
+            if(error.message.match(/context invalidated/i)){
+                this.#handleDisconnect()
+            }
+            else{
+                this.debug("error updating storage", error);
+                this.debug("key", key ?? null, "newValue", newValue ?? null);
+                this.debug("contents", StorageHandler.contents);
+                this.debug("storage", await this.storage.get());
+            }
         }
     }
 
@@ -145,10 +149,20 @@ export class StorageHandler {
      */
     async get(key = "") {
         if (key) {
-            const obj = await this.storage.get(key);
-            return Object.values(obj)[0];
+            try{
+                const obj = await this.storage.get(key);
+                return Object.values(obj)[0];
+            }
+            catch (error) {
+                if(error.message.match(/context invalidated/i)){
+                    // this.debug("Disconnected from background script", error);
+                    this.#handleDisconnect();
+                }
+                else
+                    this.debug("error getting storage", error);
+            }
+
         }
-        // return await this.storage.get();
     }
 
     /**
@@ -158,14 +172,23 @@ export class StorageHandler {
      * @returns {Promise<*>} - the value set
      */
     async set(key = "", value = {}) {
-        Object.assign(StorageHandler.contents, {[key]: value});
-        await this.storage.set({[key]: value});
-        return value;
+        try {
+            Object.assign(StorageHandler.contents, {[key]: value});
+            await this.storage.set({[key]: value});
+            return value;
+        }
+        catch (error) {
+            if(error.message.match(/context invalidated/i)){
+                this.#handleDisconnect()
+            }
+            else
+                this.debug("error setting key", error);
+        }
     }
 
     /**
      * Delete a key from storage
-     * @param {strong} key
+     * @param {string} key - key to delete
      * @returns {Promise<void>} - void
      */
     async delete(key) {
@@ -179,9 +202,19 @@ export class StorageHandler {
             return;
         }
 
-        await this.storage.remove(key);
-        delete StorageHandler.contents[key];
-        this.debug(`Deleted key "${key}" from storage`);
+        try {
+            await this.storage.remove(key);
+            delete StorageHandler.contents[key];
+            this.debug(`Deleted key "${key}" from storage`);
+        }
+        catch (error) {
+            if(error.message.match(/context invalidated/i)){
+                this.#handleDisconnect()
+            }
+            else
+                this.debug("error deleting key", error);
+        }
+
     }
 
     /**
@@ -202,7 +235,7 @@ export class StorageHandler {
         return StorageHandler.contents;
     }
 
-    // ToDo: removeListener test
+    // ToDo: test removeListener
     /**
      * Remove a storage listener
      * @param {string} key - key to remove listener from
@@ -215,6 +248,57 @@ export class StorageHandler {
 
         this.#listeners = this.#listeners.filter(listener => listener.key !== key);
         this.debug(`removed storage listener "${key}"`);
+    }
+
+    /**
+     * Disconnect logic
+     */
+
+    // Keep a map of functions to call when disconnected from the background script
+    disconnectedCallbackMap = new Map();
+    disconnected = false;
+
+    /**
+     * Runs a callback when the messageHandler detects the background script is disconnected
+     * @private
+     * @returns {void}
+     */
+    #handleDisconnect() {
+        this.disconnected = true;
+        if(this.disconnectedCallbackMap.size > 0){
+            this.debug("running disconnect callbacks: ", this.disconnectedCallbackMap.keys());
+            this.disconnectedCallbackMap.forEach((cb) => {
+                cb();
+            });
+        }
+    }
+
+    /**
+     * Adds a callback to run when the messageHandler detects the background script is disconnected
+     *  - multiple callbacks allowed per instance
+     *  - must have a unique name
+     * @param {string} name - a name used to identify the callback
+     * @param {function} callback
+     */
+    onDisconnectedHandler(name = 'default', callback){
+        this.disconnectedCallbackMap.set(name, callback);
+    }
+
+    /**
+     * Sets a default callback to run when the messageHandler detects the background script is disconnected
+     * Only one allowed per instance
+     * @param callback
+     */
+    set onDisconnected(callback){
+        this.onDisconnectedHandler('default', callback);
+    }
+
+    /**
+     * Remove the disconnect handler
+     * @param {string} name
+     */
+    removeDisconnectHandler(name = 'default'){
+        this.disconnectedCallbackMap.delete(name);
     }
 
 }

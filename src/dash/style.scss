@@ -144,3 +144,19 @@ input#bcs_level {
 .blinking {
   animation: blinking 1s infinite;
 }
+
+/*
+ * Popup Error page
+ */
+
+.popup {
+  min-width: 300px;
+  min-height: 260px;
+}
+
+.close-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+}
