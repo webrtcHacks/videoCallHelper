@@ -19,10 +19,15 @@ export class MessageHandler {
 
     static instance;    // singleton instance
 
+    static CONTEXT = {
+        CONTENT: 'content',
+        INJECT: 'inject',
+        BACKGROUND: 'background',
+        DASH: 'dash',
+        // WORKER: 'worker'
+    }
+
     #listeners = [];
-
-    // context;
-
 
     /**
      * @constructor - follows the singleton pattern
@@ -39,18 +44,19 @@ export class MessageHandler {
             'inject': "💉",
             'background': "🫥",
             'dash': "📈️‍",
-            'worker': "👷",
+            // 'worker': "👷",
         };
         const debugSymbol = contextSymbols[context] || "";
 
         if (process.env.NODE_ENV)
             this.debug = Function.prototype.bind.call(console.debug, console, `vch ${debugSymbol} messageHandler[${context}] `);
         else
-            this.debug = () => {};
+            this.debug = () => {
+            };
 
         // Singleton pattern
         if (MessageHandler.instance) {
-            if(VERBOSE) this.debug(`instance already exists for ${context}`);
+            if (VERBOSE) this.debug(`instance already exists for ${context}`);
             return MessageHandler.instance;
         } else {
             MessageHandler.instance = this;
@@ -68,13 +74,13 @@ export class MessageHandler {
             this.#runtimeListener();    // from background
         } else if (context === 'background') {
             this.#runtimeListener();    // from content
-        }
-        else
+        } else
             this.debug(`invalid context for listener ${context}`);
 
         this.context = context;
 
     }
+
 
     /**
      * Sends a message to another extension context
@@ -94,8 +100,16 @@ export class MessageHandler {
      *
      */
     sendMessage = (to, message, data = {}, origin = this.context) => {
+
+        // ignore messages to self
         if (this.context === to || !to || !message)
             return;
+
+        // Can't send messages to background when disconnected - i.e. "extension context is invalidated"
+        if (this.disconnected && to === 'background') {
+            if (VERBOSE) this.debug(`disconnected from background: ignoring message to "${to}" from "${this.context}" with data ${JSON.stringify(data)}`);
+            return;
+        }
 
         try {
             let messageToSend = {
@@ -108,8 +122,8 @@ export class MessageHandler {
             };
 
             // Logging for debug
-            if(VERBOSE)
-                if(this.context !== origin)
+            if (VERBOSE)
+                if (this.context !== origin)
                     this.debug(`sending "${message}" from "${origin}" via "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
                 else
                     this.debug(`sending "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
@@ -120,22 +134,23 @@ export class MessageHandler {
                     if (to === 'content' || to === 'inject') {
                         this.tabId = data.tabId; // this.tabId || data.tabId;
                         this.debug(`target tabId: ${this.tabId}`);
-                        chrome.tabs.sendMessage(this.tabId, { ...messageToSend });
+                        chrome.tabs.sendMessage(this.tabId, {...messageToSend});
                     } else if (to === 'dash') {
-                        chrome.runtime.sendMessage({ ...messageToSend });
+                        chrome.runtime.sendMessage({...messageToSend});
                     }
                     break;
                 case 'content':
                     if (to === 'background' || to === 'dash') {
-                        try{
+                        try {
                             chrome.runtime.sendMessage(messageToSend, {}, response => {
                                 if (chrome.runtime.lastError)
                                     this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
                             });
                         } catch (err) {
-                            this.debug("Error sending message to background", err);
-                            if(err.message === "Disconnected from background script:")
-                                this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
+                            this.debug("Error sending message to background: ", err.message);
+                            if (err.message.match(/context invalidated/i)) {
+                                this.#handleDisconnect();
+                            }
                         }
 
                     } else if (to === 'inject') {
@@ -145,21 +160,21 @@ export class MessageHandler {
                     break;
                 case 'inject':
                     messageToSend.data = JSON.stringify(messageToSend.data);
-                    const toContentEvent = new CustomEvent('vch', { detail: messageToSend });
+                    const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
                     document.dispatchEvent(toContentEvent);
                     break;
                 case 'dash':
                     this.debug(`sending "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
 
                     if (to === 'background') {
-                        chrome.runtime.sendMessage({ ...messageToSend });
+                        chrome.runtime.sendMessage({...messageToSend});
                     } else {
-                        window.parent.postMessage( {...messageToSend}, "*");    // parent origin is the user page
+                        window.parent.postMessage({...messageToSend}, "*");    // parent origin is the user page
                     }
                     break;
                 case 'popup':
-                    if(to === 'background')
-                        chrome.runtime.sendMessage({ ...messageToSend });
+                    if (to === 'background')
+                        chrome.runtime.sendMessage({...messageToSend});
                     else
                         this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
                     break;
@@ -179,14 +194,14 @@ export class MessageHandler {
      * @param {string} message - the message to send
      * @param {object} data - the data to send with the message
      */
-    #relayHandler(from, to, message, data){
+    #relayHandler(from, to, message, data) {
 
         // Relay scenarios
-        switch (`${from}→${to}`){
+        switch (`${from}→${to}`) {
             case 'background→inject':
             case 'inject→background':
             case 'dash→inject':
-                if(VERBOSE)
+                if (VERBOSE)
                     this.debug(`relayHandler for "${from}→${to}" via ${this.context} for ${message} with data ${JSON.stringify(data)}`);
                 this.sendMessage(to, message, data, from);
                 break;
@@ -204,7 +219,7 @@ export class MessageHandler {
 
                 const {to, from, message} = request;
                 // Todo: something is sending data as a string: "{}"
-                let data = typeof request?.data === 'string' ? JSON.parse(request.data): request?.data || {};
+                let data = typeof request?.data === 'string' ? JSON.parse(request.data) : request?.data || {};
 
                 // background doesn't its own tabId in sender
                 // We need it in cases when background is responding to a request from content,
@@ -214,20 +229,16 @@ export class MessageHandler {
                     data.tabId = tabId;
                     this.tabId = tabId;
                 }
-                // ToDO: this error when clicking on the icon after reloading the extension on a page that has not been refreshed
-                //  Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
-                //  the below is what shows up normally
-
 
                 // skip messages not sent to this listener's context and ignore messages to self
                 if (from === this.context)
                     return
-                if(to !== this.context){
+                if (to !== this.context) {
                     this.#relayHandler(from, to, message, data);
                     return;
                 }
 
-                if(VERBOSE)
+                if (VERBOSE)
                     this.debug(`runtimeListener receiving "${message}" from ${from} ${tabId ? "on tab #" + tabId : ""} to ${to} in context ${this.context}`, request, sender);
 
                 this.#listeners.forEach(listener => {
@@ -260,12 +271,12 @@ export class MessageHandler {
             // ignore messages to self
             if (from === this.context)
                 return
-            if(to !== this.context){
+            if (to !== this.context) {
                 this.#relayHandler(from, to, message, data);
                 return;
             }
 
-            if(VERBOSE)
+            if (VERBOSE)
                 this.debug(`documentListener receiving "${message}" from ${from} to ${to} in context ${this.context}`, e.detail);
 
             this.#listeners.forEach(listener => {
@@ -284,19 +295,19 @@ export class MessageHandler {
     #iFrameListener() {
         // ToDo: move this into #iFrame listener
         const extensionOrigin = new URL(chrome.runtime.getURL('/')).origin;
-        window.addEventListener('message', e=> {
+        window.addEventListener('message', e => {
             const {to, from, message, data} = e.data;
 
             if (e.origin !== extensionOrigin || from !== 'dash') return;    // only dash should use this
 
             if (from === this.context)
                 return
-            if(to !== this.context){
+            if (to !== this.context) {
                 this.#relayHandler(from, to, message, data);
                 return;
             }
 
-            if(VERBOSE)
+            if (VERBOSE)
                 this.debug(`content iFrame listener receiving "${message}" from "${from}" to "${to}" in context "${this.context}"`, e.data);
 
             this.#listeners.forEach(listener => {
@@ -317,10 +328,10 @@ export class MessageHandler {
      */
     addListener = (message = "", callback = null, tabId) => {
         this.#listeners.push({message, callback, tabId});
-        if(VERBOSE) this.debug(`added listener "${message}" ` + `${tabId ? " for " + tabId : ""}`);
+        if (VERBOSE) this.debug(`added listener "${message}" ` + `${tabId ? " for " + tabId : ""}`);
     }
 
-    // ToDo: test this - all copilot
+    // ToDo: untested - all copilot
     /**
      * Removes a listener for messages from worker to content
      *
@@ -334,6 +345,71 @@ export class MessageHandler {
         });
         this.debug(`removed listener "${message}" from "${this.context}"` + `${tabId ? " for " + tabId : ""}`);
     }
+
+
+    /**
+     * Disconnect logic
+     */
+
+    // Keep a map of functions to call when disconnected from the background script
+    disconnectedCallbackMap = new Map();
+    disconnected = false;
+
+    /**
+     * Runs a callback when the messageHandler detects the background script is disconnected
+     * @private
+     * @returns {void}
+     */
+    #handleDisconnect() {
+        this.disconnected = true;
+        if(this.disconnectedCallbackMap.size > 0){
+            this.debug("running disconnect callbacks: ", this.disconnectedCallbackMap.keys());
+            this.disconnectedCallbackMap.forEach((cb) => {
+                cb();
+            });
+        }
+    }
+
+    /**
+     * Adds a callback to run when the messageHandler detects the background script is disconnected
+     *  - multiple callbacks allowed per instance
+     *  - must have a unique name
+     * @param {string} name - a name used to identify the callback
+     * @param {function} callback
+     */
+    onDisconnectedHandler(name = 'default', callback) {
+        this.disconnectedCallbackMap.set(name, callback);
+    }
+
+    /**
+     * Sets a default callback to run when the messageHandler detects the background script is disconnected
+     * Only one allowed per instance
+     * @param callback
+     */
+    set onDisconnected(callback) {
+        this.onDisconnectedHandler('default', callback);
+    }
+
+    /**
+     * Remove the disconnect handler
+     * @param {string} name
+     */
+    removeDisconnectHandler(name = 'default'){
+        this.disconnectedCallbackMap.delete(name);
+    }
+
+}
+
+/**
+ * Message contexts for communication between extension contexts
+ * @type {{CONTENT: string, BACKGROUND: string, DASH: string, INJECT: string}}
+ */
+export const CONTEXT = {
+    CONTENT: 'content',
+    INJECT: 'inject',
+    BACKGROUND: 'background',
+    DASH: 'dash',
+    // WORKER: 'worker'
 }
 
 /**
@@ -369,6 +445,7 @@ export const MESSAGE = {
     // TRACK_ENDED: 'track_ended',
     // TRACK_MUTE: 'track_mute',
     // TRACK_UNMUTE: 'track_unmute',
+    SUSPEND: 'suspend',
 
     // content.js
     TOGGLE_DASH: 'toggle_dash',

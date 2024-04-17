@@ -1,4 +1,4 @@
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m, CONTEXT as c} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 // Applets
@@ -67,6 +67,9 @@ async function initStorage(){
 }
 await initStorage();
 
+/**
+ * Runtime event listeners to handle extension install and reload
+ */
 
 chrome.runtime.onStartup.addListener(async () => {
 
@@ -89,6 +92,11 @@ chrome.runtime.onInstalled.addListener( (details) => {
         }
     else
         debug("onInstalled?", details);
+});
+
+chrome.runtime.onSuspend.addListener( async () => {
+    debug("onSuspend");
+    await mh.sendMessage(c.CONTENT, m.SUSPEND, {});
 });
 
 /**
