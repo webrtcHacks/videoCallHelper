@@ -7,10 +7,13 @@ const debug = Function.prototype.bind.call(console.log, console, `🫥📸`);
 const storage = await new StorageHandler("local", debug);
 const mh = new MessageHandler('background');
 
-
 // Initialize image capture settings
-if(!storage.contents['imageCapture'])
+// note: an wait is needed since storage.contents isn't available immediately
+const settings = await storage.get('imageCapture');
+if(!settings){
+    debug("No existing imageCapture settings", storage.contents['imageCapture']);
     await storage.set('imageCapture', imageCaptureSettingsProto);
+}
 
 
 /**

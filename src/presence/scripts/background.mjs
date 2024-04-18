@@ -19,9 +19,9 @@ const storage = await new StorageHandler("local", debug);
 const mh = new MessageHandler('background');
 
 // initialize presence settings
-if (!storage.contents['presence']) {
+const settings = await storage.get('presence');
+if (!settings)
     await storage.set('presence', presenceSettingsProto);
-}
 
 
 // helpers for brevity

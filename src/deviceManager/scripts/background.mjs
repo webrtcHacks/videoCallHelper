@@ -1,6 +1,8 @@
-import {settings} from "./settings.mjs";
+import {settings as deviceManagerSettingsProto} from "./settings.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const storage = await new StorageHandler("local");
-if(!storage.contents['deviceManager'])
-    await storage.set('deviceManager', settings);
+
+const settings = storage.get('deviceManager');
+if(!settings)
+    await storage.set('deviceManager', deviceManagerSettingsProto);
