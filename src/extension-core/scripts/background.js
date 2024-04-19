@@ -1,65 +1,32 @@
 import {MessageHandler, MESSAGE as m, CONTEXT as c} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
+const debug = Function.prototype.bind.call(console.log, console, `🫥`);
+const storage = await new StorageHandler("local", debug);
+const mh = new MessageHandler('background');
+
+// for debugging
+self.debug = debug;
+self.storage = storage;
+self.mh = mh;
+
 // Applets
 import "../../presence/scripts/background.mjs";
 import "../../imageCapture/scripts/background.mjs";
-import "../../deviceManager/scripts/background.mjs"
+import "../../deviceManager/scripts/background.mjs";
+import "../../selfView/scripts/background.mjs";
+import "../../badConnection/scripts/background.mjs";
+import "../../videoPlayer/scripts/background.mjs";
 
-// storage prototypes for each applet used for initialization
-import {settings as selfViewSettingsProto} from "../../selfView/scripts/settings.mjs";
-import {settings as badConnectionSettingsProto} from "../../badConnection/scripts/settings.mjs";
 
-const  debug = Function.prototype.bind.call(console.log, console, `🫥`);
 debug(`Environment: ${process.env.NODE_ENV}`);
 
-let storage = await new StorageHandler("local", debug);
-self.storage = storage; // for debugging
-
-// added for presence, here in case it is useful elsewhere
-await storage.set('trackData', []);
-
-const mh = new MessageHandler('background');
-
-self.debug = debug;
-self.mh = mh;
 
 const DASH_OPEN_NEXT_WAIT = 1000;   // time to wait before opening the dash on the next tab reload
 let dashOpenNext;                            // flag to open the dash on the next tab reload
 
-
-/**
- * Initializes storage with the applet settings
- * ToDo: move these to the applet modules
- * @returns {Promise<void>}
- */
-async function initStorage(){
-
-    // Presence settings moved to module
-
-    // Image capture settings moved to module
-
-    // device manager settings moved to module
-
-    // self-view settings
-    if(!storage.contents['selfView'])
-        await storage.set('selfView', selfViewSettingsProto);
-    // else await storage.update('selfView', {hideView: {active:false}, showFraming: {active:false}});
-
-    // bad connection settings
-    if(!storage.contents['badConnection'])
-        await storage.set('badConnection', badConnectionSettingsProto);
-    // else await storage.update('badConnection', {active:false});
-
-    // ToDo: setup videoPlayer proto
-    // videoPlayer
-    if(!storage.contents['videoPlayer'])
-        await storage.set('videoPlayer', {buffer: null});
-
-    await storage.set('tabs', new Set());
-
-}
-await initStorage();
+await storage.set('tabs', new Set());       // need to track lost communication with tabs
+await storage.set('trackData', []);         // added for presence, here in case it is useful elsewhere
 
 /**
  * Runtime event listeners to handle extension install and reload
