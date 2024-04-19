@@ -16,7 +16,7 @@ window.remoteTrackIds = remoteTrackIds;
 
 
 // if(!storage)
-//    storage = await new StorageHandler("local", selfViewElementModifier.debug);
+//    storage = await new StorageHandler();
 
 export class selfViewElementModifier {
 

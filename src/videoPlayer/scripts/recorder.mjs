@@ -3,7 +3,7 @@ import {arrayBufferToBase64} from './videoPlayer.mjs';
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🎥‍ `)
 import {StorageHandler} from '../../modules/storageHandler.mjs';
-const storage = await new StorageHandler("local", debug);
+const storage = await new StorageHandler();
 
 // import '../../dash/style.scss';
 const videoElement = document.getElementById('recordedVideo');

@@ -7,7 +7,7 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch presenceSettings: `);
 
-const storage = await new StorageHandler("local", debug);
+const storage = await new StorageHandler();
 
 const statusSpanElem = document.querySelector('span#presence_status');
 const btnBusy = document.querySelector('button#busy');
@@ -18,10 +18,13 @@ const formOff = document.querySelector('form#off');
 const embravaCheck = document.querySelector('input#embrava') || document.createElement('input');
 const enabledCheck = document.querySelector('input#enable_presence_check');
 
+// ToDo: why was this here?
 let settings = storage.contents['presence'];
+/*
 if(!settings){
     settings = await storage.set('presence', presenceSettingsProto);
 }
+ */
 
 debug("presence settings:", settings);
 

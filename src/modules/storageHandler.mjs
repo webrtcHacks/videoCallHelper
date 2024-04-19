@@ -15,19 +15,38 @@ let storageDebug = Function.prototype.bind.call(console.debug, console, `vch ðŸ—
  */
 export class StorageHandler {
 
-    area = "local";
+    area = "local";     // force local storage 
     #listeners = [];
 
+    /**
+     * Initialize storage with a key and default settings
+     *  - needed if the key doesn't exist already, like on a new install
+     *  - only sets the key if it doesn't exist or is empty
+     *  - defaults to using chrome.storage.local
+     * @param{string} key
+     * @param {object} settings
+     * @returns {Promise<void>}
+     */
+    static initStorage = async (key, settings)=>{
+        const current = await chrome.storage.local.get(key);
+        if(!current[key] || Object.keys(current[key]).length === 0){
+            await chrome.storage.local.set({[key]: settings});
+        }
+    }
+
+    /**
+     * The current contents of the storage
+     * @type {{object}}
+     * @returns {object}
+     */
     static contents = {};
 
     /**
      * Create a new instance of the storage handler
-     * @param {string} area - chrome storage area: local, sync, managed
-     * @param {function} debug - debug function
+     * @param {function} debug - optional custom debug function
      * @returns {*|Promise<StorageHandler>} - the storage handler instance
      */
-    constructor(area = "local", debug = () => {
-    }) {
+    constructor(debug = () => {}) {
         // singleton pattern
         if (instance) {
             storageDebug = typeof storageDebug === "object" ? storageDebug : debug;
@@ -36,8 +55,7 @@ export class StorageHandler {
         }
         instance = this;
 
-        this.storage = chrome.storage[area];
-        this.area = area;
+        this.storage = chrome.storage[this.area];
         this.debug = storageDebug || debug;
 
         // this.debug("new instance");

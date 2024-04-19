@@ -2,7 +2,7 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵⚙️`);
-const storage = await new StorageHandler("local");
+const storage = await new StorageHandler();
 const mh = new MessageHandler('content');
 
 // Dash UI enabled change should be propagated to inject

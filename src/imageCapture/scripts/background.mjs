@@ -3,17 +3,11 @@ import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
 import {settings as imageCaptureSettingsProto} from "../../imageCapture/scripts/settings.mjs";
 import {set as idbSet} from "idb-keyval";
 
-const debug = Function.prototype.bind.call(console.log, console, `🫥📸`);
-const storage = await new StorageHandler("local");
+// const debug = Function.prototype.bind.call(console.log, console, `🫥📸`);
 const mh = new MessageHandler('background');
 
 // Initialize image capture settings
-// note: an wait is needed since storage.contents isn't available immediately
-const settings = await storage.get('imageCapture');
-if(!settings){
-    await storage.set('imageCapture', imageCaptureSettingsProto);
-}
-
+await StorageHandler.initStorage('imageCapture', imageCaptureSettingsProto);
 
 /**
  * Frame capture listener function - saves image capture data to indexedDB

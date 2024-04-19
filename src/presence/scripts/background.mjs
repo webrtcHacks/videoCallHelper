@@ -15,14 +15,11 @@ import {webRequest} from "./webRequest.mjs";                                    
 const PRESENCE_OFF_DELAY = 2000; // time to wait before turning off presence after all tracks are done
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥🟢`);
-const storage = await new StorageHandler("local");
+const storage = await new StorageHandler();
 const mh = new MessageHandler('background');
 
 // initialize presence settings
-const settings = await storage.get('presence');
-if (!settings)
-    await storage.set('presence', presenceSettingsProto);
-
+await StorageHandler.initStorage('presence', presenceSettingsProto);
 
 // helpers for brevity
 const isTrackLive = () => storage.contents.trackData.some(td => td.readyState === 'live');
