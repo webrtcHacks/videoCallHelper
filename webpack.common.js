@@ -31,7 +31,6 @@ const extensionConfig = {
         inject: './src/extension-core/scripts/inject.js',
         popupError: './src/extension-core/scripts/popup-error.js',
         dash: './src/dash/dash.js',
-        storage: './src/extension-core/scripts/storage.js',
         images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
         framing: './src/framing/scripts/framingAnalysis.js',
         presence: './src/presence/scripts/presenceConfig.mjs',

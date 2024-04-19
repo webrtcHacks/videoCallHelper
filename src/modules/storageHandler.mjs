@@ -15,7 +15,7 @@ let storageDebug = Function.prototype.bind.call(console.debug, console, `vch ðŸ—
  */
 export class StorageHandler {
 
-    area = "local";     // force local storage 
+    area = "local";     // force local storage
     #listeners = [];
 
     /**
@@ -23,7 +23,7 @@ export class StorageHandler {
      *  - needed if the key doesn't exist already, like on a new install
      *  - only sets the key if it doesn't exist or is empty
      *  - defaults to using chrome.storage.local
-     * @param{string} key
+     * @param {string} key
      * @param {object} settings
      * @returns {Promise<void>}
      */
