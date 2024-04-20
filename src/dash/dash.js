@@ -20,6 +20,7 @@ window.vch = {
 import '../presence/scripts/dash.mjs';
 import '../imageCapture/scripts/dash.mjs';
 import '../deviceManager/scripts/dash.mjs';
+import '../badConnection/scripts/dash.mjs';
 
 
 /************ START selfView  ************/
@@ -104,107 +105,6 @@ storage.addListener('selfView', () => {
 
 /************ END selfView  ************/
 
-
-/************ START badConnection ************/
-
-const bcsEnabledCheck = document.querySelector("input#bcs_enabled_check");
-
-bcsEnabledCheck.checked = storage.contents['badConnection'].enabled;
-
-bcsEnabledCheck.onclick = async () => {
-    const enabled = bcsEnabledCheck.checked;
-    debug(`set badConnection enabled to ${enabled}`);
-    await storage.update('badConnection', {enabled: enabled});
-}
-
-const bcsSelect = document.querySelector("input#bcs_level");
-
-// Permanently disable the bad connection simulator if there is no peer connection
-// -- no longer needed with fake device approach
-function disableBcs() {
-    debug("peerConnection not open in time - disabling bad connection simulator");
-    const bcsDiv = document.querySelector("div#bcs");
-    let childElements = bcsDiv.getElementsByTagName('*');
-
-    for (let i = 0; i < childElements.length; i++) {
-        childElements[i].setAttribute('disabled', "true");
-        // childElements[i].classList.add('text-muted');
-        childElements[i].classList.add('fw-lighter');
-    }
-
-    bcsDiv.querySelector("h5").innerText += " (DISABLED UNTIL REFRESH)"
-    // bcsDiv.querySelector("#active").innerText = "enable before connecting";
-}
-
-
-/*
-if(storage.contents['badConnection'].noPeerOnStart) {
-    disableBcs();
-}
- */
-
-
-function updateBcsSlider() {
-    let bcsSliderVal = 3;
-
-    switch (storage.contents['badConnection'].level) {
-        case "none":
-            bcsSliderVal = 0;
-            break;
-        case "moderate":
-            bcsSliderVal = 1;
-            break;
-        case "severe":
-            bcsSliderVal = 2;
-            break;
-        default:
-            bcsSliderVal = 0;
-    }
-
-    bcsSelect.value = bcsSliderVal;
-
-    if (storage.contents['badConnection'].active)
-        bcsSelect.classList.add("form-range");
-    else
-        bcsSelect.classList.remove("form-range");
-}
-
-bcsSelect.onclick = async (e) => {
-    let command;
-    switch (Number(e.target.value)) {
-        case 0:
-            command = 'passthrough';
-            break;
-        case 1:
-            command = 'moderate';
-            break;
-        case 2:
-            command = 'severe';
-            break;
-        default:
-            console.log("invalid selection");
-    }
-    debug(`Bad Connection Simulator: ${command} selected`);
-    await storage.update('badConnection', {level: command});
-}
-
-// initial settings
-updateBcsSlider();
-
-storage.addListener('badConnection', () => {
-    // no longer needed with fake device approach
-    /*if (storage.contents['badConnection']?.noPeerOnStart) {
-        disableBcs();
-    } else {
-        updateSelfViewUI();
-    }
-     */
-    updateSelfViewUI();
-
-});
-
-
-/************ END badConnection ************/
 
 
 /************ START InsertPlayer ************/

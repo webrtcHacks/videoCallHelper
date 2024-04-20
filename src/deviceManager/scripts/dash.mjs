@@ -1,7 +1,4 @@
 import {debug, storage} from "../../dash/dashCommon.mjs";
-debug("dash.mjs is loaded");
-
-/************ START deviceManager ************/
 
 // UI elements
 const dmEnabledCheck = document.querySelector("input#dm_enabled_check");
@@ -19,9 +16,6 @@ dmEnabledCheck.onclick = async () => {
     debug(`set deviceManager enabled to ${enabled}`);
     await storage.update('deviceManager', {enabled: enabled});
 }
-
-// import {deviceManager} from "../deviceManager/scripts/_deviceManager.mjs";
-// const dm = new deviceManager();
 
 // Finding: device enumeration permissions are not shared with the extension context
 //  only default devices are returned
@@ -310,5 +304,3 @@ navigator.mediaDevices.ondevicechange = () => async () => {
     // rely on the target page monitoring this event and doing a enumerateDevices update for now
     //  otherwise I would need to ask inject to call enumerateDevices manually
 };
-
-/************ END deviceManager ************/
