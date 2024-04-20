@@ -6,6 +6,7 @@ import {grabFrames, ImageStream} from "../../imageCapture/scripts/content.mjs";
 import {base64ToBuffer} from "../../videoPlayer/scripts/videoPlayer.mjs";
 
 import "../../deviceManager/scripts/content.mjs";
+import "../../badConnection/scripts/content.mjs";
 
 const streams = [];
 let trackInfos = [];
@@ -34,44 +35,6 @@ mh.addListener(m.GET_ALL_SETTINGS, async() => {
 });
 
 
-/************ START bad connection ************/
-// ToDo - possibly move this into a module
-// Need to relay badConnection updates between inject and dash
-
-const bcsInitSettings = {
-    enabled: storage.contents['badConnection']?.enabled ?? false,
-    active: false,
-    level: "passthrough",
-    noPeerOnStart: null
-}
-
-await storage.update('badConnection', bcsInitSettings);
-await storage.addListener('badConnection', (newValue) => {
-    debug("badConnection settings changed", newValue);
-    mh.sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, newValue);
-});
-
-// ToDo: initialize badConnection settings on start like deviceManager
-mh.addListener(m.GET_BAD_CONNECTION_SETTINGS, () => {
-    mh.sendMessage('inject', m.UPDATE_BAD_CONNECTION_SETTINGS, bcsInitSettings);
-});
-
-// if a peerConnection is open and badConnection is not enabled then permanently disable it
-//  - no longer needed with device manager
-/*
-mh.addListener(m.PEER_CONNECTION_OPEN,  () => {
-    if (!bcsInitSettings.enabled) {
-        storage.update('badConnection', {noPeerOnStart: true})
-            .catch(err => debug("Error updating badConnection settings", err));
-    }
-    else{
-        storage.update('badConnection', {noPeerOnStart: false})
-            .catch(err => debug("Error updating badConnection settings", err));
-    }
-});
- */
-
-/************ END bad connection ************/
 
 /************ START video player ************/
 

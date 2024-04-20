@@ -88,6 +88,7 @@ export class MessageHandler {
      * @param {string} message - the message to send
      * @param {object} data - the data to send with the message
      * @param {string} origin - the original context the message is coming from
+     * @returns {void}
      *
      * Communication Methods Table:
      *  from col to row
@@ -193,6 +194,7 @@ export class MessageHandler {
      * @param {string} to - the context to send the message to
      * @param {string} message - the message to send
      * @param {object} data - the data to send with the message
+     * @returns {void}
      */
     #relayHandler(from, to, message, data) {
 
@@ -325,6 +327,7 @@ export class MessageHandler {
      * @param {string} message - the message to listen for
      * @param {function} callback - the function to call when the message is received
      * @param {string} tabId - the tabId to listen for messages from
+     * @returns {void}
      */
     addListener = (message = "", callback = null, tabId) => {
         this.#listeners.push({message, callback, tabId});
