@@ -2,18 +2,18 @@
   "name": "Video Call Helper",
   "action": {
     "default_icon": {
-      "16": "icons/v_16.png",
-      "48": "icons/v_48.png",
-      "128": "icons/v_128.png"
+      "16": "images/v_16.png",
+      "48": "images/v_48.png",
+      "128": "images/v_128.png"
         },
     "default_title": "Video Call Helper"
   },
   "manifest_version": 3,
   "version": "0.2.3",
   "icons": {
-    "16": "icons/v_16.png",
-    "48": "icons/v_48.png",
-    "128": "icons/v_128.png"
+    "16": "images/v_16.png",
+    "48": "images/v_48.png",
+    "128": "images/v_128.png"
   },
   "description": "Video Call Helper",
   "permissions": [

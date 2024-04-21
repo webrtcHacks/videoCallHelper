@@ -1,7 +1,7 @@
 import {StorageHandler} from "../modules/storageHandler.mjs";
-import {MessageHandler} from "../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m, CONTEXT as c} from "../modules/messageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
 const storage = await new StorageHandler(debug);
 const mh = new MessageHandler('dash');
-export {storage, mh, debug};
+export {storage, mh, debug, m, c};

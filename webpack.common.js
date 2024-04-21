@@ -83,7 +83,14 @@ const extensionConfig = {
                 scheme: 'data',
                 type: 'asset/resource',
                 generator: {
-                    filename: `../icons/[hash].svg`
+                    filename: `../images/[hash].svg`
+                }
+            },
+            {
+                test: /\.(woff(2)?|eot|ttf|otf|)$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: '../fonts/[hash][ext][query]'
                 }
             }
         ]
@@ -150,7 +157,7 @@ const extensionConfig = {
                 // The extension manifest
                  //  {from: "src/manifest.json", to: "../manifest.json"},
                 // Icons
-                {from: "src/static/icons", to: "../icons"},
+                {from: "src/static/icons", to: "../images"},
                 // Video player testing
                 // {from: "src/static/BigBuckBunny_360p30.mp4", to: "../BigBuckBunny_360p30.mp4"},
                 // The worker so it is inlined

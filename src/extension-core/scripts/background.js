@@ -2,7 +2,7 @@ import {MessageHandler, MESSAGE as m, CONTEXT as c} from "../../modules/messageH
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥`);
-const storage = await new StorageHandler("local", debug);
+const storage = await new StorageHandler(debug);
 const mh = new MessageHandler('background');
 
 // for debugging
@@ -59,6 +59,7 @@ chrome.runtime.onSuspend.addListener( async () => {
     debug("onSuspend");
     await mh.sendMessage(c.CONTENT, m.SUSPEND, {});
 });
+
 
 /**
  * Handles tab removal and refresh - removes any tracks associated with that tab, updates presence
@@ -186,7 +187,7 @@ chrome.action.onClicked.addListener(async (tab)=>{
  */
 chrome.tabs.query({}, async (tabs)=> {
     // debug("all tabs", tabs);
-    const iconPath = "../icons/v_error.png";
+    const iconPath = "../images/v_error.png";
     for (const tab of tabs) {
         if(!tab.url.match(/^http/)) {
             await chrome.action.disable(tab.id);

@@ -36,7 +36,7 @@ async function presenceOn() {
     if (isTrackLive() && isPresenceEnabled() && !isPresenceActive()) {
         debug("turn presence on here");
         const color = [255, 0, 0];
-        const iconPath = "../icons/v_rec.png";
+        const iconPath = "../images/v_rec.png";
 
         await chrome.action.setIcon({path: iconPath});
 
@@ -59,7 +59,7 @@ async function presenceOff() {
     async function off() {
         debug("turn presence off here");
         const color = [0, 0, 0];
-        const iconPath = "../icons/v_128.png";
+        const iconPath = "../images/v_128.png";
 
         await chrome.action.setIcon({path: iconPath});
 
