@@ -8,13 +8,17 @@ const CopyPlugin = require("copy-webpack-plugin");
 class BuildTimePlugin {
     apply(compiler) {
         compiler.hooks.done.tap('BuildTimePlugin', (compilation) => {
-            setTimeout(() => {
-                const date = new Date();
-                date.setMilliseconds(date.getMilliseconds() - 500);
-                const buildTime = date.toLocaleTimeString();
-                console.log(`Build completed at ${buildTime}`);
-                console.log("===========================================")
-            }, 500);
+            try {
+                setTimeout(() => {
+                    const date = new Date();
+                    date.setMilliseconds(date.getMilliseconds() - 500);
+                    const buildTime = date.toLocaleTimeString();
+                    console.log(`Build completed at ${buildTime}`);
+                    console.log("===================================================")
+                }, 500);
+            } catch (error) {
+                console.error('Error in BuildTimePlugin:', error);
+            }
         });
     }
 }
@@ -24,8 +28,7 @@ const devConfig = {
     devtool: 'inline-source-map',
     output: {
         filename: '[name].js',
-        path:
-            path.resolve(__dirname, 'dist/dev/scripts'),
+        path: path.resolve(__dirname, 'dist/dev/scripts'),
         clean: true
     },
     plugins: [
@@ -50,6 +53,7 @@ const devConfig = {
                         jsonContent = JSON.parse(jsonContent);
                         jsonContent.name = 'Video Call Helper (dev)';
                         jsonContent.action.default_title = 'Video Call Helper (dev)';
+                        console.log(jsonContent.name);
                         return JSON.stringify(jsonContent, null, 2);
                     },
                 },

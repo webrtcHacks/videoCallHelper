@@ -2,14 +2,17 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
 
+const outputPath = process.env.NODE_ENV === 'production' ? 'extension' : 'dev';
+
 // build the worker file first since it needs to be referenced by the extension
-// ToDo: this isn't building first - WebpackShellPlugin to build this first or webpack-dependency-suite
 const workerConfig = {
-    mode: 'development',
+    name: 'worker',
+    mode: 'none',
     entry: './src/injectWorker/scripts/worker.js',
     output: {
         filename: 'worker-bundle.js',
-        path: path.resolve(__dirname, 'temp') // Updated to an absolute path
+        path: path.resolve(__dirname, `temp`), // use the outputPath variable
+        clean: true
     },
     optimization: {
         splitChunks: false,
@@ -21,6 +24,8 @@ const workerConfig = {
 
 // This is for all other extension files
 const extensionConfig = {
+    name: 'extension',
+    mode: 'none',
     experiments: {
         topLevelAwait: true,
     },
@@ -38,6 +43,11 @@ const extensionConfig = {
         bootstrap: './node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
         bootstrapIcons: './node_modules/bootstrap-icons/font/bootstrap-icons.scss',
     },
+    /*output: {
+        filename: '[name].js',
+        path: path.resolve(__dirname, `dist/${outputPath}/scripts`), // use the outputPath variable
+        clean: true
+    },*/
     module: {
         rules: [
             {
@@ -73,7 +83,7 @@ const extensionConfig = {
                 scheme: 'data',
                 type: 'asset/resource',
                 generator: {
-                    filename: 'icons/[hash].svg'
+                    filename: `../icons/[hash].svg`
                 }
             }
         ]
@@ -149,6 +159,7 @@ const extensionConfig = {
             ],
         }),
     ],
+    // stats: 'verbose',
 };
 
 module.exports = [workerConfig, extensionConfig];
