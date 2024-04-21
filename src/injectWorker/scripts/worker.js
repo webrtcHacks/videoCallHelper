@@ -1,4 +1,4 @@
-import {Impairment} from "../../badConnection/scripts/impairment.mjs";
+import {Worker} from "../../badConnection/scripts/worker.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 👷${self.name} `);
 debug(`I am worker ${self.name}`);
@@ -30,11 +30,11 @@ async function loadImpairment(reader, writer, id, kind, settings, impairmentStat
     let operation = impairmentState === "passthrough" ? "passthrough" : "impair";
 
     if(impairmentState === "severe"){
-        config = Impairment.severeImpairmentConfig;
+        config = Worker.severeImpairmentConfig;
         // impairmentState.operation = "impair";
     }
     if(impairmentState === "moderate") {
-        config = Impairment.moderateImpairmentConfig;
+        config = Worker.moderateImpairmentConfig;
         // impairmentState.operation = "impair";
     }
     else{
@@ -43,7 +43,7 @@ async function loadImpairment(reader, writer, id, kind, settings, impairmentStat
     }
 
     const impairmentDebug = Function.prototype.bind.call(console.debug, console, `vch ${self.name}👷😈 `);
-    impairment = new Impairment(kind, settings, id, config, impairmentDebug);
+    impairment = new Worker(kind, settings, id, config, impairmentDebug);
     impairment.operation = operation;
     impairment.start();
 
@@ -109,55 +109,39 @@ async function loadImpairment(reader, writer, id, kind, settings, impairmentStat
 
 // Message handler
 onmessage = async (event) => {
-    // debug("received message", event.data);
     const {command, data} = event.data;
+    debug(`worker command ${command}`, data);
 
-    // temp for videoPlayer setup
-    if (command === 'player_start') {
-        debug("player start", data);
-        usePlayer = true;
-        const {reader} = event.data;
-        playerReader = reader.getReader();
-    }
-    else if (command === 'player_stop') {
-        debug("stopping player");
-        usePlayer = false;
-        // playerReader.releaseLock();
-    }
-    else if (command === 'setup'){
-        const {reader, writer, id, kind, settings, impairmentState} = event.data;
-        self.writer = writer;
-        await loadImpairment(reader, writer, id, kind, settings, impairmentState);
-    }
-    else if (command === 'moderate') {
-        impairment.operation = "impair";
-        impairment.config = Impairment.moderateImpairmentConfig;
-        debug("impairing stream moderately");
-    }
-    else if (command === 'severe') {
-        impairment.operation = "impair";
-        impairment.config = Impairment.severeImpairmentConfig;
-        debug("impairing stream severely");
-    }
-    else if(command === 'passthrough') {
-        impairment.operation = "passthrough";
-        debug("passthrough stream");
-    }
-    else if (command === 'pause') {
-        impairment.operation = "skip";
-        debug("pausing stream");
-    }
-    else if (command === 'unpause') {
-        impairment.operation = "impair";
-        debug("un-pausing stream");
-    }
-    else if (command === 'stop') {
-        await impairment.stop();
-        debug("stopping stream");
-        // ToDo: handle this
-        // await videoReader.cancel(); // no cancel method
-    } else {
-        debug(`Unhandled message: `, event);
+    switch (command) {
+        case 'player_start':
+            usePlayer = true;
+            // const {reader} = event.data;
+            playerReader = data.getReader();
+            break;
+        case 'player_stop':
+            usePlayer = false;
+            break;
+        case 'setup':
+            const {reader, writer, id, kind, settings, impairmentState} = event.data;
+            self.writer = writer;
+            await loadImpairment(reader, writer, id, kind, settings, impairmentState);
+            break;
+        case 'moderate':
+        case 'severe':
+            impairment.operation = "impair";
+            impairment.config = Worker[`${command}ImpairmentConfig`];
+            break;
+        case 'passthrough':
+        case 'pause':
+            impairment.operation = command;
+            break;
+        case 'unpause':
+            impairment.operation = "impair";
+            break;
+        case 'stop':
+            await impairment.stop();
+            break;
+        default:
+            debug(`Unhandled message: `, event);
     }
 };
-

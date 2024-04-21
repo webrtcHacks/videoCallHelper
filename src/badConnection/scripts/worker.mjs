@@ -9,14 +9,14 @@
  * The start function changes the operation to 'impair'
  * The config setter applies an impairment configuration
  * Static class objects are included for a moderation and severe impairment
- * @class Impairment - a class that sets up a transform stream that can add an impairment
+ * @class Worker - a class that sets up a transform stream that can add an impairment
  * @param {string} kind - 'audio' or 'video'
  * @param {MediaStreamTrackSettings} settings - the track settings object
  * @param {string} id - an optional id for the impairment
  * @param {object} impairmentConfig - an optional impairment configuration object
  * @param {object} debug - an optional debug object
  */
-export class Impairment {
+export class Worker {
     #controller;
     operation = 'passthrough';
     #encoder;
@@ -89,7 +89,7 @@ export class Impairment {
 
 
     // ToDo: apply the impairment to the track settings
-    constructor(kind, settings, id=null,  impairmentConfig = Impairment.moderateImpairmentConfig, debug = {}) {
+    constructor(kind, settings, id=null, impairmentConfig = Worker.moderateImpairmentConfig, debug = {}) {
 
         // this.track = track;
         this.kind = kind;

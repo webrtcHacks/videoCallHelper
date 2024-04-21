@@ -230,7 +230,7 @@ export class AlterTrack { // extends MediaStreamTrack {  // Illegal constructor
                 const reader = processor.readable;
                 this.worker.postMessage({
                     command: "player_start",
-                    reader: reader,
+                    data: reader,
                 }, [reader]);
 
             });
