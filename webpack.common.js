@@ -1,6 +1,10 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
+const util = require('util');
+const webpack = require('webpack');
+
+const webpackPromise = util.promisify(webpack);
 
 // build the worker file first since it needs to be referenced by the extension
 // ToDo: this isn't building first - WebpackShellPlugin to build this first or webpack-dependency-suite
@@ -151,4 +155,24 @@ const extensionConfig = {
     ],
 };
 
-module.exports = [workerConfig, extensionConfig];
+module.exports = async (env, argv) => {
+    try {
+        const stats = await webpackPromise(workerConfig);
+        const info = stats.toJson();
+        if (stats.hasErrors()) {
+            console.error(info.errors);
+        }
+        if (stats.hasWarnings()) {
+            console.warn(info.warnings);
+        }
+        return extensionConfig;
+    } catch (err) {
+        console.error(err.stack || err);
+        if (err.details) {
+            console.error(err.details);
+        }
+    }
+};
+
+const commonConfigs = [workerConfig, extensionConfig];
+module.exports = commonConfigs;
