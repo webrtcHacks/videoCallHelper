@@ -1,4 +1,7 @@
-import {Worker} from "../../badConnection/scripts/worker.mjs";
+/**
+ * Primary worker script used for processing a track
+ */
+import {Impairment} from "../../badConnection/scripts/worker.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 👷${self.name} `);
 debug(`I am worker ${self.name}`);
@@ -30,11 +33,11 @@ async function loadImpairment(reader, writer, id, kind, settings, impairmentStat
     let operation = impairmentState === "passthrough" ? "passthrough" : "impair";
 
     if(impairmentState === "severe"){
-        config = Worker.severeImpairmentConfig;
+        config = Impairment.severeImpairmentConfig;
         // impairmentState.operation = "impair";
     }
     if(impairmentState === "moderate") {
-        config = Worker.moderateImpairmentConfig;
+        config = Impairment.moderateImpairmentConfig;
         // impairmentState.operation = "impair";
     }
     else{
@@ -43,7 +46,7 @@ async function loadImpairment(reader, writer, id, kind, settings, impairmentStat
     }
 
     const impairmentDebug = Function.prototype.bind.call(console.debug, console, `vch ${self.name}👷😈 `);
-    impairment = new Worker(kind, settings, id, config, impairmentDebug);
+    impairment = new Impairment(kind, settings, id, config, impairmentDebug);
     impairment.operation = operation;
     impairment.start();
 
@@ -129,7 +132,7 @@ onmessage = async (event) => {
         case 'moderate':
         case 'severe':
             impairment.operation = "impair";
-            impairment.config = Worker[`${command}ImpairmentConfig`];
+            impairment.config = Impairment[`${command}ImpairmentConfig`];
             break;
         case 'passthrough':
         case 'pause':

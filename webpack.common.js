@@ -2,13 +2,11 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
 
-const outputPath = process.env.NODE_ENV === 'production' ? 'extension' : 'dev';
-
 // build the worker file first since it needs to be referenced by the extension
 const workerConfig = {
     name: 'worker',
     mode: 'none',
-    entry: './src/injectWorker/scripts/worker.js',
+    entry: './src/extension-core/scripts/worker.js',
     output: {
         filename: 'worker-bundle.js',
         path: path.resolve(__dirname, `temp`), // use the outputPath variable
@@ -43,11 +41,6 @@ const extensionConfig = {
         bootstrap: './node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
         bootstrapIcons: './node_modules/bootstrap-icons/font/bootstrap-icons.scss',
     },
-    /*output: {
-        filename: '[name].js',
-        path: path.resolve(__dirname, `dist/${outputPath}/scripts`), // use the outputPath variable
-        clean: true
-    },*/
     module: {
         rules: [
             {
