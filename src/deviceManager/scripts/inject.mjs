@@ -1,12 +1,12 @@
 // Manages the devices returned by navigator.mediaDevices.enumerateDevices() and inserts fake vch devices
 
-import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
 import {settings} from "./settings.mjs";
 
 
 /*
-    Sits in inject context
+    Sits in inject context`
 
     Message Flows:
 
@@ -36,7 +36,7 @@ import {settings} from "./settings.mjs";
 
  */
 
-// Helper function
+// Helper function to see if two arrays of objects are the same
 function arraysOfObjectsAreEqual(arr1, arr2) {
     if (arr1.length !== arr2.length) return false;
     for (let i = 0; i < arr1.length; i++) {
@@ -49,7 +49,7 @@ function arraysOfObjectsAreEqual(arr1, arr2) {
 
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️🥸`);
-const mh = new MessageHandler('inject');
+const mh = new MessageHandler(c.INJECT);
 
 
 export class DeviceManager {
@@ -311,7 +311,7 @@ export class DeviceManager {
             this.modifiedConstraints = constraints;
             debug("gUM stream with modified constraints", constraints, this.unalteredStream);
             if (settingsChanged)
-                mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {lastDeviceIds: this.settings.lastDeviceIds})
+                mh.sendMessage(c.CONTENT, m.UPDATE_DEVICE_SETTINGS, {lastDeviceIds: this.settings.lastDeviceIds})
         }
         // ToDo: what if unalteredStream is null?
 

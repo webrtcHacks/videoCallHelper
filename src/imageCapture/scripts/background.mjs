@@ -1,10 +1,10 @@
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {settings as imageCaptureSettingsProto} from "../../imageCapture/scripts/settings.mjs";
 import {set as idbSet} from "idb-keyval";
 
 // const debug = Function.prototype.bind.call(console.log, console, `🫥📸`);
-const mh = new MessageHandler('background');
+const mh = new MessageHandler(c.BACKGROUND);
 
 // Initialize image capture settings
 await StorageHandler.initStorage('imageCapture', imageCaptureSettingsProto);

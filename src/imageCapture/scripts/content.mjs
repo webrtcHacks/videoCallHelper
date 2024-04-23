@@ -4,12 +4,12 @@
 // refactor this to grab images out of the worker? Already have a reader there, but then would need to
 //  send the images back to the content script
 
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m, CONTEXT as c} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch️ 🕵📸️`);
 
-const mh = new MessageHandler('content');
+const mh = new MessageHandler(c.CONTENT);
 const storage = await new StorageHandler();
 
 let captureInterval;
@@ -173,7 +173,7 @@ export async function grabFrames(newStream = currentStream) {
         if (imgData.value) {
             const {deviceId, width, height} = imgData.value;
             debug(`New image ${width}x${height} from ${deviceId}`);
-            await mh.sendMessage('background', m.FRAME_CAPTURE, imgData.value);
+            await mh.sendMessage(c.BACKGROUND, m.FRAME_CAPTURE, imgData.value);
         }
 
         if (imgData.done) {
@@ -221,7 +221,7 @@ storage.addListener('imageCapture', async (newValue, changedValue) => {
  * @param {boolean}thumbnail -  to resize the image to thumbnail size, defaults to false
  * */
 export class ImageStream {
-     constructor(stream = currentStream, captureIntervalMs = 1000, destination = 'dash', thumbnail = false) {
+     constructor(stream = currentStream, captureIntervalMs = 1000, destination = c.DASH, thumbnail = false) {
         this.stream = stream;
         this.captureIntervalMs = captureIntervalMs;
         this.destination = destination;

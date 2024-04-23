@@ -19,19 +19,11 @@ export class MessageHandler {
 
     static instance;    // singleton instance
 
-    static CONTEXT = {
-        CONTENT: 'content',
-        INJECT: 'inject',
-        BACKGROUND: 'background',
-        DASH: 'dash',
-        // WORKER: 'worker'
-    }
-
     #listeners = [];
 
     /**
      * @constructor - follows the singleton pattern
-     * @param {string} context - the context of the instance use one of [content, inject, background, dash, worker]
+     * @param {context} context - the context of the instance use one of [content, inject, background, dash, worker]
      * @returns {*} - returns the instance of the MessageHandler
      */
     constructor(context) {
@@ -64,15 +56,15 @@ export class MessageHandler {
         }
 
         // Setup listeners
-        if (context === 'content') {
+        if (context === CONTEXT.CONTENT) {
             this.#documentListener();   // from inject
             this.#runtimeListener();    // from background
             this.#iFrameListener();     // from dash
-        } else if (context === 'inject') {
+        } else if (context === CONTEXT.INJECT) {
             this.#documentListener();   // from content
-        } else if (context === 'dash') {
+        } else if (context === CONTEXT.DASH) {
             this.#runtimeListener();    // from background
-        } else if (context === 'background') {
+        } else if (context === CONTEXT.BACKGROUND) {
             this.#runtimeListener();    // from content
         } else
             this.debug(`invalid context for listener ${context}`);
@@ -84,10 +76,10 @@ export class MessageHandler {
 
     /**
      * Sends a message to another extension context
-     * @param {string} to - the context to send the message to
+     * @param {context} to - the context to send the message to
      * @param {string} message - the message to send
      * @param {object} data - the data to send with the message
-     * @param {string} origin - the original context the message is coming from
+     * @param {context} origin - the original context the message is coming from
      * @returns {void}
      *
      * Communication Methods Table:
@@ -107,7 +99,7 @@ export class MessageHandler {
             return;
 
         // Can't send messages to background when disconnected - i.e. "extension context is invalidated"
-        if (this.disconnected && to === 'background') {
+        if (this.disconnected && to === CONTEXT.BACKGROUND) {
             if (VERBOSE) this.debug(`disconnected from background: ignoring message to "${to}" from "${this.context}" with data ${JSON.stringify(data)}`);
             return;
         }
@@ -131,17 +123,17 @@ export class MessageHandler {
 
 
             switch (this.context) {
-                case 'background':
-                    if (to === 'content' || to === 'inject') {
+                case CONTEXT.BACKGROUND:
+                    if (to === CONTEXT.CONTENT || to === CONTEXT.INJECT) {
                         this.tabId = data.tabId; // this.tabId || data.tabId;
                         this.debug(`target tabId: ${this.tabId}`);
                         chrome.tabs.sendMessage(this.tabId, {...messageToSend});
-                    } else if (to === 'dash') {
+                    } else if (to === CONTEXT.DASH) {
                         chrome.runtime.sendMessage({...messageToSend});
                     }
                     break;
-                case 'content':
-                    if (to === 'background' || to === 'dash') {
+                case CONTEXT.CONTENT:
+                    if (to === CONTEXT.BACKGROUND || to === CONTEXT.DASH) {
                         try {
                             chrome.runtime.sendMessage(messageToSend, {}, response => {
                                 if (chrome.runtime.lastError)
@@ -154,31 +146,34 @@ export class MessageHandler {
                             }
                         }
 
-                    } else if (to === 'inject') {
+                    } else if (to === CONTEXT.INJECT) {
                         const toInjectEvent = new CustomEvent('vch', {detail: messageToSend});
                         document.dispatchEvent(toInjectEvent);
                     }
                     break;
-                case 'inject':
+                case CONTEXT.INJECT:
                     messageToSend.data = JSON.stringify(messageToSend.data);
                     const toContentEvent = new CustomEvent('vch', {detail: messageToSend});
                     document.dispatchEvent(toContentEvent);
                     break;
-                case 'dash':
+                case CONTEXT.DASH:
                     this.debug(`sending "${message}" from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
 
-                    if (to === 'background') {
+                    if (to === CONTEXT.BACKGROUND) {
                         chrome.runtime.sendMessage({...messageToSend});
                     } else {
                         window.parent.postMessage({...messageToSend}, "*");    // parent origin is the user page
                     }
                     break;
+                /*
+                // No longer used
                 case 'popup':
                     if (to === 'background')
                         chrome.runtime.sendMessage({...messageToSend});
                     else
                         this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
                     break;
+                 */
                 default:
                     this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
                     break;
@@ -190,8 +185,8 @@ export class MessageHandler {
 
     /**
      * Relays a message to another extension context
-     * @param {string} from - the original context the message is coming from
-     * @param {string} to - the context to send the message to
+     * @param {context} from - the original context the message is coming from
+     * @param {context} to - the context to send the message to
      * @param {string} message - the message to send
      * @param {object} data - the data to send with the message
      * @returns {void}
@@ -246,7 +241,7 @@ export class MessageHandler {
                 this.#listeners.forEach(listener => {
                     if (message === listener.message) { //&& (from === null || from === listener.from)){
                         // ToDo: listener.arguments doesn't exist - should I make that?
-                        if (this.context === 'background')
+                        if (this.context === CONTEXT.BACKGROUND)
                             listener.callback.call(listener.callback, data, listener.arguments);
                         else
                             listener.callback.call(listener.callback, data, listener.arguments);
@@ -295,12 +290,11 @@ export class MessageHandler {
      * Adds a listener for messages from dash to content
      */
     #iFrameListener() {
-        // ToDo: move this into #iFrame listener
         const extensionOrigin = new URL(chrome.runtime.getURL('/')).origin;
         window.addEventListener('message', e => {
             const {to, from, message, data} = e.data;
 
-            if (e.origin !== extensionOrigin || from !== 'dash') return;    // only dash should use this
+            if (e.origin !== extensionOrigin || from !== CONTEXT.DASH) return;    // only dash should use this
 
             if (from === this.context)
                 return
@@ -404,9 +398,16 @@ export class MessageHandler {
 }
 
 /**
- * Message contexts for communication between extension contexts
- * @type {{CONTENT: string, BACKGROUND: string, DASH: string, INJECT: string}}
+ * @typedef {Object} context
+ * @property {context} CONTENT
+ * @property {context} INJECT
+ * @property {context} BACKGROUND
+ * @property {context} DASH
  */
+
+/**
+ * Message contexts for communication between extension contexts
+ * @type {context} */
 export const CONTEXT = {
     CONTENT: 'content',
     INJECT: 'inject',

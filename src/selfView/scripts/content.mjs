@@ -7,9 +7,9 @@
 
 // NOTES:
 // uses storage changes to toggle on/off
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {MessageHandler, CONTEXT as c} from "../../modules/messageHandler.mjs";
 
-// Keep track of remote tracks so we don't alter them
+// Keep track of remote tracks, so we don't alter them
 const remoteTrackIds = new Set();
 // ToDo: remove - for debugging
 window.remoteTrackIds = remoteTrackIds;
@@ -118,7 +118,7 @@ export class selfViewElementModifier {
         // selfViewElementModifier.debug(`Self View Framing settings - enabled: ${showFramingEnabled}, active: ${showFramingActive}`);
 
 
-        // initialize storage if values if they are not there (like on 1st load)
+        // initialize storage values if they are not there (like on 1st load)
 
         const newContents = this.storage.contents['selfView'];
 
@@ -232,7 +232,7 @@ export class selfViewElementModifier {
         if (this.track?.readyState === "ended") {
             selfViewElementModifier.debug(`track.readyState === "ended"`);
             clearInterval(this.selfViewCheckInterval);
-            this.selfViewCheckInterval = false;
+            this.selfViewCheckInterval = -1;
             return
         }
 
@@ -243,7 +243,7 @@ export class selfViewElementModifier {
             if (this.storage.contents['selfView']['hideView'].enabled === false && this.storage.contents['selfView']['showFraming'].active === false) {
                 selfViewElementModifier.debug('hideView and showFraming are disabled. Stopping monitoring.');
                 clearInterval(this.selfViewCheckInterval);
-                this.selfViewCheckInterval = false;
+                this.selfViewCheckInterval = -1;
                 await this.clear();
             } else {
                 let missingElement = false;
@@ -319,7 +319,7 @@ export class selfViewElementModifier {
 
     #getFilters(filterString) {
         return (filterString.match(/(\w+\([^\)]+\))/g) || []).reduce((filters, filter) => {
-            const [filterName, value] = filter.split('(');
+            const [filterName] = filter.split('(');
             filters[filterName] = filter;
             return filters;
         }, {});
@@ -475,7 +475,7 @@ export class selfViewElementModifier {
     }
 }
 
-const mh = new MessageHandler('content'); //, selfViewElementModifier.debug);
+const mh = new MessageHandler(c.CONTENT); //, selfViewElementModifier.debug);
 
 // for self-view replacement
 mh.addListener('remote_track_added', data => {

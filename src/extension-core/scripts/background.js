@@ -3,7 +3,7 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥`);
 const storage = await new StorageHandler(debug);
-const mh = new MessageHandler('background');
+const mh = new MessageHandler(c.BACKGROUND);
 
 // for debugging
 self.debug = debug;
@@ -20,7 +20,6 @@ import "../../videoPlayer/scripts/background.mjs";
 
 
 debug(`Environment: ${process.env.NODE_ENV}`);
-
 
 const DASH_OPEN_NEXT_WAIT = 1000;   // time to wait before opening the dash on the next tab reload
 let dashOpenNext;                            // flag to open the dash on the next tab reload
@@ -76,7 +75,7 @@ async function handleTabRemoved(tabId){
     // Check if we should open the dash on this reload
     if(dashOpenNext===tabId){
         setTimeout(async ()=>{
-            await mh.sendMessage('content', m.TOGGLE_DASH, {tabId: tabId});
+            await mh.sendMessage(c.CONTENT, m.TOGGLE_DASH, {tabId: tabId});
         }, DASH_OPEN_NEXT_WAIT);
         dashOpenNext = null;
     }
@@ -98,7 +97,7 @@ chrome.tabs.onCreated.addListener(async (tab)=>{
 });
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
     debug(`tab ${tabId} removed`);
-    const tabs = await storage.contents.tabs;
+    const tabs =  storage.contents.tabs; //.filter(tab=>tab!==tabId);
     tabs.delete(tabId);
     await storage.update('tabs', tabs);
 
@@ -173,7 +172,7 @@ chrome.action.onClicked.addListener(async (tab)=>{
 
     const tabs = await storage.contents.tabs;
     if(tabs.has(tab.id))
-        mh.sendMessage('content', m.TOGGLE_DASH, {tabId: tab.id});
+        mh.sendMessage(c.CONTENT, m.TOGGLE_DASH, {tabId: tab.id});
     else
         debug(`tab ${tab.id} not in tabs`, tabs);
 });

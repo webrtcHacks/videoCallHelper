@@ -28,7 +28,7 @@ export async function showPreview() {
         .filter(stream=>stream.active)
         .at(-1);  // get the last stream  // ToDo: get the highest res gUM stream
     if (stream) {
-        imagePreview = new ImageStream(stream, 200, 'dash', true);
+        imagePreview = new ImageStream(stream, 200, c.DASH, true);
         debug("showPreview:: stream", stream);
         await imagePreview.start();
     } else

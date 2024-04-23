@@ -3,7 +3,7 @@ import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageH
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵⚙️`);
 const storage = await new StorageHandler();
-const mh = new MessageHandler('content');
+const mh = new MessageHandler(c.CONTENT);
 
 // Dash UI enabled change should be propagated to inject
 await storage.addListener('deviceManager', (newValue) => {
