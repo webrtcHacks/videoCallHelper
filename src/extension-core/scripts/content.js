@@ -1,27 +1,17 @@
-import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-
-import {selfViewElementModifier} from "../../selfView/scripts/content.mjs";
-import {grabFrames, ImageStream} from "../../imageCapture/scripts/content.mjs";
-import {base64ToBuffer} from "../../videoPlayer/scripts/videoPlayer.mjs";
-
-import "../../deviceManager/scripts/content.mjs";
-import "../../badConnection/scripts/content.mjs";
-
-const streams = [];
-let trackInfos = [];
 
 // if(process.env.NODE_ENV)
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🕵`);
+const storage = await new StorageHandler(debug);
+const mh = new MessageHandler(c.CONTENT);
 
 debug(`content.js loaded on ${window.location.href}`);
-// debug('content.js URL: ', chrome.runtime.getURL('content.js'));
-
-let storage = await new StorageHandler("local", debug);
 const settings = storage.contents;
 debug("storage contents: ", settings);
 
-const mh = new MessageHandler('content');
+const streams = [];
+let trackInfos = [];
 
 window.vch = {
     streams: streams,
@@ -30,98 +20,19 @@ window.vch = {
     storage: storage
 };
 
+// Applets
+// ToDo: make these self-contained
+import {selfViewElementModifier} from "../../selfView/scripts/content.mjs";
+import {grabFrames} from "../../imageCapture/scripts/content.mjs";
+
+import "../../deviceManager/scripts/content.mjs";
+import "../../badConnection/scripts/content.mjs";
+import "../../videoPlayer/scripts/content.mjs";
+
 mh.addListener(m.GET_ALL_SETTINGS, async() => {
-    await mh.sendMessage('inject', m.ALL_SETTINGS, storage.contents);
+    await mh.sendMessage(c.INJECT, m.ALL_SETTINGS, storage.contents);
 });
 
-
-
-/************ START video player ************/
-
-
-let imagePreview = null; // used to hold the gUM preview image generator
-/*
-   Not easy to send a stream to dash:
-     * can't access the iframe content - CORS issues
-     * can't send the stream over postMessage - it's not serializable
-     * can't pass a resource URL - treated as different domains
-   ideas:
-     1. open a new stream - could cause gUM conflicts, more encoding
-     2. send snapshots - this is what did
-*/
-/**
- * Grabs the last stream and generates preview thumbnails
- * @returns {Promise<void>}
- */
-async function showPreview(){
-    const stream = streams.at(-1);  // get the last stream  // ToDo: get the highest res gUM stream
-    // debug("showPreview:: stream", stream);
-    if(stream){
-        imagePreview = new ImageStream(stream, 200, 'dash', true);
-        await imagePreview.start();
-    }
-    else
-        imagePreview = null;
-}
-
-storage.addListener('player', async (newValue) => {
-    debug("player storage changed", newValue);
-
-    if(newValue.buffer){
-        // const buffer = base64ToBuffer(newValue.buffer);
-        // debug("buffer", buffer);
-        // newValue.buffer  = buffer;
-
-        const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = newValue;
-
-        const videoPlayer = document.createElement('video');
-        videoPlayer.autoplay = true;
-        videoPlayer.loop = loop;
-        videoPlayer.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
-        videoPlayer.preload = "auto";
-        videoPlayer.hidden = true;
-        videoPlayer.muted = true;
-        // set the style to fit to cover
-        // videoPlayer.style.cssText = "object-fit:cover;";
-
-        // captureStream takes the source video size so this doesn't matter
-        // const {width, height} = streams.at(-1)?.getVideoTracks()[0]?.getSettings();
-        // videoPlayer.height = height;
-        // videoPlayer.width = width;
-
-        document.body.appendChild(videoPlayer);
-        debug("added video element", videoPlayer);
-
-        videoPlayer.oncanplay = () => {
-            videoPlayer.oncanplay = null;
-            const transmissionDelay = new Date().getTime() - currentTime;
-            const playbackOffset = (videoTimeOffsetMs + transmissionDelay) / 1000;
-            videoPlayer.currentTime = playbackOffset;
-            debug("Adjusted playback to match sync", playbackOffset);
-            mh.sendMessage('inject', m.PLAYER_START, {id: videoPlayer.id});
-        };
-
-        const arrayBuffer = base64ToBuffer(buffer);
-        const blob = new Blob([arrayBuffer], { type: mimeType }); // Ensure the MIME type matches the video format
-        videoPlayer.src = URL.createObjectURL(blob);
-
-
-        // ToDo: revoke the blobURL when it is no longer needed
-        // URL.revokeObjectURL(blobUrl);
-
-        // ToDo: player controls
-
-    }
-});
-
-/*
-mh.addListener('hello_there', async (data) => {
-    debug("hello_there", data);
-});
-
- */
-
-/************ END video player ************/
 
 /************ START dash manager ************/
 
@@ -155,7 +66,7 @@ async function toggleDash() {
         iframe.style.visibility = "visible";
         // document.body.style.marginTop = `${dashHeight}px`;
 
-        await showPreview();
+        // await showPreview();
         debug("created dash");
 
         // iframe.blur();   // didn't work; neither did visibility
@@ -167,7 +78,7 @@ async function toggleDash() {
             iframe.style.height = "0px";
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
-            imagePreview?.stop();
+            // imagePreview?.stop();
         }
         // open if closed
         else {
@@ -176,7 +87,7 @@ async function toggleDash() {
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
             // debug("opened dash");
-            await showPreview();
+            // await showPreview();
         }
     }
 }
@@ -310,12 +221,12 @@ async function monitorTrack(track, streamId) {
     }
 
     if (track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
-        await mh.sendMessage('background', m.NEW_TRACK, trackData);
+        await mh.sendMessage(c.BACKGROUND, m.NEW_TRACK, trackData);
 
     // Note: this only fires if the browser forces the track to stop; not for most user actions
     track.addEventListener('ended', async () => {
         trackData.readyState = 'ended';
-        await mh.sendMessage('background', m.TRACK_ENDED, trackData);
+        await mh.sendMessage(c.BACKGROUND, m.TRACK_ENDED, trackData);
         await checkActiveStreams();
     });
 
@@ -324,7 +235,7 @@ async function monitorTrack(track, streamId) {
     const monitor = setInterval(async () => {
         if (track.readyState === 'ended') {
             trackData.readyState = 'ended';
-            await mh.sendMessage('background', m.TRACK_ENDED, trackData);
+            await mh.sendMessage(c.BACKGROUND, m.TRACK_ENDED, trackData);
             clearInterval(monitor);
         }
     }, 2000);
@@ -389,17 +300,6 @@ async function gumStreamStart(data) {
 
     // send a message back to inject to remove the temp video element
     await mh.sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
-
-    // for video player
-    /*
-    const audioTrack = origStream.getAudioTracks();
-    const videoTrack = origStream.getVideoTracks();
-    const audioConstraints = audioTrack[0]?.getConstraints() || false;
-    const videoConstraints = videoTrack[0]?.getConstraints() || false;
-    const constraints = {audio: audioConstraints, video: videoConstraints};
-    debug("gumStreamStart:: constraints", constraints);
-    await sendMessage('dash', m.GUM_STREAM_START, {id: origStream.id, constraints});
-     */
 
     // Clean-up the DOM since I don't use this anymore
     document.body.removeChild(video);

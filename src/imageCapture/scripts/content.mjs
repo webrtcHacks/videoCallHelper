@@ -10,7 +10,7 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 const debug = Function.prototype.bind.call(console.debug, console, `vch️ 🕵📸️`);
 
 const mh = new MessageHandler('content');
-let storage = await new StorageHandler();
+const storage = await new StorageHandler();
 
 let captureInterval;
 let currentStream = null;
@@ -41,11 +41,15 @@ await storage.update('imageCapture', initSettings);
 async function* getImages(stream, thumbnail = false) {
     const [track] = stream?.getVideoTracks();
     if (!track) {
-        debug("No video track to grab frames from");
+        debug("No video track to grab frames from", track);
+        return null
+    }
+    if(track.readyState === "ended"){
+        debug("Video track is ended", track);
         return null
     }
 
-    const processor = new MediaStreamTrackProcessor(track);
+    const processor = await new MediaStreamTrackProcessor(track);
     const reader = await processor.readable.getReader();
 
     let {width, height, deviceId} = track.getSettings();
@@ -184,8 +188,8 @@ export async function grabFrames(newStream = currentStream) {
 }
 
 // check for settings changes
-storage.addListener('imageCapture', async (newValue) => {
-    debug(`imageCapture storage changes: `, newValue);
+storage.addListener('imageCapture', async (newValue, changedValue) => {
+    debug(`imageCapture storage changes: `, changedValue);
 
     // Stop sampling
     if (storage.contents['imageCapture']?.active === true && newValue?.active === false) {
@@ -199,7 +203,7 @@ storage.addListener('imageCapture', async (newValue) => {
         await grabFrames();
     }
     // Change the sampling interval
-    else if (newValue.captureIntervalMs) {
+    else if (changedValue.captureIntervalMs) {
         debug(`Changing image capture interval to ${newValue.captureIntervalMs}`);
         clearInterval(captureInterval);
         if (storage.contents['imageCapture']?.active)
@@ -251,7 +255,22 @@ export class ImageStream {
                     resolve("imageStream stream is no longer active", this.stream)
                 }
 
-                const {value, done} = await getImg.next();
+                const endOfImages =(reason)=> {
+                    clearInterval(this.captureInterval);
+                    resolve("No more image data", reason)
+                }
+
+                const imgData = await getImg.next().catch(err => {
+                    endOfImages(err);
+                    reject(err);
+                });
+
+                if(!imgData){
+                    endOfImages("No image data", imgData);
+                    return
+                }
+
+                const {done, value} = imgData;
 
                 if (value) {
                     // debug("Preview image", value);
