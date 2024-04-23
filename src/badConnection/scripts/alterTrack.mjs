@@ -2,14 +2,14 @@
 // one worker per track for processing and altering
 
 import worker from "!!raw-loader!../../../temp/worker-bundle.js";
-import {MessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
+import {MessageHandler, MESSAGE as m, CONTEXT as c} from "../../modules/messageHandler.mjs";
 
 import {settings} from "./settings.mjs";
 
 // import impairmentWorkerScript from '../../badConnection/scripts/mse-worker.js';
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
 
-const mh = new MessageHandler('inject');
+const mh = new MessageHandler(c.INJECT);
 
 /**
  * Modifies a MediaStreamTrack to simulate a bad connection

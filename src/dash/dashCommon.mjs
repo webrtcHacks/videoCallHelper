@@ -3,5 +3,5 @@ import {MessageHandler, MESSAGE as m, CONTEXT as c} from "../modules/messageHand
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 📈️‍ `);
 const storage = await new StorageHandler(debug);
-const mh = new MessageHandler('dash');
+const mh = new MessageHandler(c.DASH);
 export {storage, mh, debug, m, c};

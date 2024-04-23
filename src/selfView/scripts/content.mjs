@@ -475,7 +475,7 @@ export class selfViewElementModifier {
     }
 }
 
-const mh = new MessageHandler('content'); //, selfViewElementModifier.debug);
+const mh = new MessageHandler(c.CONTENT); //, selfViewElementModifier.debug);
 
 // for self-view replacement
 mh.addListener('remote_track_added', data => {

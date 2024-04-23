@@ -1,5 +1,5 @@
 'use strict';
-import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/inject.mjs";
 import {AlterStream} from "../../badConnection/scripts/alterTrack.mjs";
 
@@ -14,7 +14,7 @@ let processTrackSwitch = true;
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉`);
 
-const mh = new MessageHandler('inject');
+const mh = new MessageHandler(c.INJECT);
 
 // exit if shim already loaded for some reason
 if (window.vch) throw new Error("vch already loaded");
@@ -35,7 +35,7 @@ async function getSettings() {
             resolve(data);
         });
 
-        mh.sendMessage('content', m.GET_ALL_SETTINGS, {});
+        mh.sendMessage(c.CONTENT, m.GET_ALL_SETTINGS, {});
 
     });
 
@@ -64,7 +64,7 @@ async function transferStream(stream, message = m.GUM_STREAM_START, data = {}) {
     document.body.appendChild(video);
     video.oncanplay = () => {
         video.oncanplay = null;
-        mh.sendMessage('content', message, {id: video.id, ...data});
+        mh.sendMessage(c.CONTENT, message, {id: video.id, ...data});
     }
 }
 
@@ -86,14 +86,14 @@ async function processTrack(track, sourceLabel = "") {
     // ToDo: do I really need to enumerate the object here?
     const {id, kind, label, readyState, deviceId} = track;
     const trackData = {id, kind, label, readyState, deviceId};
-    mh.sendMessage('background', `${sourceLabel}_track_added`, {trackData});
+    mh.sendMessage(c.BACKGROUND, `${sourceLabel}_track_added`, {trackData});
 
     async function trackEventHandler(event) {
         const type = event.type;
         const {id, kind, label, readyState, enabled, contentHint, muted, deviceId} = event.target;
         const trackData = {id, kind, label, readyState, enabled, contentHint, muted, deviceId};
         debug(`${sourceLabel}_${type}`, trackData);
-        mh.sendMessage('background', `${sourceLabel}_track_${type}`, {trackData});
+        mh.sendMessage(c.BACKGROUND, `${sourceLabel}_track_${type}`, {trackData});
     }
 
     track.addEventListener('ended', trackEventHandler);
@@ -122,7 +122,7 @@ function monitorAudio(peerConnection) {
             const avg = audioLevels.reduce((p, c) => p + c, 0) / audioLevels.length;
             // debug("audioLevel", avg);
             // ToDo: stop this when it is null or the PC is closed
-            mh.sendMessage('background', m.LOCAL_AUDIO_LEVEL, {audioLevel: avg, totalAudioEnergy});
+            mh.sendMessage(c.BACKGROUND, m.LOCAL_AUDIO_LEVEL, {audioLevel: avg, totalAudioEnergy});
             audioLevels.length = 0;
             counter = 0
         }
@@ -347,7 +347,7 @@ const origPeerConnSRD = RTCPeerConnection.prototype.setRemoteDescription;
 RTCPeerConnection.prototype.setRemoteDescription = function () {
 
     // ToDo: do this as part of onconnectionstatechange
-    mh.sendMessage('background', m.PEER_CONNECTION_OPEN, {});
+    mh.sendMessage(c.BACKGROUND, m.PEER_CONNECTION_OPEN, {});
 
     // Remove audio level monitoring
     /*
@@ -386,7 +386,7 @@ RTCPeerConnection.prototype.setRemoteDescription = function () {
 const origPeerConnClose = RTCPeerConnection.prototype.close;
 RTCPeerConnection.prototype.close = function () {
     debug("closing PeerConnection ", this);
-    mh.sendMessage('background', m.PEER_CONNECTION_CLOSED, this);
+    mh.sendMessage(c.BACKGROUND, m.PEER_CONNECTION_CLOSED, this);
     return origPeerConnClose.apply(this, arguments)
 };
 
@@ -400,7 +400,7 @@ navigator.mediaDevices.enumerateDevices = async function () {
         return origEnumerateDevices();
 
     const devices = await origEnumerateDevices();
-    mh.sendMessage('content', m.UPDATE_DEVICE_SETTINGS, {currentDevices: devices});
+    mh.sendMessage(c.CONTENT, m.UPDATE_DEVICE_SETTINGS, {currentDevices: devices});
 
     // Only add fake devices if there are other devices
     // In the future when adding generated sources w/o gUM, it may make sense to have a device even with no permissions

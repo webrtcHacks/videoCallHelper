@@ -7,7 +7,7 @@
  */
 
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-import {MESSAGE as m, MessageHandler} from "../../modules/messageHandler.mjs";
+import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {settings as presenceSettingsProto} from "../../presence/scripts/settings.mjs";
 import {glow} from "./embrava.mjs";                                                 // HID light
 import {webRequest} from "./webRequest.mjs";                                        // web request function
@@ -16,7 +16,7 @@ const PRESENCE_OFF_DELAY = 2000; // time to wait before turning off presence aft
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥🟢`);
 const storage = await new StorageHandler();
-const mh = new MessageHandler('background');
+const mh = new MessageHandler(c.BACKGROUND);
 
 // initialize presence settings
 await StorageHandler.initStorage('presence', presenceSettingsProto);

@@ -124,7 +124,7 @@ async function syncTrackInfo() {
     debug("syncTrackInfo:: selected stream", stream)
     stream.onremovetrack = async (track) => {
         debug("track removed", track);
-        await mh.sendMessage('video', 'tab', 'remove_track');
+        await mh.sendMessage(c.BACKGROUND, 'tab', 'remove_track');
         trackInfos = trackInfos.filter(info => info.id !== track.id);
         debug("updated trackInfos", trackInfos);
     };
@@ -138,11 +138,11 @@ async function syncTrackInfo() {
     };
 
     videoTrack.onmute = async e => {
-        await mh.sendMessage('video', 'tab', 'mute')
+        await mh.sendMessage(c.BACKGROUND, 'tab', 'mute')
         debug("track muted: ", e.srcElement)
     };
     videoTrack.onunmute = async e => {
-        await mh.sendMessage('video', 'tab', 'unmute')
+        await mh.sendMessage(c.BACKGROUND, 'tab', 'unmute')
         debug("track unmuted: ", e.srcElement)
     };
 
@@ -162,7 +162,7 @@ async function syncTrackInfo() {
     debug("syncTrackInfo:: updated trackInfos", trackInfos);
 
     trackInfos.push(settings);
-    await mh.sendMessage('video', 'tab', 'track_info');
+    await mh.sendMessage(c.BACKGROUND, 'tab', 'track_info');
     // Keep for debugging
     /*
     streams.forEach( stream => {
@@ -259,8 +259,7 @@ async function checkActiveStreams() {
     for (const stream of streams) {
         if (stream.getTracks().length === 0
             || stream.getTracks().every(track => track.readyState === 'ended')) {
-            // await mh.sendMessage('inject', m.GUM_STREAM_STOP, {});
-            await mh.sendMessage('dash', m.GUM_STREAM_STOP, {});
+            await mh.sendMessage(c.DASH, m.GUM_STREAM_STOP, {});
             // remove the stream
             const index = streams.findIndex(stream => stream.id === stream.id);
             if (index !== -1) {
@@ -285,7 +284,7 @@ async function gumStreamStart(data) {
 
     if (video.srcObject.getTracks().length === 0) {
         debug("no tracks found in stream", video.srcObject);
-        await mh.sendMessage('inject', m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
+        await mh.sendMessage(c.INJECT, m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
         return;
     }
 
@@ -299,7 +298,7 @@ async function gumStreamStart(data) {
     });
 
     // send a message back to inject to remove the temp video element
-    await mh.sendMessage('inject', m.STREAM_TRANSFER_COMPLETE, {id});
+    await mh.sendMessage(c.INJECT, m.STREAM_TRANSFER_COMPLETE, {id});
 
     // Clean-up the DOM since I don't use this anymore
     document.body.removeChild(video);
