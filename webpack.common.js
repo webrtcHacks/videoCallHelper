@@ -147,15 +147,8 @@ const extensionConfig = {
         }),
         new CopyPlugin({
             patterns: [
-                // The extension manifest
-                 //  {from: "src/manifest.json", to: "../manifest.json"},
                 // Icons
                 {from: "src/static/icons", to: "../images"},
-                // Video player testing
-                // {from: "src/static/BigBuckBunny_360p30.mp4", to: "../BigBuckBunny_360p30.mp4"},
-                // The worker so it is inlined
-                // { from: path.resolve(__dirname, 'temp/worker-bundle.js'), to: 'worker-bundle.js' }
-                // { from: 'temp/worker-bundle.js', to: 'worker-bundle.js' }
             ],
         }),
     ],
