@@ -325,7 +325,7 @@ export class AlterStream {
  * @returns {MediaStreamTrackGenerator} - a MediaStreamTrackGenerator
  */
 /** @type {MediaStreamTrackGenerator} */
-class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
+export class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator {
 
     /*
     // MediaStreamTrack

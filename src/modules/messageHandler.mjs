@@ -397,12 +397,49 @@ export class MessageHandler {
 
 }
 
+export class WorkerMessageHandler { // extends MessageHandler {
+    constructor(context, worker) {
+        // super(context);
+        this.context = context;
+        this.worker = worker;
+
+        if (process.env.NODE_ENV)
+            this.debug = Function.prototype.bind.call(console.debug, console, `vch 👷 WorkerMessageHandler[${context}] `);
+        else
+            this.debug = () => {};
+
+        this.debug(`creating new WorkerMessageHandler`, worker);
+
+
+        if(this.context === CONTEXT.INJECT){
+            }
+        }
+
+
+    sendMessage(command, data = {}, transferable = []) {
+
+        if(this.context === CONTEXT.INJECT){
+            const message = {
+                command,
+                ...data,
+                // origin: this.worker.name
+            }
+
+            this.worker.postMessage(message, transferable);
+        }
+    }
+
+
+}
+
+
 /**
  * @typedef {Object} context
  * @property {context} CONTENT
  * @property {context} INJECT
  * @property {context} BACKGROUND
  * @property {context} DASH
+ * @property {context} WORKER
  */
 
 /**
@@ -413,7 +450,7 @@ export const CONTEXT = {
     INJECT: 'inject',
     BACKGROUND: 'background',
     DASH: 'dash',
-    // WORKER: 'worker'
+    WORKER: 'worker'
 }
 
 /**
@@ -480,9 +517,22 @@ export const MESSAGE = {
     GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
     UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
 
+    IMPAIRMENT_PASSTHROUGH: 'passthrough',
+    IMPAIRMENT_MODERATE: 'moderate',
+    IMPAIRMENT_SEVERE: 'severe',
+
     // player
     PLAYER_START: 'player_start',
     PLAYER_STOP: 'player_stop',
     FRAME_STREAM: 'frame_stream',
+
+    // Inject->Worker
+    WORKER_SETUP: 'setup',
+    PAUSE: 'pause',
+    UNPAUSE: 'unpause',
+    STOP: 'stop',
+
+    // worker->inject
+    WORKER_START: 'worker_start',
 
 }

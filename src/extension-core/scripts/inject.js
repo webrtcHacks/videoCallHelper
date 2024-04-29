@@ -2,6 +2,7 @@
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/inject.mjs";
 import {AlterStream} from "../../badConnection/scripts/alterTrack.mjs";
+import {InsertableStreamsManager, ProcessedMediaStream} from "../../modules/insertableStreamsManager.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -173,7 +174,9 @@ async function shimGetUserMedia(constraints) {
     else if (vch?.settings['badConnection']?.enabled) {
         const stream = await origGetUserMedia(constraints);
         await transferStream(stream);
-        const alteredStream = await new AlterStream(stream);
+
+        const alteredStream = await new ProcessedMediaStream(stream);
+        // const alteredStream = await new AlterStream(stream);
         debug("returning alteredStream", alteredStream);
         return alteredStream;
     } else {

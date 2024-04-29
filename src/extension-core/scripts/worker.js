@@ -1,13 +1,15 @@
 /**
  * Primary worker script used for processing a track
  */
-import {Impairment} from "../../badConnection/scripts/worker.mjs";
+// import {Impairment} from "../../badConnection/scripts/worker.mjs";
+import {WorkerMessageHandler, MESSAGE as m, CONTEXT as c} from "../../modules/messageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 👷${self.name} `);
 debug(`I am worker ${self.name}`);
-let impairment;
 
-/*
+// self.wmh = new WorkerMessageHandler(c.WORKER, self);
+
+
 let frameCounter = 0;
 self.frameCounter = frameCounter;
 
@@ -23,8 +25,46 @@ const testTransform = new TransformStream({
     },
 });
 
- */
 
+onmessage = async (event) => {
+    const {command} = event.data;
+    debug(`worker command ${command}`, event);
+
+    switch (command) {
+        case 'setup':
+            const {reader, writer} = event.data;
+            self.reader = reader;
+            self.writer = writer;
+
+            await reader
+                .pipeThrough( testTransform )
+                .pipeTo(writer)
+                .catch(async err => {
+                    // ToDo: don't throw error on muted - backpressure?
+                    debug(`Insertable stream error`, err);
+                    self.postMessage({response: "error", error: err});
+                });
+
+            break;
+        case 'stop':
+
+            break;
+        default:
+            debug(`Unhandled message: `, event);
+    }
+}
+
+self.postMessage(m.WORKER_START);
+debug(`worker ${self.name} is ready`);
+
+/************************************************************/
+/*** OLD WORKER CODE - KEEP FOR REFERENCE - DO NOT DELETE ***/
+
+
+// let impairment;
+
+
+/*
 let usePlayer = false;
 let playerReader;
 
@@ -148,3 +188,5 @@ onmessage = async (event) => {
             debug(`Unhandled message: `, event);
     }
 };
+
+ */
