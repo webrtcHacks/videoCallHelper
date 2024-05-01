@@ -5,6 +5,8 @@ const debug = Function.prototype.bind.call(console.log, console, `🫥`);
 const storage = await new StorageHandler(debug);
 const mh = new MessageHandler(c.BACKGROUND);
 
+const VERBOSE = process.env.NODE_ENV === 'development';
+
 // for debugging
 self.debug = debug;
 self.storage = storage;
@@ -113,10 +115,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab)=>{
 
     // ignore extension tabs
     if (!tab.url.match(/^http:\/\//)) { // && changeInfo.status === 'complete'
-        debug(`non-http tab opened: ${tab.url}`)
+        if(VERBOSE) debug(`non-http tab opened: ${tab.url}`)
     }
     else if (changeInfo.status === 'complete') {
-        debug(`tab ${tabId} refreshed`);
+        if(VERBOSE) debug(`tab ${tabId} refreshed`);
         const tabs = await storage.contents.tabs;
         tabs.add(tabId);
         await handleTabRemoved(tabId);
@@ -133,7 +135,7 @@ mh.addListener(m.NEW_TRACK, async data=>{
     // check if track is already in storage
     const trackData = storage.contents.trackData;
     if(storage.contents.trackData.some(td => td.id === id)){
-        debug(`track ${id} already in trackData array`);
+        if (VERBOSE) debug(`track ${id} already in trackData array`);
     } else {
         trackData.push(data);
         await storage.set('trackData', trackData);
@@ -174,7 +176,7 @@ chrome.action.onClicked.addListener(async (tab)=>{
     if(tabs.has(tab.id))
         mh.sendMessage(c.CONTENT, m.TOGGLE_DASH, {tabId: tab.id});
     else
-        debug(`tab ${tab.id} not in tabs`, tabs);
+        debug(`ERROR: tab ${tab.id} not in tabs`, tabs);
 });
 
 /**
