@@ -5,15 +5,85 @@
 import {WorkerMessageHandler, MESSAGE as m, CONTEXT as c} from "../../modules/messageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 👷${self.name} `);
-debug(`I am worker ${self.name}`);
+self.debug = debug;
+// debug(`I am worker ${self.name}`);
 
-// self.wmh = new WorkerMessageHandler(c.WORKER, self);
+self.wmh = new WorkerMessageHandler();
+
+// ToDo: mirror TransformStream? https://developer.mozilla.org/en-US/docs/Web/API/TransformStream/TransformStream
+
+/**
+ * TransformManager - class managing a series of transforms on a stream
+ *  - TransformStream does not let you add and remove items without interrupting a MediaStreamTrack
+ *  - This class allows you to add and remove transform functions inside a private TransformStream
+ *  - exposes the output via a readable stream at readable
+ * @typedef {Object} TransformManager
+ * @property {ReadableStream} inputStream - the input stream to be transformed
+ * @property {number} size - the number of transforms in the manager
+ * @property {ReadableStream} readable - the readable stream
+ * @method add - add a transform to the manager
+ * @method remove - remove a transform from the manager
+ * @method get readable - get the readable stream
+ * @method get size - get the number of transforms in the manager
+ */
+class TransformManager {
+
+    /**@private */
+    #transformFunctions = new Map(); // Using a Map to hold functions with their IDs
+    /**@private */
+    #transformStream = new TransformStream({
+        transform: async (frame, controller) => {
+            // Process each chunk using the transforms in order
+            let processedFrame = frame;
+            for (const transform of this.#transformFunctions.values()) {
+                processedFrame = await transform(processedFrame);
+            }
+            controller.enqueue(processedFrame);
+        }
+    });
+
+    /**
+     * @constructor
+     * @param {ReadableStream} inputReadableStream - the input stream to be transformed
+     * @returns {ReadableStream} - the readable stream
+     */
+    constructor(inputReadableStream) {
+        this.inputStream = inputReadableStream;
+        // Pipe the input stream through the transform stream
+        this.inputStream.pipeTo(this.#transformStream.writable).catch(debug);
+        // return this.readable;
+    }
+
+    add(id, transformFunc, position = this.#transformFunctions.size) {
+        // Insert a transform at a specific position or by default at the end
+        let funcArray = Array.from(this.#transformFunctions.entries());
+        funcArray.splice(position, 0, [id, transformFunc]);
+        this.#transformFunctions = new Map(funcArray);
+        debug(`Transform ${id} added at position ${position}.`);
+    }
+
+    remove(id) {
+        if (this.#transformFunctions.has(id)) {
+            this.#transformFunctions.delete(id);
+            debug(`Transform ${id} removed.`);
+        } else {
+            debug(`Transform ${id} not found.`);
+        }
+    }
+
+    get readable() {
+        return this.#transformStream.readable;
+    }
+
+    get count() {
+        return this.#transformFunctions.size;
+    }
+}
 
 
-let frameCounter = 0;
-self.frameCounter = frameCounter;
 
-const testTransform = new TransformStream({
+/*
+const testTransformStream = new TransformStream({
     start: controller => {
         debug("transform stream started", controller);
     },
@@ -24,41 +94,52 @@ const testTransform = new TransformStream({
         controller.enqueue(frame);
     },
 });
+ */
 
+/*
+ * testTransform - a simple transform function that increments a frame counter used for testing
+ */
 
-onmessage = async (event) => {
-    const {command} = event.data;
-    debug(`worker command ${command}`, event);
+let frameCounter = 0;
+self.frameCounter = frameCounter;
 
-    switch (command) {
-        case 'setup':
-            const {reader, writer} = event.data;
-            self.reader = reader;
-            self.writer = writer;
-
-            await reader
-                .pipeThrough( testTransform )
-                .pipeTo(writer)
-                .catch(async err => {
-                    // ToDo: don't throw error on muted - backpressure?
-                    debug(`Insertable stream error`, err);
-                    self.postMessage({response: "error", error: err});
-                });
-
-            break;
-        case 'stop':
-
-            break;
-        default:
-            debug(`Unhandled message: `, event);
+function testTransform(frame){
+    frameCounter++;
+    if (frameCounter % 100 === 0) {
+        debug(`transforming frame ${frameCounter}`);
     }
+    return frame;
 }
 
-self.postMessage(m.WORKER_START);
+/**
+ * Mandatory setup to send the reader and writer to the worker
+ */
+wmh.addListener(m.WORKER_SETUP, async (data) => {
+//onmessage = async (event) => {
+    const {reader, writer} = data;
+    self.reader = reader;
+    self.writer = writer;
+
+    debug(`starting transformManager`, reader, writer);
+
+    // ToDo: I might need to initialize this to import modules prior to the reader being ready
+    const transformManager = new TransformManager(reader);
+    self.transformManager = transformManager;
+
+    transformManager.readable
+        .pipeTo(writer)
+        .catch(async err => debug(`Insertable stream error`, err) );
+
+});
+
+// Import applets here
+import "../../videoPlayer/scripts/worker.mjs";
+
+
 debug(`worker ${self.name} is ready`);
 
-/************************************************************/
-/*** OLD WORKER CODE - KEEP FOR REFERENCE - DO NOT DELETE ***/
+/**************************************************************/
+/*** OLD WORKER CODE FOR REFERENCE - DELETE AFTER REFACTOR ***/
 
 
 // let impairment;

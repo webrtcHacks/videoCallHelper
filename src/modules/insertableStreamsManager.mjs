@@ -1,12 +1,19 @@
 // noinspection DuplicatedCode
 
 import worker from "!!raw-loader!../../temp/worker-bundle.js";
-import {MessageHandler, WorkerMessageHandler, MESSAGE as m, CONTEXT as c} from "./messageHandler.mjs";
-import {AlteredMediaStreamTrackGenerator} from "../badConnection/scripts/alterTrack.mjs";
+import {InjectToWorkerMessageHandler, MESSAGE as m, CONTEXT as c} from "./messageHandler.mjs";
+import {AlteredMediaStreamTrackGenerator} from "./AlteredMediaStreamTrackGenerator.mjs";
+import {setupPlayer} from "../videoPlayer/scripts/inject.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
-const mh = new MessageHandler(c.INJECT);
+const wmh = new InjectToWorkerMessageHandler();
 
+
+/**
+ * Modifies a MediaStreamTrack with insertable streams
+ * - creates a generator and processor for the track
+ * - creates a worker to process the track
+ */
 export class InsertableStreamsManager{
     generator;
     processor;
@@ -16,8 +23,8 @@ export class InsertableStreamsManager{
 
     /**
      * Modifies a MediaStreamTrack to simulate a bad connection
-     * @param {MediaStreamTrack} track - the track to modify
-     * @returns {MediaStreamTrackProcessor, MediaStreamTrackGenerator} - the processor and generator for the track
+     * @param {MediaStreamTrack} track - the input track to modify
+     * @returns {MediaStreamTrack} - a MediaStreamTrackGenerator disguised as a MediaStreamTrack that may be processed
      */
     constructor(track) {
         this.sourceTrack = track;
@@ -40,19 +47,26 @@ export class InsertableStreamsManager{
 
         this.#startWorker();
 
+        // Applets
+        setupPlayer(this.sourceTrack, this.worker.name);
+
         debug("InsertableStreamsManager created", this.reader, this.writer);
         // the generator is not ready yet but that doesn't seem to matter
-        return {processor, generator};
-
+        return generator;
 
     }
 
+    /**
+     * Starts a worker to process the track
+     * @returns {Promise<MediaStreamTrackGenerator>} - a MediaStreamTrackGenerator
+     * @private
+     */
     #startWorker(){
 
         const workerName = `vch-bcs-${this.sourceTrack.kind}-${this.sourceTrack.id.substr(0, 5)}`;
 
         // Start the worker
-        // Needed to work around policy problems
+        // Below needed to work around policy problems
         if (window.trustedTypes && trustedTypes.createPolicy) {
             const policy = trustedTypes.createPolicy('my-policy', {
                 createScriptURL: (url) => url,
@@ -69,34 +83,19 @@ export class InsertableStreamsManager{
         if (!this.worker) {
             const error = new Error("Failed to create worker");
             debug(error);
+            // ToDo: should return the original track if this fails, but need to deal with async
             // reject(error);
         }
 
+        this.worker.name = workerName;
+        wmh.registerWorker(this.worker);
 
-        this.workerName = workerName;
-
-        this.worker.onmessage = (event) => {
-            if(event.data === m.WORKER_START){
-                debug(`Worker ${this.workerName} start received`);
-                this.worker.onmessage = null;
-                this.wmh = new WorkerMessageHandler(c.INJECT, this.worker);
-
-                const data = {
-                    reader: this.reader,
-                    writer: this.writer,
-                }
-                const transferable = [this.reader, this.writer];
-
-                this.wmh.sendMessage(m.WORKER_SETUP, data, transferable);
-
-            }
-            else{
-                debug(`Unhandled message: `, event);
-            }
-
+        const data = {
+            reader: this.reader,
+            writer: this.writer,
         }
 
-
+        wmh.sendMessage(workerName, m.WORKER_SETUP, data, [this.reader, this.writer]);
     }
 
 }
@@ -104,7 +103,7 @@ export class InsertableStreamsManager{
 
 
 /**
- * Modifies each track in a MediaStream
+ * Modifies each track in a MediaStream and returns a stream with the modified tracks
  * @param {MediaStream} stream - the stream to modify
  * @returns {MediaStream} - a MediaStream
  */
@@ -119,7 +118,7 @@ export class ProcessedMediaStream {
         this.tracks = [];
 
         return Promise.all(this.originalTracks.map(async (track) => {
-            const {generator} = new InsertableStreamsManager(track);
+            const generator = new InsertableStreamsManager(track);
             this.tracks.push(generator);
         })).then(() => {
             this.alteredStream = new MediaStream(this.tracks);

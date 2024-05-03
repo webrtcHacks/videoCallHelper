@@ -348,7 +348,7 @@ export class MessageHandler {
      * Disconnect logic
      */
 
-    // Keep a map of functions to call when disconnected from the background script
+        // Keep a map of functions to call when disconnected from the background script
     disconnectedCallbackMap = new Map();
     disconnected = false;
 
@@ -359,7 +359,7 @@ export class MessageHandler {
      */
     #handleDisconnect() {
         this.disconnected = true;
-        if(this.disconnectedCallbackMap.size > 0){
+        if (this.disconnectedCallbackMap.size > 0) {
             this.debug("running disconnect callbacks: ", this.disconnectedCallbackMap.keys());
             this.disconnectedCallbackMap.forEach((cb) => {
                 cb();
@@ -391,44 +391,183 @@ export class MessageHandler {
      * Remove the disconnect handler
      * @param {string} name
      */
-    removeDisconnectHandler(name = 'default'){
+    removeDisconnectHandler(name = 'default') {
         this.disconnectedCallbackMap.delete(name);
     }
 
 }
 
-export class WorkerMessageHandler { // extends MessageHandler {
-    constructor(context, worker) {
-        // super(context);
-        this.context = context;
-        this.worker = worker;
+// ToDo: update this class
+// inject->worker work for all worker instances
+// Context class needs to be initialized before there are any workers
+// workers should then be registered against it after
+// sendMessage needs to go to all the workers
+// given the divergence in functionality between workers and other contexts,
+//  it may be better to have a separate class for workers
 
-        if (process.env.NODE_ENV)
-            this.debug = Function.prototype.bind.call(console.debug, console, `vch 👷 WorkerMessageHandler[${context}] `);
+// Used inside a Worker to communicate with only its parent
+
+/**
+ * Used inside a Worker to communicate with its parent
+ */
+export class WorkerMessageHandler {
+    static instance;                // singleton instance
+    listeners = [];
+
+    /**
+     * @constructor
+     * @singleton
+     */
+    constructor() {
+        if (WorkerMessageHandler.instance)
+            return WorkerMessageHandler.instance;
         else
-            this.debug = () => {};
+            WorkerMessageHandler.instance = this;
 
-        this.debug(`creating new WorkerMessageHandler`, worker);
+        this.debug = Function.prototype.bind.call(console.debug, console, `vch 👷WorkerMessageHandler[${self.name}] `);
+        this.debug(`created new WorkerMessageHandler`);
 
+        onmessage = async (event) => {
+            const {command} = event.data;
+            if(VERBOSE) this.debug(`onmessage command ${command}`, event.data);
 
-        if(this.context === CONTEXT.INJECT){
-            }
-        }
-
-
-    sendMessage(command, data = {}, transferable = []) {
-
-        if(this.context === CONTEXT.INJECT){
-            const message = {
-                command,
-                ...data,
-                // origin: this.worker.name
-            }
-
-            this.worker.postMessage(message, transferable);
+            this.listeners.forEach(listener => {
+                if (command === listener.command) {
+                    this.debug(`calling listener for ${command}`);
+                    listener.callback(event.data);
+                }
+            })
         }
     }
 
+    /**
+     * Wrapper for postMessage to look like MessageHandler
+     * @param {string} command - the message command
+     * @param {object} data - the data to send with the message
+     * @param {array} transferable - the transferable objects to send with the message in an array
+     */
+    sendMessage(command, data = {}, transferable = []) {
+        const message = {
+            command,
+            ...data,
+        }
+
+        this.debug(`sending message ${message.command}`, message, transferable);
+
+        postMessage(message, transferable);
+    }
+
+    /**
+     * Add a listener for messages from the parent
+     * @param {string} command - the message command
+     * @param {function} callback - the function to call when the message is received
+     */
+    addListener(command, callback) {
+        this.listeners.push({command, callback});
+        if (VERBOSE) this.debug(`added listener "${command}"`);
+    }
+}
+
+
+/**
+ * Used inside the Inject context to communicate with all workers or a specific worker
+ */
+export class InjectToWorkerMessageHandler { // extends MessageHandler {
+
+    static instance;                // singleton instance when used in INJECT
+    static workers = [];     // keep track of all the workers
+    #listeners = [];
+
+    /**
+     * @constructor
+     * @singleton
+     */
+    constructor( ) {
+        // Singleton pattern
+        if (InjectToWorkerMessageHandler.instance) {
+            return InjectToWorkerMessageHandler.instance;
+        } else {
+            InjectToWorkerMessageHandler.instance = this;
+        }
+
+        this.context = CONTEXT.INJECT;
+        this.debug = Function.prototype.bind.call(console.debug, console, `vch 💉WorkerMessageHandler `);
+        this.debug(`created new WorkerToInjectMessageHandler`);
+
+        // No logging for production
+        if (process.env.NODE_ENV==='production')
+            this.debug = () => {
+            };
+
+        // this.debug(`creating new WorkerMessageHandler in context ${this.context}`, this.worker);
+
+        /**
+         * Handles incoming messages from workers
+         * @param event
+         * @returns {Promise<void>}
+         */
+        onmessage = async (event) => {
+            const {command} = event.data;
+            this.debug(`onmessage command ${command}`, event.data);
+
+            this.#listeners.forEach(listener => {
+                if (command === listener.command) {
+                    this.debug(`calling listener for ${command}`);
+                    listener.callback(event.data);
+                }
+            })
+        }
+
+    }
+
+    /**
+     * Register a worker with the handler so it can send messages to it
+     * @param worker
+     */
+    registerWorker(worker) {
+        InjectToWorkerMessageHandler.workers.push(worker);
+        this.debug(`registered worker ${worker.name}`);
+    }
+
+    /**
+     * Send a message to a worker or all workers
+     * @param {string} workerName - use 'all' to send to all workers
+     * @param {string} command - the message command
+     * @param {object} data - the data to send with the message
+     * @param {array} transferable - the transferable objects to send with the message in an array
+     */
+    sendMessage(workerName, command, data = {}, transferable = []) {
+        const message = {
+            command,
+            ...data,
+        }
+
+        if (workerName === "all" || !workerName) {
+            InjectToWorkerMessageHandler.workers.forEach(worker => {
+                this.debug(`sending message ${message.command} to ${worker.name}`, message, transferable);
+                worker.postMessage(message, transferable);
+            });
+        } else {
+            const worker = InjectToWorkerMessageHandler.workers.find(worker => worker.name === workerName);
+            if (worker) {
+                this.debug(`sending message ${message.command} to ${worker.name}`, message, transferable);
+                worker.postMessage(message, transferable);
+            } else {
+                this.debug(`Worker ${workerName} not found`);
+            }
+        }
+    }
+
+
+    /**
+     * Add a listener for messages from workers
+     * @param {string} command - the message command
+     * @param {functio} callback - the function to call when the message is received
+     */
+    addListener(command, callback) {
+        this.#listeners.push({command, callback});
+        if (VERBOSE) this.debug(`added listener "${command}"`);
+    }
 
 }
 
