@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Adjustable Frame Rate Video Stream</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        div.vid {
+            width: 45%; /* Adjust size as needed */
+            margin: 10px;
+            border: 1px solid #ccc;
+        }
+
+        video {
+            width: 100%;
+            display: block;
+        }
+
+        #controls {
+            width: 80%;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        label, input {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+<div id="controls">
+    <button id="toggleButton">Enable Manipulation</button>
+    <label>Resolution Scale Factor (%): <input type="range" id="resolutionSlider" min="10" max="100" value="100"></label>
+    <label>Frame Rate Reduction (%): <input type="range" id="rateReductionSlider" min="0" max="100" value="50"></label>
+    <label>Drop Probability: <input type="range" id="dropProbSlider" min="0" max="100" value="30"></label>
+    <label>Latency (ms): <input type="range" id="latencySlider" min="0" max="1000" value="300"></label>
+</div>
+<div class="vid">
+    <h2>Original Video</h2>
+    <video id="inputVideo" controls autoplay></video>
+    <div id="inputVideoInfo"></div>
+</div>
+<div class="vid">
+    <h2>Manipulated Video</h2>
+    <video id="outputVideo" controls autoplay></video>
+    <div id="outputVideoInfo"></div>
+</div>
+
+<script>
+
+    const inputVideo = document.getElementById('inputVideo');
+    const outputVideo = document.getElementById('outputVideo');
+    const toggleButton = document.getElementById('toggleButton');
+    const resolutionSlider = document.getElementById('resolutionSlider');
+    const rateReductionSlider = document.getElementById('rateReductionSlider');
+    const dropProbSlider = document.getElementById('dropProbSlider');
+    const latencySlider = document.getElementById('latencySlider');
+
+    let manipulateFrames = false;
+    let frameRate;
+    let frameInterval;
+    let nextFrameTime = 0;
+
+    let resolutionScaleFactor = 1;
+    let effectiveFrameRate = 15;
+    let dropProbability = 0.30;
+    let latency = 300;
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            inputVideo.srcObject = stream;
+            const track = stream.getVideoTracks()[0];
+            const settings = track.getSettings();
+            frameRate = settings.frameRate;
+            frameInterval = 1000 / frameRate;
+
+            // Display the video track settings
+            const inputVideoInfo = document.getElementById('inputVideoInfo');
+            inputVideoInfo.textContent = `Resolution: ${settings.width}x${settings.height}, Frame rate: ${settings.frameRate}`;
+
+            startProcessing(stream, track);
+        })
+        .catch(error => {
+            console.error('Error accessing media devices.', error);
+        });
+
+    resolutionSlider.oninput = function() {
+        resolutionScaleFactor = parseInt(this.value) / 100;
+    };
+
+    rateReductionSlider.oninput = function() {
+        effectiveFrameRate = frameRate * (1 - parseInt(this.value) / 100);
+        frameInterval = 1000 / effectiveFrameRate;
+
+        // Display the actual and perceived values
+        const outputVideoInfo = document.getElementById('outputVideoInfo');
+        outputVideoInfo.textContent = `Actual frame rate: ${frameRate}, Perceived frame rate: ${effectiveFrameRate}`;
+    };
+
+    async function startProcessing(stream, track) {
+        const processor = new MediaStreamTrackProcessor({track});
+        const generator = new MediaStreamTrackGenerator({kind: 'video'});
+        outputVideo.srcObject = new MediaStream([generator]);
+
+        const reader = processor.readable.getReader();
+        const writer = generator.writable.getWriter();
+        let lastFrame;
+        let effectiveFrameRate = 15;
+
+        rateReductionSlider.oninput = function () {
+            effectiveFrameRate = frameRate * (1 - parseInt(this.value) / 100);
+            frameInterval = 1000 / effectiveFrameRate;
+
+            // Display the actual and perceived values
+            const outputVideoInfo = document.getElementById('outputVideoInfo');
+            outputVideoInfo.textContent = `Actual frame rate: ${frameRate}, Perceived frame rate: ${effectiveFrameRate}`;
+        };
+
+        dropProbSlider.oninput = function () {
+            dropProbability = parseInt(this.value) / 100;
+        };
+        latencySlider.oninput = function () {
+            latency = parseInt(this.value);
+        };
+
+        async function processFrame() {
+            const {value: frame, done} = await reader.read();
+            // close all frame when the stream ends
+            if (done) {
+                if (lastFrame) lastFrame.close();
+                frame.close();
+                await writer.close();
+                return;
+            }
+
+
+            if (!manipulateFrames) {
+                lastFrame?.close();
+                lastFrame = frame.clone();
+                await writer.write(frame);
+            } else {
+                // Add latency
+                await new Promise(resolve => setTimeout(resolve, latency));
+
+                if (Math.random() < dropProbability) {
+                    if (lastFrame) {
+                        await writer.write(lastFrame.clone());
+                    }
+                } else {
+                    // adjust resolution
+                    // Scale down then scale up to original size
+                    const originalWidth = frame.displayWidth;
+                    const originalHeight = frame.displayHeight;
+                    const scaledDownWidth = Math.floor(originalWidth * resolutionScaleFactor);
+                    const scaledDownHeight = Math.floor(originalHeight * resolutionScaleFactor);
+                    const canvas = new OffscreenCanvas(scaledDownWidth, scaledDownHeight);
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(frame, 0, 0, scaledDownWidth, scaledDownHeight);
+
+                    const scaledUpCanvas = new OffscreenCanvas(originalWidth, originalHeight);
+                    const scaledCtx = scaledUpCanvas.getContext('2d');
+                    scaledCtx.drawImage(canvas, 0, 0, originalWidth, originalHeight);
+                    const scaledFrame = new VideoFrame(scaledUpCanvas, { timestamp: frame.timestamp });
+
+                    lastFrame?.close();
+                    lastFrame = scaledFrame.clone();
+                    await writer.write(scaledFrame);
+                }
+            }
+            frame.close();
+            await processFrame(); // Recursive call to continue processing
+        }
+
+        await processFrame();
+    }
+
+    toggleButton.addEventListener('click', () => {
+        manipulateFrames = !manipulateFrames;
+        toggleButton.textContent = manipulateFrames ? 'Disable Manipulation' : 'Enable Manipulation';
+    });
+</script>
+</body>
+</html>
