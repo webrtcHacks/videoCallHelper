@@ -44,6 +44,9 @@
 <body>
 <div id="controls">
     <button id="toggleButton">Enable Manipulation</button>
+    <button id="recordButton">Start Recording</button>
+    <button id="playbackButton" disabled>Playback Recording</button>
+    <br>
     <label>Resolution Scale Factor (%): <input type="range" id="resolutionSlider" min="10" max="100"
                                                value="100"></label>
     <label>Frame Rate Reduction (%): <input type="range" id="rateReductionSlider" min="0" max="100" value="50"></label>
@@ -66,6 +69,8 @@
     const inputVideo = document.getElementById('inputVideo');
     const outputVideo = document.getElementById('outputVideo');
     const toggleButton = document.getElementById('toggleButton');
+    const recordButton = document.getElementById('recordButton');
+    const playbackButton = document.getElementById('playbackButton');
     const resolutionSlider = document.getElementById('resolutionSlider');
     const rateReductionSlider = document.getElementById('rateReductionSlider');
     const dropProbSlider = document.getElementById('dropProbSlider');
@@ -77,9 +82,12 @@
 
     let workers = [];
 
-    navigator.mediaDevices.getUserMedia({video: true, audio: true})
+    const constraints = {video: false, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false}};
+
+    navigator.mediaDevices.getUserMedia(constraints)
         .then(async stream => {
             inputVideo.srcObject = stream;
+            window.sourceStream = stream;
 
             /*
             const settings = track.getSettings();
@@ -108,6 +116,7 @@
             });
 
             outputVideo.srcObject = new MediaStream(generators);
+            window.outputStream = outputVideo.srcObject;
 
 
 
@@ -165,6 +174,7 @@
     // Setup controls
     [resolutionSlider, rateReductionSlider, dropProbSlider, latencySlider].forEach(slider => {
         slider.addEventListener('input', () => {
+            console.log(`"${slider.id}" changed to ${slider.value}`);
             workers.forEach(worker=>worker.postMessage({
                 command: 'config',
                 config: {
@@ -182,6 +192,73 @@
         toggleButton.textContent = manipulateFrames ? 'Disable Manipulation' : 'Enable Manipulation';
         workers.forEach(worker=>worker.postMessage({command: manipulateFrames ? 'start' : 'stop'}));
     });
+
+    /** Recording and playback **/
+
+    let mediaRecorder;
+    let recordedBlobs;
+
+    recordButton.addEventListener('click', () => {
+        if (recordButton.textContent === 'Start Recording') {
+            startRecording();
+        } else {
+            stopRecording();
+            recordButton.textContent = 'Start Recording';
+            playbackButton.disabled = false;
+        }
+    });
+
+    playbackButton.addEventListener('click', () => {
+        const superBuffer = new Blob(recordedBlobs, {type: 'video/webm'});
+        outputVideo.src = null;
+        outputVideo.srcObject = null;
+        outputVideo.src = window.URL.createObjectURL(superBuffer);
+        outputVideo.controls = true;
+        outputVideo.play();
+    });
+
+    function startRecording() {
+        recordedBlobs = [];
+        let options = {mimeType: 'video/webm;codecs=vp9,opus'};
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            console.error(`${options.mimeType} is not supported`);
+            options = {mimeType: 'video/webm;codecs=vp8,opus'};
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                console.error(`${options.mimeType} is not supported`);
+                options = {mimeType: 'video/webm'};
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    console.error(`${options.mimeType} is not supported`);
+                    options = {mimeType: ''};
+                }
+            }
+        }
+
+        try {
+            mediaRecorder = new MediaRecorder(window.outputStream, {mimeType: ""});
+        } catch (e) {
+            console.error('Exception while creating MediaRecorder:', e);
+            return;
+        }
+
+        recordButton.textContent = 'Stop Recording';
+        playbackButton.disabled = true;
+        mediaRecorder.onstop = (event) => {
+            console.log('Recorder stopped: ', event);
+        };
+        mediaRecorder.ondataavailable = handleDataAvailable;
+        mediaRecorder.start();
+        console.log('MediaRecorder started', mediaRecorder);
+    }
+
+    function stopRecording() {
+        mediaRecorder.stop();
+    }
+
+    function handleDataAvailable(event) {
+        if (event.data && event.data.size > 0) {
+            recordedBlobs.push(event.data);
+        }
+    }
 
 
 </script>
