@@ -1,5 +1,6 @@
 // don't repeat on webhook for each track
 let webhookIsActive = false;
+const debug = Function.prototype.bind.call(console.log, console, `🫥🟢webrequest `);
 
 // ToDo: error checking on these entered values
 
