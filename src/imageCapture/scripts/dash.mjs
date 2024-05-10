@@ -81,7 +81,12 @@ storage.addListener('imageCapture', updateUI);
  *  Button to open dedicated image capture page
  */
 // Image capture button
-document.querySelector("button#open_sampling").onclick = async () => {
-    const url = chrome.runtime.getURL("pages/imageCapture.html");
-    await chrome.tabs.create({url});
+const openSamplingButton = document.querySelector("button#open_sampling");
+if(openSamplingButton){
+    openSamplingButton.onclick = async () => {
+        const url = chrome.runtime.getURL("pages/imageCapture.html");
+        await chrome.tabs.create({url});
+    }
+
 }
+
