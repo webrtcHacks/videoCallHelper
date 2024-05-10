@@ -5,7 +5,7 @@ const debug = Function.prototype.bind.call(console.log, console, `🫥`);
 const storage = await new StorageHandler(debug);
 const mh = new MessageHandler(c.BACKGROUND);
 
-const VERBOSE = process.env.NODE_ENV === 'development';
+self.VERBOSE = process.env.NODE_ENV === 'development';
 
 // for debugging
 self.debug = debug;
@@ -89,8 +89,8 @@ async function handleTabRemoved(tabId){
  */
 
 chrome.tabs.onCreated.addListener(async (tab)=>{
-    if(tab.url.match(/^http/)){
-        const tabs = await storage.contents.tabs;
+    if(tab.url.match(/^http/i)){
+        const tabs = storage.contents.tabs;
         tabs.add(tab.id);
         await storage.update('tabs', tabs);
     }
@@ -98,7 +98,7 @@ chrome.tabs.onCreated.addListener(async (tab)=>{
         await chrome.action.disable(tab.id);
 });
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
-    if (VERBOSE) debug(`tab ${tabId} removed`);
+    if (self.VERBOSE) debug(`tab ${tabId} removed`);
     const tabs =  storage.contents.tabs; //.filter(tab=>tab!==tabId);
     tabs.delete(tabId);
     await storage.update('tabs', tabs);
@@ -107,19 +107,24 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo)=>{
 });
 
 chrome.tabs.onReplaced.addListener(async (tabId, removeInfo)=>{
-    if (VERBOSE) debug(`tab ${tabId} replaced`);
+    if (self.VERBOSE) debug(`tab ${tabId} replaced`);
     await handleTabRemoved(tabId);
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab)=>{
 
-    // ignore extension tabs
-    if (!tab.url.match(/^http:\/\//)) { // && changeInfo.status === 'complete'
-        if(VERBOSE) debug(`non-http tab opened: ${tab.url}`)
+    // ToDo: handle clicking on the extension icon in an extension tab
+    if(tab.url.startsWith(`chrome-extension://${chrome.runtime.id}`)){
+        if(self.VERBOSE) debug(`chrome-extension tab opened: ${tab.url}`);
+    }
+    // ignore non http(s) tabs
+    if (!tab.url.match(/^http/i)) { // && changeInfo.status === 'complete'
+        if(self.VERBOSE) debug(`non-http tab opened: ${tab.url}`)
+        await chrome.action.disable(tab.id);
     }
     else if (changeInfo.status === 'complete') {
-        if(VERBOSE) debug(`tab ${tabId} refreshed`);
-        const tabs = await storage.contents.tabs;
+        if(self.VERBOSE) debug(`tab ${tabId} refreshed`);
+        const tabs = storage.contents.tabs;
         tabs.add(tabId);
         await handleTabRemoved(tabId);
     }
@@ -135,11 +140,11 @@ mh.addListener(m.NEW_TRACK, async data=>{
     // check if track is already in storage
     const trackData = storage.contents.trackData;
     if(storage.contents.trackData.some(td => td.id === id)){
-        if (VERBOSE) debug(`track ${id} already in trackData array`);
+        if (self.VERBOSE) debug(`track ${id} already in trackData array`);
     } else {
         trackData.push(data);
         await storage.set('trackData', trackData);
-        if (VERBOSE) debug(`added ${id} to trackData array`, trackData);
+        if (self.VERBOSE) debug(`added ${id} to trackData array`, trackData);
     }
 });
 
