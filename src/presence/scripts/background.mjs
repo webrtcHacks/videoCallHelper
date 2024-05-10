@@ -26,6 +26,23 @@ const isTrackLive = () => storage.contents.trackData.some(td => td.readyState ==
 const isPresenceEnabled = () => storage.contents?.presence?.enabled;
 const isPresenceActive = () => storage.contents?.presence?.active;
 
+/**
+ * Sets the presence state based on the isOn parameter
+ * @param isOn
+ * @returns {Promise<void>}
+ */
+async function setPresenceState(isOn) {
+    const color = isOn ? [255, 0, 0] : [0, 0, 0];
+    const iconPath = isOn ? "../images/v_rec.png" : "../images/v_128.png";
+
+    await chrome.action.setIcon({path: iconPath});
+
+    if (storage.contents?.presence?.hid === true)
+        await glow(color);
+
+    webRequest(isOn ? 'on' : 'off', storage.contents.presence, debug);
+    await storage.update('presence', {active: isOn});
+}
 
 /**
  * Turns the presence indicator on and off based on the presence settings
@@ -35,16 +52,7 @@ const isPresenceActive = () => storage.contents?.presence?.active;
 async function presenceOn() {
     if (isTrackLive() && isPresenceEnabled() && !isPresenceActive()) {
         debug("turn presence on here");
-        const color = [255, 0, 0];
-        const iconPath = "../images/v_rec.png";
-
-        await chrome.action.setIcon({path: iconPath});
-
-        if (storage.contents?.presence?.hid === true)
-            await glow(color);
-
-        webRequest('on', storage.contents.presence, debug);
-        await storage.update('presence', {active: true});
+        await setPresenceState(true);
     } else {
         debug("presence already active or not enabled");
     }
@@ -55,29 +63,18 @@ async function presenceOn() {
  * Includes setting the icon, HID indicator, and calling the webRequest function
  * @returns {Promise<void>}
  */
+
 async function presenceOff() {
-    async function off() {
+    if (!isPresenceEnabled() && isPresenceActive()) {
         debug("turn presence off here");
-        const color = [0, 0, 0];
-        const iconPath = "../images/v_128.png";
-
-        await chrome.action.setIcon({path: iconPath});
-
-        if (storage.contents?.presence?.hid === true)
-            await glow(color);
-
-        webRequest('off', storage.contents.presence, debug);
-        await storage.update('presence', {active: false});
-    }
-
-    if (!isPresenceEnabled() && isPresenceActive())
-        await off();
-    else {
+        await setPresenceState(false);
+    } else {
         await new Promise(resolve => setTimeout(async () => {
             if (isTrackLive())
                 debug("presenceOff check: some tracks still live", storage.contents.trackData);
             else if (isPresenceActive() && !isTrackLive()) {
-                await off();
+                debug("turn presence off here");
+                await setPresenceState(false);
             }
             resolve();
         }, PRESENCE_OFF_DELAY));
@@ -91,7 +88,7 @@ storage.addListener('presence', async (newValue, changedValue) => {
     // ToDo: handle changes in webhook settings
     if (changedValue.enabled === true) {
         await presenceOn();
-    } else if (changedValue.enabled === false) {
+    } else if (changedValue.enabled === false || changedValue.active === false) {
         await presenceOff();
     }
 });
