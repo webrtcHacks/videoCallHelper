@@ -1,3 +1,5 @@
+// noinspection DuplicatedCode
+
 const debug = Function.prototype.bind.call(console.debug, console, `vch 👷${self.name} `);
 
 /**
@@ -128,16 +130,60 @@ class ImpairmentProcessor {
         return this.audioFrameQueue.shift();
     }
 
-    createSilentAudioFrame(frame) {
-        /*
-        // Define the audio format and parameters
-        const audioFormat = 'f32'; // Floating-point 32-bit samples
-        const sampleRate = 48000; // Sample rate in Hz
-        const numberOfFrames = 1024; // Number of frames in the audio sample
-        const numberOfChannels = 1; // Number of audio channels (stereo)
-        // const timestamp = 0; // Timestamp in microseconds
-         */
+    lastIntervalUpdate = 0;
+    intervals = [];
 
+    /**
+     * Degrades the quality of an audio frame
+     *  - First part simulates a cluster of dropped packets by zeroing repeated frames from the audio stream
+     *  - Then calls dropRandomAudioFrames for frames that are not completely silenced
+     * @param {AudioData} frame - every frame
+     * @param {number} pctPerMinute - percent as an integer of 60 seconds to clip
+     */
+    degradeAudio(frame, pctPerMinute) {
+        // Get the current time in seconds
+        const currentTime = frame.timestamp / 1000000;
+
+        // If a minute or more has passed since the last interval update, recalculate the intervals
+        if (currentTime - this.lastIntervalUpdate >= 60) {
+            // debug('Recalculating intervals');
+            // Calculate the total number of one-second intervals in a minute, which is 60
+            const totalIntervals = 60;
+            // Calculate the number of intervals to be silenced based on the `pctPerMinute` parameter
+            const silenceIntervals = Math.round(pctPerMinute / 100 * totalIntervals);
+            // Create an array with the specified number of silenced intervals
+            this.intervals = Array(silenceIntervals).fill(1);
+            // Fill the rest of the array with zeros
+            this.intervals = [...this.intervals, ...Array(totalIntervals - silenceIntervals).fill(0)];
+            // Shuffle the array to randomize the silenced intervals
+            this.intervals = this.intervals.sort(() => Math.random() - 0.5);
+            debug(this.intervals);
+
+            // Update the last interval update time
+            this.lastIntervalUpdate = currentTime;
+        }
+
+        // Get the current second of the minute
+        const currentSecond = Math.floor(currentTime) % 60;
+
+        // If the current second should be silenced, return a silent frame
+        if (this.intervals[currentSecond] === 1) {
+            // debug('Silent frame created');
+            return this.createSilentAudioFrame(frame);
+        } else {
+            // return frame;
+            // Simulate some noise
+            return this.dropRandomAudioFrames(frame);
+
+        }
+    }
+
+    /**
+     * Create a silent AudioData with the same properties as the input AudioData.
+     * @param {AudioData} audioData
+     * @returns {AudioData}
+     */
+    createSilentAudioFrame(audioData) {
         /*
         duration:2666
         format:"f32-planar"
@@ -148,14 +194,10 @@ class ImpairmentProcessor {
         */
 
         // debug("making silent frame from:" , frame);
-        const {duration, format, numberOfChannels, numberOfFrames, sampleRate, timestamp} = frame;
-
-        // Create a silent audio buffer
+        const {duration, format, numberOfChannels, numberOfFrames, sampleRate, timestamp} = audioData;
         const audioBuffer = new Float32Array(numberOfFrames * numberOfChannels).fill(0);
-
         const init = {duration, format, numberOfChannels,numberOfFrames, sampleRate, timestamp, data: audioBuffer }
-
-        frame.data = audioBuffer
+        audioData.data = audioBuffer
 
         // Create the AudioData object
         const silentAudioFrame = new AudioData(init);
@@ -166,6 +208,11 @@ class ImpairmentProcessor {
 
     }
 
+    /**
+     * Simulate packet loss by zeroing out random frames within AudioData
+     * @param audioData
+     * @returns {AudioData}
+     */
     dropRandomAudioFrames(audioData) {
         // Get the number of frames and channels from the AudioData object
         const numberOfFrames = audioData.numberOfFrames;
@@ -202,6 +249,49 @@ class ImpairmentProcessor {
 
         return modifiedAudioData;
     }
+
+    // this didn't work - too much distortion
+    /**
+     * Simulate lower fidelity audio by dropping the higher-order bits of the audio samples.
+     * @param {AudioData} audioData
+     * @param {number} bitsToDrop
+     * @returns {AudioData}
+     */
+    dropHigherOrderBits(audioData, bitsToDrop) {
+
+        // Get the number of frames and channels from the AudioData object
+        const bitDepth = 16;
+        const numberOfFrames = audioData.numberOfFrames;
+        const numberOfChannels = audioData.numberOfChannels;
+
+        // Convert the AudioData data to a Float32Array
+        const audioBuffer = new Float32Array(numberOfFrames * numberOfChannels);
+        audioData.copyTo(audioBuffer, {planeIndex: 0});
+
+        // Bit mask for the desired bit depth
+        const bitMask = (1 << (bitDepth - bitsToDrop)) - 1;
+
+        // Iterate over each sample in the audio buffer
+        for (let i = 0; i < audioBuffer.length; i++) {
+            // if(i % 128 === 0) {  // attempt to do this only some samples
+                // Scale to 16-bit integer range, apply bit mask, then scale back
+                //console.log(audioBuffer.length);    // == 128
+            audioBuffer[i] = ((audioBuffer[i] * 32768) & bitMask) / 32768;
+        }
+
+        // Create a new AudioData object with the modified buffer
+        const modifiedAudioData = new AudioData({
+            format: audioData.format,
+            sampleRate: audioData.sampleRate,
+            numberOfFrames: numberOfFrames,
+            numberOfChannels: numberOfChannels,
+            timestamp: audioData.timestamp,
+            data: audioBuffer,
+        });
+
+        return modifiedAudioData;
+    }
+
 
     /*
     // Removed because AudioContext is not available in workers
@@ -251,16 +341,22 @@ class ImpairmentProcessor {
      * @returns {Promise<VideoFrame>} - The processed video frame
      */
     async process(frame) {
+        this.frameCount++;
         // debug(`processing ${this.kind} frame: `, frame);
         if (!this.activate) {
-            // this.lastFrame?.close();
-            // this.lastFrame = frame.clone();
+            /*
+            if(this.frameCount % 266 === 0) {
+                const interval = frame.timestamp - this.lastFrame?.timestamp;
+                debug(`time between frames is ${interval/1000} ms; frame rate is ${1 / (interval/100000)} fps`);
+            }
+             */
+            this.lastFrame?.close();
+            this.lastFrame = frame.clone();
             return frame;
         } else {
-            this.frameCount++;
             // Add latency (always)
             // ToDo: investigate why MediaRecord doesn't record when this is used
-            await new Promise(resolve => setTimeout(resolve, this.impairmentConfig.latency));
+            // await new Promise(resolve => setTimeout(resolve, this.impairmentConfig.latency));
             // END generic handling - START Audio and video specific handling
 
             let modifiedFrame;
@@ -287,36 +383,11 @@ class ImpairmentProcessor {
             /* Audio processing */
             else if (this.kind === 'audio') {
                 // debug(`processing ${this.kind} frame: `, frame);
-                const modifiedFrame = this.dropRandomAudioFrames(frame);
                 // const modifiedFrame = this.addPacketLoss(frame);
+                modifiedFrame = this.degradeAudio(frame, 25);
+                // modifiedFrame = this.dropHigherOrderBits(modifiedFrame, 2);
                 frame.close();
                 return modifiedFrame;
-/*
-                // Simulate dropped frames by inserting blank frames
-                if (Math.random() < this.impairmentConfig.dropProbability) {
-                    // debug(`Dropped audio frame at ${frame.timestamp}`, frame);
-                    const silentFrame =  this.createSilentAudioFrame(frame);
-                    frame.close();
-                    return silentFrame;
-                }
-
-                return frame;
-
-                /*
-                // Encode the audio frame at a lower quality
-                this.encoder.encode(frame || this.createSilentAudioFrame());
-
-                // Get the last frame in the queue
-                modifiedFrame = this.audioFrameQueue.shift();
-                if (!modifiedFrame){
-                    debug(`No decoded frame available for ${this.frameCount} at ${frame.timestamp}`, frame);
-                    // modifiedFrame = frame.clone();
-                    modifiedFrame = this.createSilentAudioFrame();
-                }
-
-                return modifiedFrame;
-
-                 */
 
             }
 
