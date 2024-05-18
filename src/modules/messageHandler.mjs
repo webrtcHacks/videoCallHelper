@@ -69,6 +69,15 @@ export class MessageHandler {
         } else
             this.debug(`invalid context for listener ${context}`);
 
+        // Handle pings from background
+        if (context === CONTEXT.CONTENT) {
+            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+                if (request.message === MESSAGE.PING) {
+                    sendResponse({message: MESSAGE.PONG});
+                }
+            });
+        }
+
         this.context = context;
 
     }
@@ -99,7 +108,7 @@ export class MessageHandler {
             return;
 
         // Can't send messages to background when disconnected - i.e. "extension context is invalidated"
-        if (this.disconnected && to === CONTEXT.BACKGROUND) {
+        if (this.disconnected) {
             if (VERBOSE) this.debug(`disconnected from background: ignoring message to "${to}" from "${this.context}" with data ${JSON.stringify(data)}`);
             return;
         }
@@ -126,8 +135,12 @@ export class MessageHandler {
                 case CONTEXT.BACKGROUND:
                     if (to === CONTEXT.CONTENT || to === CONTEXT.INJECT) {
                         this.tabId = data.tabId; // this.tabId || data.tabId;
-                        this.debug(`target tabId: ${this.tabId}`);
-                        chrome.tabs.sendMessage(this.tabId, {...messageToSend});
+                        // this.debug(`target tabId: ${this.tabId}`);
+                        try {
+                            chrome.tabs.sendMessage(this.tabId, {...messageToSend});
+                        } catch (err) {
+                            this.debug(`ERROR: failed to send ${message} from ${this.context} to tab ${this.tabId} - tab disconnected: `, err.message)
+                        }
                     } else if (to === CONTEXT.DASH) {
                         chrome.runtime.sendMessage({...messageToSend});
                     }
@@ -165,15 +178,6 @@ export class MessageHandler {
                         window.parent.postMessage({...messageToSend}, "*");    // parent origin is the user page
                     }
                     break;
-                /*
-                // No longer used
-                case 'popup':
-                    if (to === 'background')
-                        chrome.runtime.sendMessage({...messageToSend});
-                    else
-                        this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
-                    break;
-                 */
                 default:
                     this.debug(`unhandled message from "${this.context}" to "${to}" with data ${JSON.stringify(data)}`);
                     break;
@@ -348,7 +352,42 @@ export class MessageHandler {
      * Disconnect logic
      */
 
-        // Keep a map of functions to call when disconnected from the background script
+
+    /**
+     * Pings content scripts to check if they are loaded
+     *  - designed for use in the background context
+     *  - pong handled for content context in the constructor
+     * @param {number} tabId - the tabId to ping
+     * @returns {Promise<boolean>} - returns if the content script is loaded, otherwise rejects
+     */
+    async ping(tabId) {
+        return new Promise((resolve, reject) => {
+            if (this.context !== CONTEXT.BACKGROUND) {
+                reject(new Error("ping only for the background context"));
+            }
+
+            chrome.tabs.sendMessage(tabId, {message: MESSAGE.PING}, response => {
+                if (chrome.runtime.lastError) {
+                    if (VERBOSE) this.debug(`ping error: `, chrome.runtime.lastError.message);
+                    reject(chrome.runtime.lastError);
+                }
+                if (response && response.message === MESSAGE.PONG) {
+                    resolve();
+                } else {
+                    const error = new Error("unhandled ping failure");
+                    if (VERBOSE) this.debug("unhandled ping failure: ", response);
+                    reject(error);
+                }
+            });
+
+            setTimeout(() => {
+                reject(false);
+            }, 1000); // 1 second timeout
+
+        });
+    }
+
+    // Keep a map of functions to call when disconnected from the background script
     disconnectedCallbackMap = new Map();
     disconnected = false;
 
@@ -596,6 +635,9 @@ export const CONTEXT = {
  * Message types for communication between extension contexts
  */
 export const MESSAGE = {
+    PING: 'ping',   // background -> content
+    PONG: 'pong',   // content -> background
+
     // used in inject.js
     GET_ALL_SETTINGS: 'get_all_settings',
 
