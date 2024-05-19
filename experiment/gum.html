@@ -31,7 +31,11 @@
 <body>
 <video id="source" autoplay playsinline controls></video>
 <video id="cloneVid" autoplay playsinline muted controls hidden="hidden"></video>
-
+<br>
+<label for="audioInput">Audio Input:</label>
+<input type="checkbox" id="audioInput">
+<label for="videoInput">Video Input:</label>
+<input type="checkbox" id="videoInput" checked>
 <br>
 <button id="start">Start</button>
 <button id="stop">Stop</button>
@@ -118,13 +122,15 @@
 
     async function getCam() {
         const deviceId = deviceList.value || undefined;
+        const audioInput = document.getElementById('audioInput').checked;
+        const videoInput = document.getElementById('videoInput').checked;
         const constraints = {
-            video: {
+            video: videoInput ? {
                 height: { exact: 720 },
                 aspectRatio: 1.7777777778,
                 deviceId: deviceId ? { exact: deviceId } : undefined
-            },
-            audio: true
+            } : false,
+            audio: audioInput
         };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         const [track] = stream.getVideoTracks();
@@ -133,14 +139,12 @@
         console.log("Source track constraints:", track.getConstraints());
         console.log("Source track capabilities:", track.getCapabilities());
 
-
         video.srcObject = stream;
         window.stream = stream;
         console.log("started camera stream")
 
         window.sourceTrack = stream.getVideoTracks()[0];
     }
-
     startBtn.onclick = async () => {
         await getCam();
     }

@@ -54,6 +54,12 @@ class TransformManager {
         // return this.readable;
     }
 
+    /**
+     * Add a transform to the manager
+     * @param {string} id - a name used to identify the transform
+     * @param {function} transformFunc - the transform function to perform first param is a frame
+     * @param {number} position - where to insert the transform in the order
+     */
     add(id, transformFunc, position = this.#transformFunctions.size) {
         // Insert a transform at a specific position or by default at the end
         let funcArray = Array.from(this.#transformFunctions.entries());
@@ -62,6 +68,10 @@ class TransformManager {
         debug(`Transform ${id} added at position ${position}.`);
     }
 
+    /**
+     * Remove a transform from the manager
+     * @param {String} id - the name of the transform to remove
+     */
     remove(id) {
         if (this.#transformFunctions.has(id)) {
             this.#transformFunctions.delete(id);
@@ -71,10 +81,27 @@ class TransformManager {
         }
     }
 
+    /**
+     * Check if a transform is in the manager based on id
+     * @param {string} id - the name of the transform to check
+     * @returns {boolean}
+     */
+    has(id) {
+        return this.#transformFunctions.has(id);
+    }
+
+    /**
+     * return the readable stream
+     * @returns {ReadableStream<any>}
+     */
     get readable() {
         return this.#transformStream.readable;
     }
 
+    /**
+     * return the number of transforms in the manager
+     * @returns {number}
+     */
     get count() {
         return this.#transformFunctions.size;
     }
@@ -134,6 +161,7 @@ wmh.addListener(m.WORKER_SETUP, async (data) => {
 
 // Import applets here
 import "../../videoPlayer/scripts/worker.mjs";
+import "../../badConnection/scripts/worker.mjs";
 
 
 debug(`worker ${self.name} is ready`);

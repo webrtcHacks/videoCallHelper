@@ -111,7 +111,7 @@
                 const reader = processor.readable;
                 const writer = generator.writable;
 
-                const worker = new Worker('impairmentWorker.js', {name: `${kind}-impairment`});
+                const worker = new Worker('impairmentWorker.js', {name: `${kind}-impairment`, type: "module"});
                 worker.postMessage({command: 'setup', reader, writer, kind}, [reader, writer]);
                 workers.push(worker);
             });

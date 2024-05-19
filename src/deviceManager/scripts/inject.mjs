@@ -325,6 +325,7 @@ export class DeviceManager {
 
         const alteredStreamTracks = [];
 
+        // ToDo: need to remove AlterTrack?
 
         // Create alterTracks where needed and use the existing tracks from the gUM call otherwise
         if (useFakeAudio && !useFakeVideo) {

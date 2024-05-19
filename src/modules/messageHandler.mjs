@@ -698,9 +698,15 @@ export const MESSAGE = {
     GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
     UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
 
+    /*
+    IMPAIRMENT_SETUP: 'setup_impairment',
     IMPAIRMENT_PASSTHROUGH: 'passthrough',
     IMPAIRMENT_MODERATE: 'moderate',
     IMPAIRMENT_SEVERE: 'severe',
+     */
+
+    IMPAIRMENT_SETUP: 'setup_impairment',
+    IMPAIRMENT_CHANGE: 'change_impairment',  // maps to UPDATE_BAD_CONNECTION_SETTINGS
 
     // player
     PLAYER_START: 'player_start',

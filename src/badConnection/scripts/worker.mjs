@@ -1,436 +1,346 @@
-// import {VideoFrameScaler} from './webGLresize.mjs';
+// noinspection DuplicatedCode
+import {WorkerMessageHandler, MESSAGE as m} from "../../modules/messageHandler.mjs";
 
-/**
- * Class that sets up a transform stream that can add an impairment
- * The constructor and takes a track settings object and an  impairment config object
- *  and returns a Transform Stream object set to `passthrough`
- * The Encoder/Decoder with impairment is invoked of the operation = `impair`
- * 'passthrough' just pushes the frame through without modification
- * The start function changes the operation to 'impair'
- * The config setter applies an impairment configuration
- * Static class objects are included for a moderation and severe impairment
- * @class Impairment - a class that sets up a transform stream that can add an impairment
- * @param {string} kind - 'audio' or 'video'
- * @param {MediaStreamTrackSettings} settings - the track settings object
- * @param {string} id - an optional id for the impairment
- * @param {object} impairmentConfig - an optional impairment configuration object
- * @param {object} debug - an optional debug object
- */
-export class Impairment {
-    #controller;
-    operation = 'passthrough';
-    #encoder;
-    #decoder;
-    frameCounter = 0;
-    #forceKeyFrame = false;
+const wmh = new WorkerMessageHandler();
+const debug = Function.prototype.bind.call(console.debug, console, `vch 👷😈${self.name} `);
 
-    kind;
-    codecConfig;
-    impairmentConfig;
-    id;
-    track;
-    trackSettings;
 
-    static moderateImpairmentConfig = {
-        audio: {
-            loss:   0.25,
-            payloadSize: 400,
-            delayMs: 500,
-            // codec config
-            bitrate: 10_000
-        },
+export class ImpairmentProcessor {
+
+    static severeImpairment = {
         video: {
-            loss:  0.05, //0.0025,
-            payloadSize: 90,
-            keyFrameInterval: 30,
-            delayMs: 250,
-            // codec config
-            widthFactor: 2,
-            heightFactor: 2,
-            bitrate: 400_000,   // 750_000
-            framerateFactor: 2,
-            frameDrop: 0.2,
-            frameRate: 10
+            resolutionScaleFactor: 0.10,
+            effectiveFrameRate: 5,
+            dropProbability: 0.30,
+            latency: 400
+        },
+        audio: {
+            dropProbability: 0.50,
+            latency: 600,
+            clippingPct: 0.25
+        }
+    };
 
+    static moderateImpairment = {
+        video: {
+            resolutionScaleFactor: 0.20,
+            effectiveFrameRate: 10,
+            dropProbability: 0.20,
+            latency: 200
+        },
+        audio: {
+            dropProbability: 0.20,
+            latency: 300,
+            clippingPct: 0.10
         }
     }
 
-    static severeImpairmentConfig = {
-        audio: {
-            loss: 0.50,
-            payloadSize: 400,
-            delayMs: 700,
-            // codec config
-            bitrate: 6_000
-        },
-        video: {
-            loss: 0.1, // 0.05,
-            payloadSize: 90,
-            keyFrameInterval: 30,   // 15
-            delayMs: 500,
-            // codec config
-            widthFactor: 8,        // 4
-            heightFactor: 8,        // 4
-            bitrate: 25_000,       // 300_000
-            framerateFactor: 4,
-            frameDrop: 0.5,
-            frameRate: 5
-        }
-    }
-
-    // Placeholder impairment values
-    loss = 0.005;
-    payloadSize = 90;
-    keyFrameInterval = 300;     // was 100
-    delayMs = 200;
-    frameDrop = 0.01;
-
-    // static #debug = Function.prototype.bind.call(console.debug, console, `vch 😈🫙️`);
-
-
-    // ToDo: apply the impairment to the track settings
-    constructor(kind, settings, id=null, impairmentConfig = Impairment.moderateImpairmentConfig, debug = {}) {
-
-        // this.track = track;
+    /**
+     * Create a new ImpairmentProcessor instance.
+     * @param {string} kind - The kind of stream to process (video or audio)
+     * @param {Object} impairmentConfig - The initial configuration for the impairments
+     */
+    constructor(kind, impairmentConfig = ImpairmentProcessor.moderateImpairment) {
+        this.activate = false;
+        this.lastFrame = null;
         this.kind = kind;
-        this.id = id || Math.random().toString(36).substring(2, 15);
-        this.trackSettings = settings;   // trackSettings;
-        this.impairmentConfig = impairmentConfig;
-        this.debug = debug;
+        this.impairmentConfig = impairmentConfig[kind];
 
-        if(this.kind === 'video'){
-            // this.scaler = new VideoFrameScaler(impairmentConfig.video.widthFactor || 1);
-            this.canvas = new OffscreenCanvas(settings.width, settings.height);
+        // using OffscreenCanvas to process video frames instead of webcodecs to save on resources
+        if (kind === 'video') {
+            this.canvas = new OffscreenCanvas(1, 1);
             this.ctx = this.canvas.getContext('bitmaprenderer');
-
+        }
+        // Using webcodecs here because it is relatively lightweight and can be used in a worker easily (unlike webaudio)
+        else if (kind === 'audio') {
+            // See impairmentWorker.mjs in experiment for failed attempt at webcodecs
         }
 
-        // ToDo: **make this a promise so we can cancel if the codec config doesn't work?
-        this.#loadConfig();
-        this.#setupCodec();
     }
 
+    // noinspection DuplicatedCode
+    /**
+     * Scale down a video frame to simulate a lower resolution while keeping the resolution the same.
+     *  - uses impairementConfig.resolutionScaleFactor to determine the scaling factor
+     * @param {VideoFrame} frame - The input video frame to scale down
+     */
+    async #scaleVideo(frame) {
+        // Scale down
+        const {displayWidth, displayHeight, codedWidth, codedHeight, timestamp} = frame;
 
-    async #sleep(ms) {
-        await new Promise((resolve) => setTimeout(resolve, ms));
-    }
+        const newHeight = codedHeight * (this.impairmentConfig.resolutionScaleFactor || 1);
+        const newWidth = codedWidth * (this.impairmentConfig.resolutionScaleFactor || 1);
 
-    // This wasn't working consistently - h264 problem?
-    #addPacketLoss(chunk) {
-        let chunkWithLoss = new Uint8Array(chunk.byteLength);
-        chunk.copyTo(chunkWithLoss);
+        const bitmap = await createImageBitmap(frame, {resizeHeight: newHeight, resizeWidth: newWidth});
+        this.canvas.width = codedWidth; // newWidth;
+        this.canvas.height = codedHeight; // newHeight;
 
-        // getStats analysis showed the headers are ~30 bytes on video;
-        // could do the math based on details here: https://datatracker.ietf.org/doc/html/rfc6386#section-9.1
-        // errors return if the video header isn't included
-        // found 16 worked best with experimentation
-        // audio works fine without any header - including it includes some audio information, so ruins the effect
+        this.ctx.transferFromImageBitmap(bitmap);
 
-        // changed the 16
-        for (let n = this.kind === 'audio' ? 0 : 16; n <= chunkWithLoss.byteLength; n += this.payloadSize) {
-            if (Math.random() <= this.loss)
-                chunkWithLoss.fill(0, n, n + this.payloadSize);
+        const options = {
+            timestamp: timestamp,
+            codedWidth: codedWidth,
+            codedHeight: codedHeight,
+            displayWidth: displayWidth,
+            displayHeight: displayHeight,
         }
-        const chunkObj = {
-            type: chunk.type,
-            data: chunkWithLoss,
-            timestamp: chunk.timestamp,
-            duration: chunk.duration
-        };
+        return new VideoFrame(this.canvas, options);
 
-        if (this.kind === 'video'){
-            // this.debug("chunk", chunk, "\nnew Chunk", newChunk );
-            return new EncodedVideoChunk(chunkObj);
+    }
+    lastIntervalUpdate = 0;
+    intervals = [];
+
+    /**
+     * Degrades the quality of an audio frame
+     *  - First part simulates a cluster of dropped packets by zeroing repeated frames from the audio stream
+     *  - Then calls dropRandomAudioFrames for frames that are not completely silenced
+     * @param {AudioData} frame - every frame
+     * @param {number} pctPerMinute - percent as a decimal of 60 seconds to clip
+     */
+    degradeAudio(frame, pctPerMinute) {
+        // Get the current time in seconds
+        const currentTime = frame.timestamp / 1000000;
+
+        // If a minute or more has passed since the last interval update, recalculate the intervals
+        if (currentTime - this.lastIntervalUpdate >= 60) {
+            // debug('Recalculating intervals');
+            // Calculate the total number of one-second intervals in a minute, which is 60
+            const totalIntervals = 60;
+            // Calculate the number of intervals to be silenced based on the `pctPerMinute` parameter
+            const silenceIntervals = Math.round(pctPerMinute * totalIntervals);
+            // Create an array with the specified number of silenced intervals
+            this.intervals = Array(silenceIntervals).fill(1);
+            // Fill the rest of the array with zeros
+            this.intervals = [...this.intervals, ...Array(totalIntervals - silenceIntervals).fill(0)];
+            // Shuffle the array to randomize the silenced intervals
+            this.intervals = this.intervals.sort(() => Math.random() - 0.5);
+            // debug(this.intervals);
+
+            // Update the last interval update time
+            this.lastIntervalUpdate = currentTime;
         }
-        else if (this.kind === 'audio')
-            return new EncodedAudioChunk(chunkObj);
+
+        // Get the current second of the minute
+        const currentSecond = Math.floor(currentTime) % 60;
+
+        // If the current second should be silenced, return a silent frame
+        if (this.intervals[currentSecond] === 1) {
+            // debug('Silent frame created');
+            return this.createSilentAudioFrame(frame);
+        } else {
+            // return frame;
+            // Simulate some noise
+            return this.dropRandomAudioFrames(frame);
+
+        }
     }
 
-    // WebCodecs setup
-    #setupCodec() {
-        const handleDecodedFrame = async frame => {
-            if (this.operation === 'kill') {
-                frame.close();
-            } else {
-                try {
-                    // Upscale the video frame to the original resolution
-                    if(this.kind === 'video'){
+    /**
+     * Create a silent AudioData with the same properties as the input AudioData.
+     * @param {AudioData} audioData
+     * @returns {AudioData}
+     */
+    createSilentAudioFrame(audioData) {
+        /*
+        duration:2666
+        format:"f32-planar"
+        numberOfChannels:1
+        numberOfFrames: 256
+        sampleRate: 96000
+        timestamp: 46190019210
+        */
 
-                        const newHeight = frame.displayHeight * (this.impairmentConfig.video.heightFactor || 1);
-                        const newWidth = frame.displayWidth * (this.impairmentConfig.video.widthFactor || 1);
+        // debug("making silent frame from:" , frame);
+        const {duration, format, numberOfChannels, numberOfFrames, sampleRate, timestamp} = audioData;
+        const audioBuffer = new Float32Array(numberOfFrames * numberOfChannels).fill(0);
+        const init = {duration, format, numberOfChannels,numberOfFrames, sampleRate, timestamp, data: audioBuffer }
+        audioData.data = audioBuffer
 
-                        const bitmap = await createImageBitmap(frame, {resizeHeight: newHeight, resizeWidth: newWidth});
-                        this.canvas.width = newWidth;
-                        this.canvas.height = newHeight;
+        // Create the AudioData object
+        const silentAudioFrame = new AudioData(init);
 
-                        this.ctx.transferFromImageBitmap(bitmap);
-                        const scaledFrame = new VideoFrame(this.canvas, {timestamp: frame.timestamp});
+        // console.log('Silent audio frame created:', silentAudioFrame);
+
+        return silentAudioFrame;
+
+    }
+
+    /**
+     * Simulate packet loss by zeroing out random frames within AudioData
+     * @param {AudioData} audioData - input AudioData to process
+     * @returns {AudioData} - modified AudioData with zeroed out frames
+     */
+    dropRandomAudioFrames(audioData) {
+        // Get the number of frames and channels from the AudioData object
+        const numberOfFrames = audioData.numberOfFrames;
+        const numberOfChannels = audioData.numberOfChannels;
+
+
+        // Convert the AudioData data to a Float32Array
+        const audioBuffer = new Float32Array(numberOfFrames* numberOfChannels);
+        audioData.copyTo(audioBuffer, {planeIndex: 0});
+
+
+        // Determine the number of frames to zero out (e.g., 10% of the total frames)
+        const framesToZero = Math.floor(numberOfFrames * this.impairmentConfig.dropProbability);
+
+        for (let i = 0; i < framesToZero; i++) {
+            // Select a random frame
+            const frame = Math.floor(Math.random() * numberOfFrames);
+
+            // Zero out the selected frame for all channels
+            for (let channel = 0; channel < numberOfChannels; channel++) {
+                audioBuffer[frame * numberOfChannels + channel] = 0;
+            }
+        }
+
+        // Create a new AudioData object with the modified buffer
+        const modifiedAudioData = new AudioData({
+            format: audioData.format,
+            sampleRate: audioData.sampleRate,
+            numberOfFrames: numberOfFrames,
+            numberOfChannels: numberOfChannels,
+            timestamp: audioData.timestamp,
+            data: audioBuffer,
+        });
+
+        return modifiedAudioData;
+    }
+
+    frameCount = 0;
+
+    /**
+     * Process a video frame by applying the configured impairments.
+     * @param {VideoFrame|AudioData} frame - The input video frame or AudioData to process
+     * @returns {Promise<VideoFrame>} - The processed video frame or AudioData
+     */
+    process = async(frame) =>{
+        // debug(`processing ${this.kind} frame: `, frame);
+        if (!this.activate) {
+            this.lastFrame?.close();
+            return frame;
+        } else {
+            // Add latency (always)
+            // ToDo: investigate why MediaRecord doesn't record when this is used for testing
+            await new Promise(resolve => setTimeout(resolve, this.impairmentConfig.latency));
+            // END generic handling - START Audio and video specific handling
+
+            let modifiedFrame;
+            /* Video processing */
+            if (this.kind === 'video') {
+
+                // Simulate dropped frames by repeating the last frame
+                if (Math.random() < this.impairmentConfig.dropProbability) {
+                    if (this.lastFrame) {
                         frame.close();
-                        this.#controller.enqueue(scaledFrame);
-                    } else {
-                        this.#controller.enqueue(frame);
+                        return this.lastFrame.clone();
                     }
-                } catch (err) {
-                    this.debug("controller enqueue error", err);
                 }
+
+                // TODO: implement FPS reduction
+                modifiedFrame = await this.#scaleVideo(frame);
+
+                frame.close();
+                this.lastFrame?.close();
+                // debug(`modified ${this.kind} frame: `, modifiedFrame);
+                this.lastFrame = modifiedFrame.clone();
+                return modifiedFrame;
+
             }
-        }
+            /* Audio processing */
+            else if (this.kind === 'audio') {
+                modifiedFrame = this.degradeAudio(frame, this.impairmentConfig.clippingPct);
+                // modifiedFrame = this.dropHigherOrderBits(modifiedFrame, 2);
+                frame.close();
+                return modifiedFrame;
 
-        const handleEncodedFrame = async (chunk, metadata) => {
-            if (metadata.decoderConfig) {
-                this.debug(`${this.kind} metadata: `, metadata);
             }
 
-            // old-school video loss simulation
-            // ISSUE HAPPENING HERE
-            // const modifiedChunk = this.#addPacketLoss(chunk, this.kind);
-            // const modifiedChunk = chunk;
-
-            // add latency
-            await this.#sleep(this.delayMs);
-            // end test
-
-            // ToDo: figure out how to make sure this has a keyframe after configure
-            // hypothesis: packets caught in sleep function
-            // add something like if(this.#frameIgnore
-            try {
-                this.#decoder.decode(chunk);        //(modifiedChunk)
-            } catch (err) {
-                this.debug(`ERROR: frame ${this.frameCounter}`, err)
-            }
-        }
-
-        if (this.kind === 'video') {
-            // Video decode
-            VideoDecoder.isConfigSupported(this.codecConfig).then((decoderSupport) => {
-                if (decoderSupport.supported){
-                    this.#decoder = new VideoDecoder({output: handleDecodedFrame, error: this.debug});
-                    this.#decoder.configure(this.codecConfig);
-                    // this.debug(`${this.kind} decoder config supported`, this.codecConfig)
-                }
-                else
-                    this.debug(`${this.kind} decoder config not supported`, this.codecConfig);
-            });
-
-            // Video encode
-            VideoEncoder.isConfigSupported(this.codecConfig).then((encoderSupport) => {
-                if (encoderSupport.supported){
-                    this.#encoder = new VideoEncoder({output: handleEncodedFrame, error: this.debug});
-                    this.#encoder.configure(this.codecConfig);
-                    // this.debug(`${this.kind} encoder config supported`, this.codecConfig);
-                }
-                else
-                    this.debug(`${this.kind} encoder config not supported`, this.codecConfig);
-            })
-                // ToDo: Session error here
-                .catch((err) => {this.debug("encoder config error", err, this.codecConfig, this.trackSettings)});
-
-        } else if (this.kind === 'audio') {
-            // Audio decode
-            this.#decoder = new AudioDecoder({output: handleDecodedFrame, error: this.debug});
-            this.#decoder.configure(this.codecConfig);
-            // ToDo: add isSupported check
-            // Audio encode
-            this.#encoder = new AudioEncoder({output: handleEncodedFrame, error: this.debug});
-            this.#encoder.configure(this.codecConfig);
         }
     }
 
-    #loadConfig() {
-        if (this.kind === 'video') {
-            const {height, width, frameRate} = this.trackSettings;
-            const {widthFactor, heightFactor, framerateFactor, keyFrameInterval} = this.impairmentConfig.video;
 
-            /*
-                // from: https://raw.githubusercontent.com/tidoust/media-tests/main/main.js for reference
-                alpha: 'discard',
-                latencyMode: 'realtime',
-                bitrateMode: 'variable',
-                codec: 'H264',
-                width: resolution.width,
-                height: resolution.height,
-                bitrate: 1000000,
-                framerate: frameRate,
-                keyInterval: 300,
-                codec: 'avc1.42002A',
-                avc: { format: 'annexb' },
-                pt: 1
-             */
-
-            const codecFrameRate =  (frameRate / (framerateFactor || 1)).toFixed(0);
-
-
-            // Configure the codec
-            this.codecConfig = {
-                // ToDo: severe to moderate not working when using h264 config below
-                //  wanted h264 for better hardware acceleration
-
-                /*
-                codec: "avc1.42002A",
-                alpha: 'discard',
-                latencyMode: 'realtime',
-                bitrateMode: 'variable',
-                avc: {format: "annexb"},
-                hardwareAcceleration: "prefer-hardware",
-                pt: 1,
-                keyInterval: keyFrameInterval,
-                 */
-
-                // ToDo: session screen share putting width, height, and frameRate at 'NaN'
-                //  Session is using a MediaStreamTrackGenerator and that doesn't have those properties
-                //  Need to find those settings somewhere else
-
-                codec: 'vp8',
-                width: (width / (widthFactor || 1)).toFixed(0),
-                height: (height / (heightFactor || 1)).toFixed(0),
-                // framerate: (frameRate / (framerateFactor || 1)).toFixed(0) || frameRate
-                // frameRate: frameRate;
-                frameRate: Math.max(this.impairmentConfig.video.frameRate, codecFrameRate * 1 )
-            }
-
-            this.debug("codecConfig", JSON.stringify(this.codecConfig));
-
-            // Set up the impairment
-            const {loss, payloadSize, delayMs, frameDrop} = this.impairmentConfig.video;
-            this.loss = loss || 0;
-            this.payloadSize = payloadSize || 90;
-            this.keyFrameInterval = keyFrameInterval || 100;
-            this.delayMs = delayMs || 10;
-            this.frameDrop = frameDrop;
-        } else if (this.kind === 'audio') {
-            // Configure the codec
-            const {channelCount, sampleRate} = this.trackSettings;
-            const {loss, payloadSize, delayMs, bitrate} = this.impairmentConfig.audio;
-
-            this.codecConfig = {
-                codec: 'opus',
-                numberOfChannels: channelCount || 1,
-                sampleRate: sampleRate,
-                bitrate: Math.max(bitrate || 10_000, 6_000)
-            }
-
-            // Set up the impairment
-            this.loss = loss || 0;
-            this.payloadSize = payloadSize || 400;
-            this.delayMs = delayMs || 10;
-        }
-
-    }
-
-    /** @type {TransformStream} */
-    get transformStream() {
-        return new TransformStream({
-            start: (controller) => this.#controller = controller,
-            transform: async (frame) => {
-                if (this.operation === 'kill'){             // || this.track.readyState === 'ended') {
-                    this.#encoder.flush();
-                    this.#encoder.close();
-                    this.#decoder.flush();
-                    this.#decoder.close();
-                    this.debug(`this impairment track ${this.id} closed`);
-                } else if (this.#encoder && this.#encoder?.encodeQueueSize > 2) {
-                    this.debug(`${this.kind} encoder overwhelmed, dropping frame`, frame)
-                    frame.close();
-                } else {
-                    // Start webcodecs for impairment
-                    if (this.operation === 'impair') {
-
-                        // ToDo: retest this
-                        if(Math.random() <= this.frameDrop ){
-                            frame.close();
-                            return
-                        }
-
-                        const keyFrame = this.frameCounter % this.keyFrameInterval === 0 || this.#forceKeyFrame;
-                        if (this.#forceKeyFrame) {
-                            this.debug(`set ${this.frameCounter} to keyframe`);
-                            this.#forceKeyFrame = false;
-                        }
-
-                       this.#encoder.encode(frame, this.kind === 'video' ? {keyFrame} : null);
-
-                        if(this.#forceKeyFrame === true)
-                            this.#forceKeyFrame = false;
-
-                    }
-                    // Do nothing and re-enqueue the frame
-                    else if (this.operation === 'passthrough') {
-                        // this.debug("passthrough", frame);
-                        await this.#controller.enqueue(frame);
-                    }
-                    // Drop the frame
-                    else if (this.operation === 'skip') {
-                        // ToDo: skip in the case of track.readyState === 'live' and track.enabled = false indicating muted status?
-                        // this.debug("skipping frame");
-                    }
-                    // Something went wrong
-                    else {
-                        this.debug(`invalid operation: ${this.operation}`);
-                    }
-
-                    this.frameCounter++;
-                    // this.debug(`${this.kind} frame ${this.frameCounter} processed`);
-                    frame.close();
-                }
-            },
-            /*flush: (controller) => {
-                // from https://streams.spec.whatwg.org/#transformstream: (Note that there is no need to call
-                // controller.terminate() inside flush(); the stream is already in the process of successfully closing
-                // down, and terminating it would be counterproductive.)
-                // controller.terminate();
-            }*/
-        })
-    }
-
-
+    /**
+     * Set the current configuration for the impairments.
+     */
     set config(config) {
-        this.impairmentConfig = config;
-
-        this.#encoder.flush().then(() => {
-            this.#loadConfig();
-            this.#encoder.configure(this.codecConfig);
-            this.#decoder.configure(this.codecConfig);
-            this.#forceKeyFrame = true;
-            this.#decoder.flush();
-        }).catch(err => this.debug(`codec config error at frame ${this.frameCounter}`, err))
-
-        this.debug(`New configuration. Operation state: ${this.operation}. Config: `, config)
-    }
-
-    get config() {
-        return this.impairmentConfig;
-    }
-
-    start() {
-        this.#forceKeyFrame = true; // update
-        // this.operation = "impair";
-        this.debug(`start: processing ${this.kind} ${this.id} with ${this.operation}`);
-    }
-
-    pause() {
-        this.operation = "passthrough";
-        this.debug(`passthrough: removing impairment on ${this.kind} ${this.id}`);
-    }
-
-    onFrameNumber(frameNumber, callback) {
-        if(this.frameCounter >= frameNumber) {
-            this.debug(`frameNumber ${frameNumber} already higher than current frame count ${this.frameCounter}`);
-            return
+        if (this.kind === 'video') {
+            this.impairmentConfig = config[this.kind];
         }
+        else if (this.kind === 'audio') {
+            this.impairmentConfig = config[this.kind];
+        }
+        else
+            throw new Error(`unknown kind: ${this.kind}`);
 
-        const watcherInterval = setInterval(() => {
-            // this.debug(`frame: ${this.frameCounter}`);
+        debug(`set config for ${this.kind} to: `, this.impairmentConfig);
 
-            if(this.frameCounter >= frameNumber) {
-                clearInterval(watcherInterval);
-                callback();
-            }
-        }, 100);
     }
 
-    async stop() {
-        this.operation = "kill";
-        await this.#sleep(100); // give some time to finalize the last frames
-        this.debug(`kill: stopped ${this.kind} ${this.id}`);
+    /**
+     * Start the impairment.
+     */
+    start() {
+        this.activate = true;
+    }
+
+    /**
+     * Stop the impairment.
+     */
+    stop() {
+        this.activate = false;
     }
 }
+
+/**
+ * Message handlers for the impairment worker
+ */
+
+self.impairmentConfig = ImpairmentProcessor.moderateImpairment;
+debug("default impairmentConfig: ", self.impairmentConfig);
+
+wmh.addListener(m.IMPAIRMENT_SETUP, async (data) => {
+    const {kind, level, enabled} = data;
+
+    if(level==="severe")
+        self.impairmentConfig = ImpairmentProcessor.severeImpairment;
+    else
+        self.impairmentConfig = ImpairmentProcessor.moderateImpairment;
+
+    self.impairment = new ImpairmentProcessor(kind, impairmentConfig);
+
+    transformManager.add(`${kind}-impairment`, self.impairment.process);
+    if(enabled && level !== "passthrough"){
+        self.impairment.start();
+        debug(`impairment started with level: ${level}`, self.impairmentConfig[kind]);
+    }
+
+});
+
+wmh.addListener(m.IMPAIRMENT_CHANGE, async (data) => {
+    const {level, enabled} = data;
+    let newConfig;
+    if(level==="severe")
+        newConfig = ImpairmentProcessor.severeImpairment;
+    else
+        newConfig = ImpairmentProcessor.moderateImpairment;
+
+    const kind = self.impairment.kind;
+    // debug("changing impairment config from, to: ", self.impairmentConfig[kind], newConfig[kind]);
+    self.impairment.config = newConfig;
+    self.impairmentConfig = newConfig;
+
+    if(enabled && self.impairment.activate === true){
+        debug("impairment is already running. config set to ", self.impairmentConfig[kind] );
+    }
+
+    if(!enabled || level === "passthrough"){
+        self.impairment.stop();
+        debug(`impairment stopped`);
+    }
+    else if(enabled && self.impairment.activate === false && level !== "passthrough"){
+        self.impairment.start();
+        debug(`impairment started with level: ${level}`, self.impairmentConfig[kind]);
+    }
+
+});

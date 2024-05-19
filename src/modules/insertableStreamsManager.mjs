@@ -1,11 +1,10 @@
-// noinspection DuplicatedCode
-
 import worker from "!!raw-loader!../../temp/worker-bundle.js";
 import {InjectToWorkerMessageHandler, MESSAGE as m, CONTEXT as c} from "./messageHandler.mjs";
 import {AlteredMediaStreamTrackGenerator} from "./AlteredMediaStreamTrackGenerator.mjs";
 import {setupPlayer} from "../videoPlayer/scripts/inject.mjs";
+import {setupImpairment} from "../badConnection/scripts/inject.mjs";
 
-const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
+const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️📥`);
 const wmh = new InjectToWorkerMessageHandler();
 
 
@@ -45,10 +44,14 @@ export class InsertableStreamsManager{
             this.writer = generator.writable;
         }
 
-        this.#startWorker();
+        this.#startWorker().then(() => {
+            // Applets
+            setupPlayer(this.sourceTrack, this.worker.name);
+            setupImpairment(this.sourceTrack, this.worker.name);
 
-        // Applets
-        setupPlayer(this.sourceTrack, this.worker.name);
+        }).catch((error) => {
+            debug(`failed to start worker ${this.worker.name}`, error);
+        });
 
         debug("InsertableStreamsManager created", this.reader, this.writer);
         // the generator is not ready yet but that doesn't seem to matter
@@ -58,45 +61,54 @@ export class InsertableStreamsManager{
 
     /**
      * Starts a worker to process the track
-     * @returns {Promise<MediaStreamTrackGenerator>} - a MediaStreamTrackGenerator
+     * @returns {Promise[null]} - a MediaStreamTrackGenerator
      * @private
      */
     #startWorker(){
-
         const workerName = `vch-bcs-${this.sourceTrack.kind}-${this.sourceTrack.id.substr(0, 5)}`;
 
-        // Start the worker
-        // Below needed to work around policy problems
-        if (window.trustedTypes && trustedTypes.createPolicy) {
-            const policy = trustedTypes.createPolicy('my-policy', {
-                createScriptURL: (url) => url,
-            });
-            const workerBlobURL = URL.createObjectURL(
-                new Blob([worker], {type: 'application/javascript'})
-            );
-            this.worker = new Worker(policy.createScriptURL(workerBlobURL), {name: workerName});
-        } else {
-            const workerBlobURL = URL.createObjectURL(new Blob([worker], {type: 'application/javascript'}));
-            this.worker = new Worker(workerBlobURL, {name: workerName});
+        return new Promise((resolve, reject) => {
+
+            // Start the worker
+            try {
+                // Below needed to work around policy problems
+                if (window.trustedTypes && trustedTypes.createPolicy) {
+                    const policy = trustedTypes.createPolicy('my-policy', {
+                        createScriptURL: (url) => url,
+                    });
+                    const workerBlobURL = URL.createObjectURL(
+                        new Blob([worker], {type: 'application/javascript'})
+                    );
+                    this.worker = new Worker(policy.createScriptURL(workerBlobURL), {name: workerName});
+                } else {
+                    const workerBlobURL = URL.createObjectURL(new Blob([worker], {type: 'application/javascript'}));
+                    this.worker = new Worker(workerBlobURL, {name: workerName});
+                }
+            }
+            catch (error) {
+                debug(`Failed to create worker ${workerName}`, error);
+                reject("Failed to create worker", error);
+            }
+
+            if (!this.worker) {
+                debug(`Worker does not exist ${workerName}`);
+                reject(`Worker does not exist: ${workerName}`);
+            }
+
+            this.worker.name = workerName;
+            wmh.registerWorker(this.worker);
+
+            const data = {
+                reader: this.reader,
+                writer: this.writer,
+            }
+
+            wmh.sendMessage(workerName, m.WORKER_SETUP, data, [this.reader, this.writer]);
+
+            resolve();
+        });
         }
 
-        if (!this.worker) {
-            const error = new Error("Failed to create worker");
-            debug(error);
-            // ToDo: should return the original track if this fails, but need to deal with async
-            // reject(error);
-        }
-
-        this.worker.name = workerName;
-        wmh.registerWorker(this.worker);
-
-        const data = {
-            reader: this.reader,
-            writer: this.writer,
-        }
-
-        wmh.sendMessage(workerName, m.WORKER_SETUP, data, [this.reader, this.writer]);
-    }
 
 }
 
@@ -108,7 +120,6 @@ export class InsertableStreamsManager{
  * @returns {MediaStream} - a MediaStream
  */
 export class ProcessedMediaStream {
-
     originalTracks;
     originalStream;
     constructor(stream)
