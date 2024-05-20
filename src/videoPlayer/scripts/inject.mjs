@@ -14,13 +14,15 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
  */
 export function setupPlayer(sourceTrack, workerName) {
 
+    let videoPlayer;
+
     /**
      * Set up the canvas or audio context on player start
      */
     mh.addListener(m.PLAYER_START, async (data) => {
         debug("player loaded: ", data);
         /**@type {HTMLVideoElement} */
-        const videoPlayer = document.querySelector(`video#${data.id}`);
+        videoPlayer = document.querySelector(`video#${data.id}`);
         debug(sourceTrack.getSettings());
 
         let processor;
@@ -107,6 +109,7 @@ export function setupPlayer(sourceTrack, workerName) {
         const reader = processor.readable;
 
         wmh.sendMessage(workerName, m.PLAYER_START, {reader}, [reader]);
+        await videoPlayer.play();
 
     });
 
@@ -116,5 +119,6 @@ export function setupPlayer(sourceTrack, workerName) {
     mh.addListener(m.PLAYER_STOP, async (data) => {
         debug("player stopped: ", data);
         wmh.sendMessage(workerName, m.PLAYER_STOP);
+        videoPlayer.pause();
     });
 }
