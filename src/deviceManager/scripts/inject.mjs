@@ -1,7 +1,7 @@
 // Manages the devices returned by navigator.mediaDevices.enumerateDevices() and inserts fake vch devices
 
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
-import {AlterTrack} from "../../badConnection/scripts/alterTrack.mjs";
+import {InsertableStreamsManager} from "../../modules/insertableStreamsManager.mjs";
 import {settings} from "./settings.mjs";
 
 
@@ -52,6 +52,13 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️�
 const mh = new MessageHandler(c.INJECT);
 
 
+/**
+ * Manages the devices returned by navigator.mediaDevices.enumerateDevices()
+ * - Creates fake vch devices that point to a real device
+ * - Inserts fake vch devices into the list of devices returned by enumerateDevices
+ * - Modifies the constraints passed to getUserMedia to use the fake devices
+ * - Simulates a devicechange event when the device list changes
+ */
 export class DeviceManager {
 
     settings = settings;
@@ -138,14 +145,10 @@ export class DeviceManager {
     };
 
 
-    // ToDo: get these somehow
-    bcsSettings = {
-        enabled: true,
-        active: false,
-        level: "passthrough"
-
-    }
-
+    /**
+     * @param {object} settings - the settings object from storage
+     * @returns {DeviceManager} - the DeviceManager instance
+     */
     constructor(settings) {
 
         // singleton pattern
@@ -222,11 +225,18 @@ export class DeviceManager {
     }
 
 
+    /**
+     * Returns the enabled state of the deviceManager
+     * @returns {boolean}
+     */
     get enabled() {
         return this.settings.enabled;
     }
 
-    // The returns the real deviceId DeviceManager should use
+    /**
+     * Returns the deviceId for the selected audio device
+     * @returns {*|null}
+     */
     get vchAudioId() {
 
         if (this.settings.selectedDeviceLabels.audio) {
@@ -241,7 +251,10 @@ export class DeviceManager {
         return null
     }
 
-    // The returns the real deviceId DeviceManager should use
+    /**
+     * Returns the deviceId for the selected video device
+     * @returns {*|null}
+     */
     get vchVideoId() {
         if (this.settings.selectedDeviceLabels.video) {
             // return the device ID if the label is in this.settings.currentDevices
@@ -256,20 +269,24 @@ export class DeviceManager {
     }
 
 
-    // Checks if  deviceManager is enabled and if the constraints contain vch-audio or vch-video
+    /**
+     * Returns true if the constraints contain vch-audio or vch-video
+     * @param constraints
+     * @returns {boolean}
+     */
     useFakeDevices(constraints) {
-
         // convert constraints to a string and see if it contains "vch-*"
         const constraintsString = JSON.stringify(constraints);
         // Test if the string contains "vch-audio" or "vch-video"
         return constraintsString.match(/vch-(audio|video)/)?.length > 0;
-
     }
 
-    /* returns a stream with one or more altered tracks
-        arguments:
-        - constraints - original constraints passed to getUserMedia by the app
-        - getUserMedia - the original, un-shimmed getUserMedia function
+
+    /**
+     * Returns a stream with one or more altered tracks
+     * @param {object} constraints - original constraints passed to getUserMedia by the app
+     * @param {function} getUserMedia - the original, un-shimmed getUserMedia function
+     * @returns {Promise<MediaStream>} - a stream with one or more altered tracks
      */
     async fakeDeviceStream(constraints, getUserMedia) {
 
@@ -318,32 +335,28 @@ export class DeviceManager {
         if (!this.settings.enabled)
             return this.unalteredStream;
 
-        // Run any tracks that should be from vch-(audio|video) through alterTrack
+        // Run any tracks that should be from vch-(audio|video) through InsertableStreamsManager
         // Keep track of any non-altered tracks deviceIds for use next call
         const audioTracks = this.unalteredStream.getAudioTracks();
         const videoTracks = this.unalteredStream.getVideoTracks();
 
         const alteredStreamTracks = [];
 
-        // ToDo: need to remove AlterTrack?
-
         // Create alterTracks where needed and use the existing tracks from the gUM call otherwise
-        if (useFakeAudio && !useFakeVideo) {
-            audioTracks.forEach(track => alteredStreamTracks.push( new AlterTrack(track, this.bcsSettings)));
-            videoTracks.forEach(track => alteredStreamTracks.push(track));
+        let alteredAudioTracks = audioTracks;
+        let alteredVideoTracks = videoTracks;
+
+        if (useFakeAudio) {
+            alteredAudioTracks = await Promise.all(audioTracks.map(track => new InsertableStreamsManager(track)));
             this.settings.lastDeviceIds.video = videoTracks[0]?.getSettings()?.deviceId;
-        } else if (!useFakeAudio && useFakeVideo) {
-            audioTracks.forEach(track => alteredStreamTracks.push(track));
-            videoTracks.forEach(track => alteredStreamTracks.push(new AlterTrack(track, this.bcsSettings)));
-            this.settings.lastDeviceIds.audio = audioTracks[0]?.getSettings()?.deviceId;
-        } else if (useFakeAudio && useFakeVideo) {
-            audioTracks.forEach(track => alteredStreamTracks.push(new AlterTrack(track, this.bcsSettings)));
-            videoTracks.forEach(track => alteredStreamTracks.push(new AlterTrack(track, this.bcsSettings)));
-        } else {
-            debug("shouldn't be here");
         }
 
-        // ToDo: Debug - not getting here
+        if (useFakeVideo) {
+            alteredVideoTracks = await Promise.all(videoTracks.map(track => new InsertableStreamsManager(track)));
+            this.settings.lastDeviceIds.audio = audioTracks[0]?.getSettings()?.deviceId;
+        }
+
+        alteredStreamTracks.push(...alteredAudioTracks, ...alteredVideoTracks);
 
         // make a new stream with the tracks from above
         /** @type {MediaStream} */
@@ -355,7 +368,11 @@ export class DeviceManager {
 
     /* Enumerate Devices modifiers */
 
-    // runs all the deviceChange listeners
+    /**
+     * Simulates a devicechange event by running all deviceChange listeners
+     * @private
+     * @returns {void}
+     */
     #simulateDeviceChangeEvent() {
         //debug(`fake device change: "${this.isEnabled ? 'add' : 'remove'}", triggering devicechange listeners`);
         debug(`fake device change`);
@@ -372,7 +389,12 @@ export class DeviceManager {
         // mh.sendMessage('inject', m.FAKE_DEVICE_CHANGE, {action: data.enabled ? 'add' : 'remove'});
     }
 
-    // Adds vch-audio|video to the list of devices
+    
+    /**
+     * Adds vch-audio|video to the list of devices returned by navigator.mediaDevices.enumerateDevices()
+     * @param devices
+     * @returns {*}
+     */
     modifyDevices(devices) {
 
         debug("exclude devices", this.settings);
