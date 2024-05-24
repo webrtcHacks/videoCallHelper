@@ -296,23 +296,24 @@ export class ImpairmentProcessor {
  * Message handlers for the impairment worker
  */
 
-self.impairmentConfig = ImpairmentProcessor.moderateImpairment;
-debug("default impairmentConfig: ", self.impairmentConfig);
+// self.impairmentConfig = ImpairmentProcessor.moderateImpairment;
+// debug("default impairmentConfig: ", self.impairmentConfig);
 
 wmh.addListener(m.IMPAIRMENT_SETUP, async (data) => {
     const {kind, level, enabled} = data;
 
+    let impairmentConfig;
     if(level==="severe")
-        self.impairmentConfig = ImpairmentProcessor.severeImpairment;
+        impairmentConfig = ImpairmentProcessor.severeImpairment;
     else
-        self.impairmentConfig = ImpairmentProcessor.moderateImpairment;
+        impairmentConfig = ImpairmentProcessor.moderateImpairment;
 
     self.impairment = new ImpairmentProcessor(kind, impairmentConfig);
 
     transformManager.add(`${kind}-impairment`, self.impairment.process);
     if(enabled && level !== "passthrough"){
         self.impairment.start();
-        debug(`impairment started with level: ${level}`, self.impairmentConfig[kind]);
+        debug(`impairment started with level: ${level}`, impairmentConfig[kind]);
     }
 
 });
@@ -328,10 +329,9 @@ wmh.addListener(m.IMPAIRMENT_CHANGE, async (data) => {
     const kind = self.impairment.kind;
     // debug("changing impairment config from, to: ", self.impairmentConfig[kind], newConfig[kind]);
     self.impairment.config = newConfig;
-    self.impairmentConfig = newConfig;
 
     if(enabled && self.impairment.activate === true){
-        debug("impairment is already running. config set to ", self.impairmentConfig[kind] );
+        debug("impairment is already running. config set to ", newConfig[kind] );
     }
 
     if(!enabled || level === "passthrough"){
@@ -340,7 +340,7 @@ wmh.addListener(m.IMPAIRMENT_CHANGE, async (data) => {
     }
     else if(enabled && self.impairment.activate === false && level !== "passthrough"){
         self.impairment.start();
-        debug(`impairment started with level: ${level}`, self.impairmentConfig[kind]);
+        debug(`impairment started with level: ${level}`, newConfig[kind]);
     }
 
 });

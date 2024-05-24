@@ -1,5 +1,7 @@
 import {InsertableStreamsManager} from "./insertableStreamsManager.mjs";
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️😈`);
+self.VERBOSE = false;  // process.env.NODE_ENV === 'development';
+
 
 /**
  * Extends a MediaStreamTrackGenerator to look like a MediaStreamTrack
@@ -92,7 +94,7 @@ export class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator 
 
     // Methods
     async applyConstraints(constraints) {
-        debug(`applyConstraints on ${this.kind} track ${this.id}`, constraints)
+        if(VERBOSE) debug(`applyConstraints on ${this.kind} track ${this.id}`, constraints)
         this.sourceTrack.applyConstraints(constraints)
             .then(() => {
                 this._settings = this.sourceTrack.getSettings();
@@ -155,22 +157,22 @@ export class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator 
     }
 
     getCapabilities() {
-        debug(`getCapabilities on ${this.kind} track ${this.id}`, this._capabilities);
+        if(VERBOSE) debug(`getCapabilities on ${this.kind} track ${this.id}`, this._capabilities);
         return this._capabilities;
     }
 
     getConstraints() {
-        debug(`getConstraints on ${this.kind} track ${this.id}`, this._constraints);
+        if(VERBOSE) debug(`getConstraints on ${this.kind} track ${this.id}`, this._constraints);
         return this._constraints;
     }
 
     getSettings() {
-        debug(`getSettings on ${this.kind} track ${this.id}`, this._settings);
+        if(VERBOSE) debug(`getSettings on ${this.kind} track ${this.id}`, this._settings);
         return this._settings;
     }
 
     stop() {
-        debug(`stopping track source track ${this.label}`);
+        if(VERBOSE) debug(`stopping track source track ${this.label}`);
         this.sourceTrack.stop();
         // emit an ended event
         // this.dispatchEvent(new Event('ended'));

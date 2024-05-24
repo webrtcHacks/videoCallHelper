@@ -467,7 +467,14 @@ export class WorkerMessageHandler {
         this.debug(`created new WorkerMessageHandler`);
 
         onmessage = async (event) => {
-            const {command} = event.data;
+            const command = event?.data?.command || null;
+
+            // ToDo: this is getting messages for other workers
+            if(!command){
+                // this.debug(`Error - Worker onmessage missing command`, event);
+                return;
+            }
+
             if(VERBOSE) this.debug(`onmessage command ${command}`, event.data);
 
             this.listeners.forEach(listener => {
@@ -546,8 +553,14 @@ export class InjectToWorkerMessageHandler { // extends MessageHandler {
          * @returns {Promise<void>}
          */
         onmessage = async (event) => {
-            const {command} = event.data;
-            this.debug(`onmessage command ${command}`, event.data);
+            const command = event?.data?.command || null;
+
+            // ToDo: this is getting messages for other workers
+            if(!command){
+                // this.debug(`Error - InjectToWorker onmessage missing command`, event);
+                return;
+            }
+            this.debug(`InjectToWorkerMessageHandler onmessage command ${command}`, event.data);
 
             this.#listeners.forEach(listener => {
                 if (command === listener.command) {
