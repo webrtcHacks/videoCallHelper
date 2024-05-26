@@ -37,15 +37,25 @@ export class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator 
         this._label = sourceTrack.label;
 
         this._settings = sourceTrack.getSettings();
-        this._settings.deviceId = `vch-${this.kind}`;
-        this._settings.groupId = 'video-call-helper';
+
 
         this._constraints = sourceTrack.getConstraints();
-        this._constraints.deviceId = `vch-${this.kind}`;
 
         this._capabilities = sourceTrack.getCapabilities();
-        this._capabilities.deviceId = `vch-${this.kind}`;
-        this._capabilities.groupId = 'video-call-helper';
+
+
+        if(options?.fakeDevice){
+            this.fakeDevice = true;
+            this._settings.deviceId = `vch-${this.kind}`;
+            this._settings.groupId = 'video-call-helper';
+
+            this._constraints.deviceId = `vch-${this.kind}`;
+
+            this._capabilities.deviceId = `vch-${this.kind}`;
+            this._capabilities.groupId = 'video-call-helper';
+
+        }
+
 
         this.sourceTrack = sourceTrack;
         this.track = track;
@@ -98,11 +108,13 @@ export class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator 
         this.sourceTrack.applyConstraints(constraints)
             .then(() => {
                 this._settings = this.sourceTrack.getSettings();
-                this._settings.deviceId = `vch-${this.kind}`;
-                this._settings.groupId = 'video-call-helper';
-
                 this._constraints = this.sourceTrack.getConstraints();
-                this._constraints.deviceId = `vch-${this.kind}`;
+
+                if(this.fakeDevice){
+                    this._settings.deviceId = `vch-${this.kind}`;
+                    this._settings.groupId = 'video-call-helper';
+                    this._constraints.deviceId = `vch-${this.kind}`;
+                }
 
                 debug(`new settings on ${this.kind} track ${this.id}`, this._settings)
 
@@ -135,7 +147,7 @@ export class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator 
         // uncaught DOMException: Failed to execute 'structuredClone' on 'Window': MediaStreamTrackGenerator object could not be cloned.
         // const cloneTrack = structuredClone(this);
 
-        // alterTrack.mjs:202 Uncaught DOMException: Failed to execute 'structuredClone' on 'Window': Value at index 0 does not have a transferable type.
+        // _alterTrack.mjs:202 Uncaught DOMException: Failed to execute 'structuredClone' on 'Window': Value at index 0 does not have a transferable type.
         // const cloneTrack = structuredClone(this, {transfer: [this.track, this.writable]});
 
         // These don't write
@@ -149,7 +161,6 @@ export class AlteredMediaStreamTrackGenerator extends MediaStreamTrackGenerator 
 
          */
 
-        // ToDo: test this
         const clone = this.sourceTrack.clone();
         const generator = new InsertableStreamsManager(clone);
         debug("clone track", generator);

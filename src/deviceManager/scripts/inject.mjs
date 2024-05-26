@@ -12,7 +12,7 @@ import {settings} from "./settings.mjs";
 
     Initialization
 
-    * inject.js now sends a `GET_ALL_SETTINGS` and waits for a `ALL_SETTINGS` from content.js (which grabs this from storage)
+    * inject.js gets settings from content.js via data tag on init (which grabs this from storage)
     This initial value is passed to the constructor
 
     UI changes
@@ -275,6 +275,8 @@ export class DeviceManager {
      * @returns {boolean}
      */
     useFakeDevices(constraints) {
+        // check if deviceManager is enabled
+        if (!this.settings.enabled) return false;
         // convert constraints to a string and see if it contains "vch-*"
         const constraintsString = JSON.stringify(constraints);
         // Test if the string contains "vch-audio" or "vch-video"
@@ -347,12 +349,12 @@ export class DeviceManager {
         let alteredVideoTracks = videoTracks;
 
         if (useFakeAudio) {
-            alteredAudioTracks = await Promise.all(audioTracks.map(track => new InsertableStreamsManager(track)));
+            alteredAudioTracks = await Promise.all(audioTracks.map(track => new InsertableStreamsManager(track, true)));
             this.settings.lastDeviceIds.video = videoTracks[0]?.getSettings()?.deviceId;
         }
 
         if (useFakeVideo) {
-            alteredVideoTracks = await Promise.all(videoTracks.map(track => new InsertableStreamsManager(track)));
+            alteredVideoTracks = await Promise.all(videoTracks.map(track => new InsertableStreamsManager(track, true)));
             this.settings.lastDeviceIds.audio = audioTracks[0]?.getSettings()?.deviceId;
         }
 
@@ -389,7 +391,7 @@ export class DeviceManager {
         // mh.sendMessage('inject', m.FAKE_DEVICE_CHANGE, {action: data.enabled ? 'add' : 'remove'});
     }
 
-    
+
     /**
      * Adds vch-audio|video to the list of devices returned by navigator.mediaDevices.enumerateDevices()
      * @param devices

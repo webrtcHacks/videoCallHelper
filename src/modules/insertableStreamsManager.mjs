@@ -23,9 +23,10 @@ export class InsertableStreamsManager{
     /**
      * Modifies a MediaStreamTrack to simulate a bad connection
      * @param {MediaStreamTrack} track - the input track to modify
+     * @param {boolean} fakeDevice - flag to indicate if the track is for a fake device
      * @returns {MediaStreamTrack} - a MediaStreamTrackGenerator disguised as a MediaStreamTrack that may be processed
      */
-    constructor(track) {
+    constructor(track, fakeDevice = false) {
         this.sourceTrack = track;
         let generator;
 
@@ -39,7 +40,7 @@ export class InsertableStreamsManager{
             debug("Unexpected track type - track is MediaStreamTrackGenerator", track);
             this.generator = false;
         } else {
-            generator = new AlteredMediaStreamTrackGenerator({kind: track.kind}, track);
+            generator = new AlteredMediaStreamTrackGenerator({kind: track.kind, fakeDevice: fakeDevice}, track);
             this.generator = generator;
             this.writer = generator.writable;
         }
@@ -71,8 +72,10 @@ export class InsertableStreamsManager{
 
             // Start the worker
             try {
-                // Below needed to work around policy problems
+                // Below needed to work around policy problems - needed for Google Meet
                 if (window.trustedTypes && trustedTypes.createPolicy) {
+                    debug("Trusted types enabled");
+
                     const policy = trustedTypes.createPolicy('my-policy', {
                         createScriptURL: (url) => url,
                     });
@@ -84,6 +87,7 @@ export class InsertableStreamsManager{
                     const workerBlobURL = URL.createObjectURL(new Blob([worker], {type: 'application/javascript'}));
                     this.worker = new Worker(workerBlobURL, {name: workerName});
                 }
+
             }
             catch (error) {
                 debug(`Failed to create worker ${workerName}`, error);
