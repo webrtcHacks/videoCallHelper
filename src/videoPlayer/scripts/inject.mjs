@@ -4,6 +4,10 @@ const mh = new MessageHandler(c.INJECT);
 const wmh = new InjectToWorkerMessageHandler();
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️🎥 `);
 
+
+let playerAudioTrack = null;
+
+
 /**
  * Setup the video player
  *  - video: create a canvas to capture and resize the video and get the track
@@ -28,19 +32,28 @@ export function setupPlayer(sourceTrack, workerName) {
         let processor;
 
         if (sourceTrack.kind === "audio") {
-            // processor = new MediaStreamTrackProcessor(playerStream.getAudioTracks()[0]);
 
-            // mute the video without muting the source
-            const audioCtx = new AudioContext();  // for Firefox
-            const sourceNode = audioCtx.createMediaElementSource(videoPlayer);
-            const destinationNode = audioCtx.createMediaStreamDestination();
-            sourceNode.connect(destinationNode);
-            await audioCtx.setSinkId({type: "none"});
-            videoPlayer.muted = false;
-
+            // ToDo: Google Meet uses 2 audio tracks but I can only attach a single context
             // use webAudio to capture audio from the video element
-            const playerAudioTrack = destinationNode.stream;
-            processor = new MediaStreamTrackProcessor(playerAudioTrack.getAudioTracks()[0]);
+
+            async function captureAudio(mediaElement){
+                if(!playerAudioTrack || playerAudioTrack?.readyState === 'ended'){
+                    const audioCtx = new AudioContext();
+                    const sourceNode = audioCtx.createMediaElementSource(videoPlayer);
+                    const destinationNode = audioCtx.createMediaStreamDestination();
+                    sourceNode.connect(destinationNode);
+                    // mute the video without muting the source
+                    audioCtx.setSinkId({type: "none"})
+                        .catch((error) => debug("failed to mute audio - setSinkId error: ", error));
+                    videoPlayer.muted = false;
+                    playerAudioTrack = destinationNode.stream.getAudioTracks()[0];
+                }
+
+                debug("capture videoplayer audio track: ", playerAudioTrack);
+                return playerAudioTrack;
+            }
+
+            processor = new MediaStreamTrackProcessor(await captureAudio(videoPlayer));
         } else if (sourceTrack.kind === "video") {
             debug("track settings: ", sourceTrack.getSettings());
             const {height, width, frameRate} = sourceTrack.getSettings();

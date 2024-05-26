@@ -213,6 +213,21 @@ MediaStream.prototype.addTrack = function (track) {
 }
 
 
+const originalCloneTrack = MediaStreamTrack.prototype.clone;
+MediaStreamTrack.prototype.clone = function () {
+    // check if track is in vch.gumTracks
+    if(vch.gumTracks.includes(this)){
+        const newTrack = originalCloneTrack.apply(this, arguments);
+        vch.gumTracks.push(newTrack);
+        debug(`cloned gUM ${this.kind} track: ${this.id}`, newTrack);
+        return newTrack;
+    } else {
+        debug("cloning non-gUM track", this);
+        return originalCloneTrack.apply(this, arguments);
+    }
+}
+
+
 // peerConnection shims
 
 const origAddTrack = RTCPeerConnection.prototype.addTrack;

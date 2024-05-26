@@ -220,14 +220,17 @@ export class ImpairmentProcessor {
             this.lastFrame?.close();
             return frame;
         } else {
-            // Add latency (always)
-            // ToDo: investigate why MediaRecord doesn't record when this is used for testing
-            await new Promise(resolve => setTimeout(resolve, this.impairmentConfig.latency));
             // END generic handling - START Audio and video specific handling
 
             let modifiedFrame;
             /* Video processing */
             if (this.kind === 'video') {
+
+                // Add latency
+                // ToDo: investigate how to add audio delays
+                //  Adding this for video messes up MediaRecorder and peer connections later in the stream
+                //  was originally run for both audio and video
+                await new Promise(resolve => setTimeout(resolve, this.impairmentConfig.latency));
 
                 // Simulate dropped frames by repeating the last frame
                 if (Math.random() < this.impairmentConfig.dropProbability) {

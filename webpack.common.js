@@ -10,7 +10,10 @@ const workerConfig = {
     output: {
         filename: 'worker-bundle.js',
         path: path.resolve(__dirname, `temp`), // use the outputPath variable
-        clean: true
+        clean: true,
+        trustedTypes: {
+            policyName: 'video-call-helper#webpack',
+        },
     },
     optimization: {
         splitChunks: false,
