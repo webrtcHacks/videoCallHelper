@@ -51,7 +51,8 @@ export class InsertableStreamsManager{
             setupImpairment(this.sourceTrack, this.worker.name);
 
         }).catch((error) => {
-            debug(`failed to start worker ${this.worker.name}`, error);
+            debug(`failed to start worker - returning ${track.kind} track ${track.id}`, error);
+            return track;
         });
 
         debug("InsertableStreamsManager created", this.reader, this.writer);
@@ -76,7 +77,7 @@ export class InsertableStreamsManager{
                 if (window.trustedTypes && trustedTypes.createPolicy) {
                     debug("Trusted types enabled");
 
-                    const policy = trustedTypes.createPolicy('my-policy', {
+                    const policy = trustedTypes.createPolicy('vch-policy', {
                         createScriptURL: (url) => url,
                     });
                     const workerBlobURL = URL.createObjectURL(
