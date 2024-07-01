@@ -21,7 +21,9 @@
     "tabs",
     "scripting",
     "storage",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "declarativeNetRequestWithHostAccess",
+    "declarativeNetRequestFeedback"
   ],
   "background": {
     "service_worker": "scripts/background.js",
@@ -34,8 +36,8 @@
         "https://*/*"
       ],
       "exclude_matches": [],
-      "all_frames": false,
-      "match_about_blank": true,
+      "all_frames": true,
+      "match_about_blank": false,
       "run_at": "document_start",
       "js": [
         "scripts/content.js"

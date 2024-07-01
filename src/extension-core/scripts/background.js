@@ -166,4 +166,80 @@ chrome.action.onClicked.addListener(async (tab) => {
  */
 await checkAllTabs();
 
+
+/**
+ * Content Security Overrides
+ */
+
+    // ToDo: figure out how to actually modify or append the CSP header
+        /** CSP notes:
+         * might be possible to do this dynamically if there is an error using the code below:
+         * but would need to fully catch the CSP error as a CSP error
+         * 'set' might work if I use the entire csp, instead of just the trusted-types
+         * I am not sure why 'remove' doesn't work - that seems to be ignored
+        // add
+        /*
+        await   fetch(window.location.href)
+            .then(response => {
+              const csp = response.headers.get('content-security-policy');
+              if (csp) {
+                console.log('Content-Security-Policy Header:');
+                console.log(csp);
+              } else {
+                console.log('Content-Security-Policy header not found.');
+              }
+            })
+                .catch(error => console.error('Error fetching current page:', error));
+         */
+    // ToDo: static rulesets get faster approval
+    const rules = [
+        {
+            "id": 1,
+            "priority": 1,
+            "action": {
+                "type": "modifyHeaders",
+                "responseHeaders": [
+                    {
+                        "header": "Content-Security-Policy",
+                        "operation": "append",                  // "set" does not work, does not work if I don't include all the existing CSP values
+                        "value": "trusted-types vch-policy dompurify @msteams/components-calling-ppt-sharing#components-calling-ppt-sharing @msteams/core-services-telemetry-worker#TelemetryWorker @msteams/frameworks-loader#telemetry-sender @msteams/frameworks-loader#load-build-chunk @msteams/frameworks-loader#dompurify @msteams/react-web-client @msteams/services-io-browser-web-client-update#register-service-worker @msteams/services-utilities-common#ChunkLoader @msteams/core-cdl-worker-common#create-cdl-worker @msteams/frameworks-loader#create-cdl-worker @msteams/services-io-calling-service-adapters#cmdb-calling-bundle-loader-service-adapter html2canvas @fluidx/loop highcharts shaka-player#xml @msstream/one-player#noop-create-html @msstream/one-player#sanitize-html @msstream/azuremediaplayer#worker-noop @msstream/azuremediaplayer#noop @msstream/one-player-loader#webpack @msstream/one-player-loader-preview#webpack adaptivecards#markdownPassthroughPolicy adaptivecards#restoreContentsPolicy adaptivecards#deprecatedExportedFunctionPolicy @fluidx/loop#catalog-container @fluidx/loop#loop-page-container @fluidx/loop#odsp-driver @fluidx/loop#office-fluid-container @fluidx/loop#sourceless-iframe @1js/lpc-common-web#webpack @1js/midgard-bootstrapper#webpack @1js/lpc-teams-bootstrapper#webpack @1js/midgard-trusted-types @azure/ms-rest-js#xml.browser gapi#gapi goog#html @msteams/services-utilities-google-authentication#google-client-library-loader"
+                    }
+                ]
+            },
+            "condition": {
+                "urlFilter": "https://teams.live.com/*",
+                "resourceTypes": ["main_frame", "sub_frame"]
+            }
+        },
+        /*{
+            "id": 2,
+            "priority": 1,
+            "action": {
+                "type": "modifyHeaders",
+                "responseHeaders": [
+                    {
+                        "header": "Content-Security-Policy",
+                        "operation": "remove",                      // doesn't work
+                    }
+                ]
+            },
+            "condition": {
+                "urlFilter": "*",
+                "resourceTypes": ["main_frame", "sub_frame"]
+            }
+        }*/
+    ];
+
+
+
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [1],
+        addRules: rules
+    });
+
+    chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
+        debug('Rule matched:', info);
+    });
+
 debug("background.js loaded");
