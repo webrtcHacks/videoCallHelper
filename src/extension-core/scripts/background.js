@@ -192,6 +192,7 @@ await checkAllTabs();
                 .catch(error => console.error('Error fetching current page:', error));
          */
     // ToDo: static rulesets get faster approval
+    //  -- attempt to do this failed; it looks like the rule was matched statically and dynamically somehow
     const rules = [
         {
             "id": 1,
@@ -211,23 +212,6 @@ await checkAllTabs();
                 "resourceTypes": ["main_frame", "sub_frame"]
             }
         },
-        /*{
-            "id": 2,
-            "priority": 1,
-            "action": {
-                "type": "modifyHeaders",
-                "responseHeaders": [
-                    {
-                        "header": "Content-Security-Policy",
-                        "operation": "remove",                      // doesn't work
-                    }
-                ]
-            },
-            "condition": {
-                "urlFilter": "*",
-                "resourceTypes": ["main_frame", "sub_frame"]
-            }
-        }*/
     ];
 
 
