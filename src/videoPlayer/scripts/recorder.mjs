@@ -1,5 +1,5 @@
 import '../styles/style.scss';
-import {arrayBufferToBase64} from './videoPlayer.mjs';
+import {arrayBufferToBase64} from './base64.mjs';
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🎥‍ `)
 import {StorageHandler} from '../../modules/storageHandler.mjs';

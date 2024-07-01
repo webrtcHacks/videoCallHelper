@@ -1,5 +1,5 @@
 import {debug, storage, mh, m, c} from "../../dash/dashCommon.mjs";
-import {arrayBufferToBase64, base64ToBuffer} from "./videoPlayer.mjs";
+import {arrayBufferToBase64, base64ToBuffer} from "./base64.mjs";
 
 const cameraDiv = document.querySelector('div#cameraPreview');
 const playerDiv = document.querySelector('div#playerPreview');

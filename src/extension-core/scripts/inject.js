@@ -1,7 +1,7 @@
 'use strict';
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {DeviceManager} from "../../deviceManager/scripts/inject.mjs";
-import {AlterStream} from "../../badConnection/scripts/alterTrack.mjs";
+import {ProcessedMediaStream} from "../../modules/insertableStreamsManager.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -19,31 +19,11 @@ const mh = new MessageHandler(c.INJECT);
 // exit if shim already loaded for some reason
 if (window.vch) throw new Error("vch already loaded");
 
-// get settings from storage
-async function getSettings() {
-    return new Promise((resolve, reject) => {
-
-        debug("get initial settings timer started");
-        const timeout = setTimeout(() => {
-            debug("get initial settings timeout");
-            reject("get initial settings timeout")
-        }, 1000);
-
-        mh.addListener(m.ALL_SETTINGS, (data) => {
-            debug("initial settings from content", data);
-            clearTimeout(timeout);
-            resolve(data);
-        });
-
-        mh.sendMessage(c.CONTENT, m.GET_ALL_SETTINGS, {});
-
-    });
-
-}
-
-// Call the function
-const vchSettings = await getSettings().catch(err => debug("error getting initial settings", err));
+// get data
+const scriptElement = document.querySelector('script#vch-inject');
+const vchSettings = JSON.parse(scriptElement.dataset.settings);
 debug("initial settings", vchSettings);
+scriptElement.remove(); // now we don't need this
 
 // ToDo: use the settings to initialize any other inject context modules
 
@@ -165,20 +145,27 @@ async function shimGetUserMedia(constraints) {
 
     if (deviceManager.useFakeDevices(constraints)) {
         const fakeStream = await deviceManager.fakeDeviceStream(constraints, origGetUserMedia);
+        vch.gumTracks.push(deviceManager.unalteredStream.getTracks());
         await transferStream(deviceManager.unalteredStream);
         // await transferStream(fakeStream);
+        // ToDo: debugging
+        debug("returning fakeStream", fakeStream);
         return fakeStream;
     }
     // ToDo: make badConnection and injectPlayer the same enabled switch
     else if (vch?.settings['badConnection']?.enabled) {
         const stream = await origGetUserMedia(constraints);
+        vch.gumTracks.push(...stream.getTracks());
         await transferStream(stream);
-        const alteredStream = await new AlterStream(stream);
+
+        const alteredStream = await new ProcessedMediaStream(stream);
+        // const alteredStream = await new AlterStream(stream);
         debug("returning alteredStream", alteredStream);
         return alteredStream;
     } else {
         debug("gUM with no fakeDevices using constraints:", constraints);
         const stream = await origGetUserMedia(constraints);
+        vch.gumTracks.push(...stream.getTracks());
         await transferStream(stream);
         return stream;
     }
@@ -223,6 +210,21 @@ MediaStream.prototype.addTrack = function (track) {
     debug(`addTrack shimmed on MediaStream`, this, track);
     debug("MediaStream track settings", track.getSettings());
     return origMediaStreamAddTrack.apply(this, arguments);
+}
+
+
+const originalCloneTrack = MediaStreamTrack.prototype.clone;
+MediaStreamTrack.prototype.clone = function () {
+    // check if track is in vch.gumTracks
+    if(vch.gumTracks.includes(this)){
+        const newTrack = originalCloneTrack.apply(this, arguments);
+        vch.gumTracks.push(newTrack);
+        debug(`cloned gUM ${this.kind} track: ${this.id}`, newTrack);
+        return newTrack;
+    } else {
+        debug("cloning non-gUM track", this);
+        return originalCloneTrack.apply(this, arguments);
+    }
 }
 
 
@@ -386,7 +388,7 @@ RTCPeerConnection.prototype.setRemoteDescription = function () {
 const origPeerConnClose = RTCPeerConnection.prototype.close;
 RTCPeerConnection.prototype.close = function () {
     debug("closing PeerConnection ", this);
-    mh.sendMessage(c.BACKGROUND, m.PEER_CONNECTION_CLOSED, this);
+    mh.sendMessage(c.BACKGROUND, m.PEER_CONNECTION_CLOSED);
     return origPeerConnClose.apply(this, arguments)
 };
 
@@ -441,6 +443,8 @@ mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
     vch.settings.badConection = data;
 });
 
+
+
 /*
  * debugging
  */
@@ -451,7 +455,7 @@ const vch = {
     settings: vchSettings,
     deviceManager,
     pcTracks: [],
-    // pcStreams: [],      // streams always empty
+    gumTracks: [],      // original, pre-shimmed getUserMedia tracks
     pcs: [],
 }
 

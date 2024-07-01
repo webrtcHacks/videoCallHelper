@@ -20,6 +20,55 @@ window.vch = {
     storage: storage
 };
 
+/*
+mh.addListener(m.GET_ALL_SETTINGS, async() => {
+    await mh.sendMessage(c.INJECT, m.ALL_SETTINGS, storage.contents);
+});
+ */
+
+/************ START inject script injection ************/
+
+// For timing testing
+/*
+document.addEventListener('readystatechange', async (event) => {
+    if (document.readyState === 'complete') {
+        debug("readyState complete");
+    }
+});
+ */
+
+/*
+    learning: can't inject variables due to unsafe inline policy restrictions
+    I tried this:
+
+    let code = await fetch(chrome.runtime.getURL(path)).then(r => r.text());
+    code +=`\nlet initSettings = ${JSON.stringify(settings)};`;
+    script.textContent = code;
+ */
+
+// ToDo: scenarios like webcam-framing mediaaquisition.html where the page JS loads before inject is injected (https://webcameyecontact.com/)
+// inject inject script
+function addScript(path) {
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.id = 'vch-inject';
+
+    // set starting settings via data tag - player has a video file which is too big, so only pass what is needed
+    script.dataset.settings = JSON.stringify({
+        badConnection: settings.badConnection,
+        debug: settings.debug,
+        deviceManager: settings.deviceManager
+    });
+    script.src = chrome.runtime.getURL(path);
+    // script.onload = () => script.remove();
+    (document.head || document.documentElement).appendChild(script);
+    debug("inject injected");
+}
+
+addScript('/scripts/inject.js');
+
+/************ END inject script injection ************/
+
 // Applets
 // ToDo: make these self-contained
 import {selfViewElementModifier} from "../../selfView/scripts/content.mjs";
@@ -29,9 +78,6 @@ import "../../deviceManager/scripts/content.mjs";
 import "../../badConnection/scripts/content.mjs";
 import "../../videoPlayer/scripts/content.mjs";
 
-mh.addListener(m.GET_ALL_SETTINGS, async() => {
-    await mh.sendMessage(c.INJECT, m.ALL_SETTINGS, storage.contents);
-});
 
 
 /************ START dash manager ************/
@@ -210,7 +256,7 @@ async function syncTrackInfo() {
 
 // Added for presence
 async function monitorTrack(track, streamId) {
-    debug(`new track ${streamId} video settings: `, track);
+    debug(`new ${track.kind} track on stream ${streamId} with settings: `, track);
     const {id, kind, label, readyState} = track;
     const trackData = {
         id,
@@ -326,35 +372,3 @@ mh.addListener(m.GUM_STREAM_START, gumStreamStart);
 
 
 
-/************ START inject script injection ************/
-
-// For timing testing
-/*
-document.addEventListener('readystatechange', async (event) => {
-    if (document.readyState === 'complete') {
-        debug("readyState complete");
-    }
-});
- */
-
-// learning: can't inject variables due to unsafe inline policy restrictions
-//  I tried this:
-/*
-    let code = await fetch(chrome.runtime.getURL(path)).then(r => r.text());
-    code +=`\nlet initSettings = ${JSON.stringify(settings)};`;
-    script.textContent = code;
- */
-
-// ToDo: scenarios like webcam-framing mediaaquisition.html where the page JS loads before inject is injected
-// inject inject script
-async function addScript(path) {
-    const script = document.createElement('script');
-    script.src = chrome.runtime.getURL(path);
-    script.onload = () => script.remove();
-    (document.head || document.documentElement).appendChild(script);
-}
-
-await addScript('/scripts/inject.js');
-// debug("inject injected");
-
-/************ END inject script injection ************/

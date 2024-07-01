@@ -31,7 +31,11 @@
 <body>
 <video id="source" autoplay playsinline controls></video>
 <video id="cloneVid" autoplay playsinline muted controls hidden="hidden"></video>
-
+<br>
+<label for="audioInput">Audio Input:</label>
+<input type="checkbox" id="audioInput">
+<label for="videoInput">Video Input:</label>
+<input type="checkbox" id="videoInput" checked>
 <br>
 <button id="start">Start</button>
 <button id="stop">Stop</button>
@@ -39,15 +43,18 @@
 <button id="grow">Grow</button>
 <button id="clone">Clone</button>
 <br>
-<button id="devices">Get Devices</button>
-<select id="deviceList"></select>
+<label for="audioDeviceList">Audio Device:</label>
+<select id="audioDeviceList"></select>
+<label for="videoDeviceList">Video Device:</label>
+<select id="videoDeviceList"></select>
 <br>
 <div id="stats"></div>
 
 <script type="module">
 
     const devicesBtn = document.querySelector('button#devices');
-    const deviceList = document.getElementById('deviceList');
+    const audioDeviceList = document.getElementById('audioDeviceList');
+    const videoDeviceList = document.getElementById('videoDeviceList');
 
     const startBtn = document.querySelector('button#start');
     const stopBtn = document.querySelector('button#stop');
@@ -58,37 +65,51 @@
 
     const video = document.querySelector('video#source');
     let stream;
+    let devices = [];
 
     // Device selection
     function updateDeviceList(devices) {
-        deviceList.innerHTML = '';
+        audioDeviceList.innerHTML = '';
+        videoDeviceList.innerHTML = '';
+
         devices.forEach(device => {
-            if (device.kind === 'videoinput') {
-                const option = document.createElement('option');
-                option.value = device.deviceId;
-                option.text = device.label || `Camera ${deviceList.length + 1}`;
-                deviceList.appendChild(option);
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Device ${device.deviceId}`;
+
+            if (device.kind === 'audioinput') {
+                audioDeviceList.appendChild(option);
+            } else if (device.kind === 'videoinput') {
+                videoDeviceList.appendChild(option);
             }
         });
     }
 
-    devicesBtn.onclick = async () => {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        updateDeviceList(devices);
-    };
+    [audioDeviceList, videoDeviceList].forEach(device=>device.onclick = async () => {
+        if(devices.length === 0) {
+            devices = await navigator.mediaDevices.enumerateDevices();
+            updateDeviceList(devices);
+        }
+    });
 
     navigator.mediaDevices.ondevicechange = async () => {
-        const devices = await navigator.mediaDevices.enumerateDevices();
+        devices = await navigator.mediaDevices.enumerateDevices();
         updateDeviceList(devices);
     };
 
-    deviceList.addEventListener('change', () => {
+    audioDeviceList.addEventListener('change', () => {
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
         }
-        getCam();
+        getMedia();
     });
 
+    videoDeviceList.addEventListener('change', () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        getMedia();
+    });
 
     function clone() {
         const sourceTrack = stream.getVideoTracks()[0];
@@ -116,15 +137,20 @@
         // sourceTrack.stop();
     }
 
-    async function getCam() {
-        const deviceId = deviceList.value || undefined;
+    async function getMedia() {
+        const audioDeviceId = audioDeviceList.value || undefined;
+        const videoDeviceId = videoDeviceList.value || undefined;
+        const audioInput = document.getElementById('audioInput').checked;
+        const videoInput = document.getElementById('videoInput').checked;
         const constraints = {
-            video: {
+            video: videoInput ? {
                 height: { exact: 720 },
                 aspectRatio: 1.7777777778,
-                deviceId: deviceId ? { exact: deviceId } : undefined
-            },
-            audio: true
+                deviceId: videoDeviceId ? { exact: videoDeviceId } : undefined
+            } : false,
+            audio: audioInput ? {
+                deviceId: audioDeviceId ? { exact: audioDeviceId } : undefined
+            } : false
         };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         const [track] = stream.getVideoTracks();
@@ -132,7 +158,6 @@
         console.log("Source track settings:", track.getSettings());
         console.log("Source track constraints:", track.getConstraints());
         console.log("Source track capabilities:", track.getCapabilities());
-
 
         video.srcObject = stream;
         window.stream = stream;
@@ -142,7 +167,7 @@
     }
 
     startBtn.onclick = async () => {
-        await getCam();
+        await getMedia();
     }
 
     stopBtn.onclick = () => {
