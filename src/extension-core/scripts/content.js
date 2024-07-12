@@ -263,7 +263,9 @@ async function monitorTrack(track, streamId) {
         kind,
         label,
         readyState: readyState,
-        streamId
+        streamId,
+        sourceUrl: window.location.href,            // To help with debugging
+        time: new Date().toLocaleTimeString()
     }
 
     if (track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
