@@ -6,259 +6,167 @@
 </head>
 <body>
 <div class="vch container-fluid m-0 p-0 overflow-hidden h-100" data-bs-theme="dark">
-    <div class="row">
-
-        <!-- New Card: Device Manager -->
-        <div class="dashBox card col-3" style="height: 150px;" id="device_manager_div">
-            <h5 class="p-1 m-1">Device Manager</h5>
-            <!-- Enable/Disable Toggle -->
-            <div class="row">
-                <div class="col-6">
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="dm_enabled_check">
-                        <label class="form-check-label" for="dm_enabled_check">Enable device manager</label>
-                    </div>
-                </div>
-                <!-- Force Device Update Button -->
-                <div class="col-6">
-                    <button class="btn btn-sm btn-secondary" type="button" disabled>Force Device Update</button>
-                </div>
-            </div>
-
-            <!-- Device Manager Info Text-->
-            <div class="row mb-2"> <!-- Added a margin-bottom for spacing -->
-                <div class="col">
-                    <span class="text-muted" aria-disabled="true">Device manager information will go here</span>
-                </div>
-            </div>
-
-
-            <!-- Device Dropdowns -->
-            <div class="row align-items-end h-100">
-                <div class="d-flex py-0 px-1 ">
-                    <!-- Fake Audio Device Dropdown -->
-                    <div class="dropup" title="Select a fake audio device">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                id="audioDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-mic"></i> Fake Audio
-                        </button>
-                        <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="audioDropdown"
-                            id="audio_devices_list">
-                            <!-- Options populated dynamically -->
-                        </ul>
-                    </div>
-
-                    <!-- Fake Video Device Dropdown -->
-                    <div class="dropup" title="Select a fake video device">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                id="videoDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-camera"></i> Fake Video
-                        </button>
-                        <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="videoDropdown"
-                            id="video_devices_list">
-                            <!-- Options populated dynamically -->
-                        </ul>
-                    </div>
-
-                    <!-- Device Exclusion Dropdown -->
-                    <div class="dropup" title="Select devices to exclude" id="exclude_devices_menu">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                id="excludeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-x-circle"></i> Exclude Devices
-                        </button>
-                        <ul class="dropdown-menu scrollable-dropdown" aria-labelledby="excludeDropdown"
-                            id="all_devices_list">
-                            <!-- Options populated dynamically -->
-                        </ul>
-                    </div>
-                </div>
-            </div>
+    <div class="tabs">
+        <div class="tab" data-target="#home">Home</div>
+        <div class="tab" data-target="#self-view">Self-view</div>
+        <div class="tab active" data-target="#device-manager">Device Manager</div>
+        <div class="tab" data-target="#modify-stream">Modify Stream</div>
+        <div class="tab" data-target="#record">Record</div>
+        <div class="tab" data-target="#presence">Presence</div>
+    </div>
+    <div class="content" id="home">
+        <div class="col-1">
+            <button class="btn icon-button btn-outline-secondary deviceManagerButton" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Enable the Device Manager">
+                <i class="bi bi-menu-button"></i>
+                <span>Enable Device Manager</span>
+            </button>
         </div>
-
-        <!-- Card 1: Self-view modifier -->
-        <div class="dashBox card col-3" style="height: 150px;" id="hide_self_view_div">
-            <h5 class="p-1 m-1">Modify Self-view</h5>
-            <!-- Subsection 1: Obscure Self-view -->
-            <div class="card py-0 px-1 m-1" style="max-height: 40px;">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center">
-                        <div class="form-check form-switch m-0 d-flex align-items-center">
-                            <input class="form-check-input" type="checkbox" id="hide_self_view_check">
-                        </div>
-                        <small class="mb-0">Obscure Self-view</small>
-                    </div>
-                    <span id="hide_self_view_status" class="small">Initializing</span>
-                </div>
-            </div>
-
-            <!-- Subsection 2: Show Framing Cross Hair -->
-            <div class="card py-0 px-1 m-1" style="max-height: 40px;" id="show_framing_div">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center">
-                        <div class="form-check form-switch m-0 d-flex align-items-center">
-                            <input class="form-check-input" type="checkbox" id="show_framing_check">
-                        </div>
-                        <small class="mb-0">Show Framing Cross Hair</small>
-                    </div>
-                    <span id="show_framing_status" class="small">Initializing</span>
-                </div>
-            </div>
+        <div class="col-1">
+            <button class="btn icon-button btn-outline-secondary streamModificationButton" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Enable Stream Modification">
+                <i class="bi bi-emoji-smile-upside-down"></i>
+                <span>Enable Stream Modification</span>
+            </button>
         </div>
-
-        <!-- Stream Modification Section -->
-        <div class="dashBox card col-3" id="stream_modification">
-            <div class="d-flex align-items-center">
-                <h5 class="mb-0">Sending Stream</h5>
-                <ul class="nav nav-tabs ms-auto" id="streamModTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link active" id="bad-connection-tab" data-bs-toggle="tab" href="#badConnection" role="tab" aria-controls="badConnection" aria-selected="true">Bad Connection</a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="inject-player-tab" data-bs-toggle="tab" href="#injectPlayer" role="tab" aria-controls="injectPlayer" aria-selected="false">Inject Player</a>
-                    </li>
-                </ul>
-            </div>
-            <div class="tab-content" id="streamModTabContent">
-                <!-- Bad Connection Tab -->
-                <div class="tab-pane fade show active" id="badConnection" role="tabpanel" aria-labelledby="bad-connection-tab">
-                    <!-- Bad Connection Simulator -->
-                    <div class="row">
-                        <div class="col-6">
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="bcs_enabled_check">
-                                <label class="form-check-label" for="bcs_enabled_check">Enable quality simulation</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <table class="table table-sm align-middle lh-1">
-                            <tr>
-                                <td class="text-end"><span id="active">None</span></td>
-                                <td rowspan=3>
-                                    <div class="range-slider">
-                                        <input id="bcs_level" type="range" min="0" max="2" value="0" step="1"
-                                               list="tick_marks" class="align-middle">
-                                        <datalist id="tick_marks">
-                                            <option value="none"></option>
-                                            <option value="moderate"></option>
-                                            <option value="severe"></option>
-                                        </datalist>
-                                    </div>
-                                </td>
-                                <td><span id="active_desc"
-                                          class="small fw-light">Normal - select an option below to start
-                </span></td>
-                            </tr>
-                            <tr>
-                                <td class="text-end"><span>Moderate</span></td>
-                                <td class="small fw-light">Bad – noticeable video issues and audio clipping</td>
-                            </tr>
-                            <tr>
-                                <td class="text-end"><span>Severe</span></td>
-                                <td class="small fw-light">Unusable – unintelligible audio and video</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-                <!-- Inject Player Tab -->
-                <div class="tab-pane fade" id="injectPlayer" role="tabpanel" aria-labelledby="inject-player-tab">
-                    <div class="d-flex justify-content-between h-100">
-                        <!-- Left Video Container -->
-                        <div id="cameraPreview" class="video-container selected">
-                            <img id="localVideo" class="video-element" alt="current local video"></img>
-                            <div class="video-overlay">Camera Stream</div>
-                        </div>
-
-                        <!-- Right Video Container -->
-                        <div id="playerPreview" class="video-container">
-                            <video id="recordedVideo" class="video-element" muted></video>
-                            <div class="video-overlay">Inject Stream</div>
-
-                            <!-- Control Buttons Overlay -->
-                            <div class="video-controls btn-group" role="group" aria-label="Video controls">
-                                <button class="btn btn-sm btn-light btn-video-control" id="playButton">
-                                    <i class="bi bi-play-fill"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light btn-video-control" id="recordButton">
-                                    <i class="bi bi-record-circle"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light btn-video-control" id="openButton">
-                                    <i class="bi bi-folder2-open"></i>
-                                </button>
-                                <input type="file" id="fileInput" accept="video/*" hidden="hidden">
-                                <button class="btn btn-sm btn-light btn-video-control" id="injectButton">
-                                    <i class="bi bi-box-arrow-down"></i>
-                                </button>
-                                <!--button class="btn btn-sm btn-light btn-video-control" id="expandButton">
-                                    <i class="bi bi-arrows-fullscreen"></i-->
-                                </button>
-                            </div>
-                       </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <!-- Card 3: Developer Tools -->
-        <div class="dashBox card col-3 ps-3">
-            <div class="d-flex align-items-center">
-                <h5 class="mb-0">Developer tools</h5>
-                <ul class="nav nav-tabs ms-auto" id="devTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link active" id="frame-tab" data-bs-toggle="tab" href="#frame" role="tab"
-                           aria-controls="frame" aria-selected="true">Frame Capture</a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="presence-tab" data-bs-toggle="tab" href="#presence" role="tab"
-                           aria-controls="presence" aria-selected="false">Presence</a>
-                    </li>
-                </ul>
-            </div>
-            <div class="tab-content" id="devTabContent">
-                <!-- Frame Capture Tab -->
-                <div class="tab-pane fade show active" id="frame" role="tabpanel" aria-labelledby="frame-tab">
-                    <div class="form-check form-check-inline form-switch mb-2 w-50">
-                        <input class="form-check-input" type="checkbox" id="enable_img_cap_check">
-                        <label class="form-check-label" for="enable_img_cap_check">Enable Image Capture</label>
-                        <input type="checkbox" id="start_on_pc_check" disabled hidden>
-                    </div>
-                    <div class="mb-2">
-                        <label for="interval" class="form-label">Time between images in sec:</label>
-                        <input id="interval" type="text" value="30" size="8" required pattern="^[0-9]{1,9}$"
-                               class="form-control w-auto d-inline-block"/>
-                    </div>
-                    <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
-                        <button id="apply_settings" class="btn btn-outline-primary btn-sm">Apply</button>
-                        <button id="sampling_start" class="btn btn-outline-success btn-sm">Start</button>
-                        <button id="sampling_stop" class="btn btn-outline-danger btn-sm">Stop</button>
-                        <button id="open_sampling" class="btn btn-outline-secondary btn-small">Open Sampling</button>
-                    </div>
-                </div>
-                <!-- Presence Tab -->
-                <div class="tab-pane fade position-relative" id="presence" role="tabpanel"
-                     aria-labelledby="presence-tab">
-                    <button id="presence_setup" class="btn btn-sm btn-link text-start position-absolute top-0 end-0"
-                            data-bs-toggle="tooltip" data-bs-placement="left" title="Update presence settings"
-                            style="text-decoration: none;">
-                        <span class="fs-2">⚙️</span>
-                        <!--i class="bi bi-gear"></i-->
-                    </button>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="enable_presence_check">
-                        <label class="form-check-label" for="enable_presence_check">Automatic presence update</label>
-                    </div>
-                    <h6>status: <span id="presence_status" class="">Unknown</span></h6>
-                    <div class="btn-group-sm" role="group" aria-label="Frame capture controls">
-                        <span class="form-label">Manual controls: </span>
-                        <button id="busy" class="btn btn-sm btn-outline-danger">Busy</button>
-                        <button id="not_busy" class="btn btn-sm btn-outline-success">Not busy</button>
-                    </div>
-                    <!--button id="presence_setup" class="btn btn-sm btn-link text-start">Presence Settings</button-->
-                </div>
+        <div class="col-10">
+            <div class="reload-warning" id="reloadWarning">
+                <span class="text-danger">Reload of this page required to enable this feature.</span>
+                <button class="btn btn-outline-danger reload-button">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Reload Page</span>
+                </button>
             </div>
         </div>
     </div>
+    <div class="content" id="self-view">
+        <div class="icon-button">
+            <i class="bi bi-eye"></i>
+            <span>Self-view</span>
+        </div>
+    </div>
+
+    <!-- START: DEVICE MANAGER -->
+    <div class="content active" id="device-manager">
+        <div class="col-1">
+            <button class="btn icon-button btn-outline-secondary" id="device-manager-enabled" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Device Manager changes what media devices are listed">
+                <i class="bi bi-menu-button"></i>
+                <span>Enable Device Manager</span>
+            </button>
+        </div>
+        <div class="col">
+            <div class="vertical-divider">
+                <h5>Remove Devices</h5>
+                <div class="device-group">
+                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Remove microphones from device selection">
+                        <i class="bi bi-mic"></i>
+                        <span>Microphones</span>
+                    </button>
+                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Remove cameras from device selection">
+                        <i class="bi bi-camera"></i>
+                        <span>Cameras</span>
+                    </button>
+                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Remove speakers from device selection">
+                        <i class="bi bi-speaker"></i>
+                        <span>Speakers</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!--div class="col" data-bs-placement="top" title="Coming soon" disabled>
+            <div class="vertical-divider">
+                <h5>Simulate Device</h5>
+                <div class="device-group">
+                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Add a fake audio device" disabled>
+                        <i class="bi bi-mic"></i>
+                        <span>Microphone</span>
+                    </button>
+                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Add a fake video device" disabled>
+                        <i class="bi bi-camera-video"></i>
+                        <span>Camera</span>
+                    </button>
+                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Add a fake speaker device" disabled>
+                        <i class="bi bi-speaker"></i>
+                        <span>Speaker</span>
+                    </button>
+                </div>
+            </div>
+        </div-->
+        <div class="col-9" id="device-manager-selections">
+            <div class="reload-warning hidden" id="device-manager-reload-warning">
+                <span class="text-danger">Reload of this page required to enable this feature.</span>
+                <button class="btn btn-outline-danger reload-button">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Reload Page</span>
+                </button>
+            </div>
+            <!--camera devices--
+            <h5>Camera devices</h5>
+            <div class="device-group">
+                <button class="btn btn-outline-secondary">FaceTime HD Camera (3A71:F4B5)</button>
+                <button class="btn btn-outline-secondary">OBS Virtual Camera</button>
+                <button class="btn btn-outline-secondary">mmhmm Camera</button>
+                <button class="btn btn-outline-secondary">Logitech BRIO (046d:085e)</button>
+                <button class="btn btn-outline-secondary">Logitech Webcam C930e (046d:0843)</button>
+            </div>
+            -->
+            <h5>Microphone devices</h5>
+            <div class="device-manager-selection-buttons">
+                <!--
+                <button class="btn btn-outline-secondary">MacBook Pro Microphone (Built-in)</button>
+                <button class="btn btn-outline-secondary">Wave Link MicrophoneFX (Virtual)</button>
+                <button class="btn btn-outline-secondary">Wave Link Stream (Virtual)</button>
+                <button class="btn btn-outline-secondary">Microsoft Teams Audio Device (Virtual)</button>
+                <button class="btn btn-outline-secondary">mmhmm Studio Audio (Virtual)</button>
+                <button class="btn btn-outline-secondary">Default - Elgato Wave:3 (0fd9:0070)</button>
+                <button class="btn btn-outline-secondary">Elgato Wave:3 (0fd9:0070)</button>
+                <button class="btn btn-outline-secondary">Logitech BRIO (046d:085e)</button>
+                <button class="btn btn-outline-secondary">Logitech Webcam C930e (046d:0843)</button>
+                -->
+            </div>
+        </div>
+
+    </div>
+    <!-- END: DEVICE MANAGER -->
+
+    <div class="content" id="modify-stream">
+        <div class="col">
+            <button class="btn icon-button btn-outline-secondary streamModificationButton" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Enable Stream Modification">
+                <i class="bi bi-emoji-smile-upside-down"></i>
+                <span>Enable Stream Modification</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="content" id="record">
+        <div class="icon-button">
+            <i class="bi bi-record-circle"></i>
+            <span>Record</span>
+        </div>
+    </div>
+
+    <div class="content" id="presence">
+        <div class="icon-button">
+            <i class="bi bi-person-check"></i>
+            <span>Presence</span>
+        </div>
+    </div>
+
+
 </div>
 </body>
 </html>

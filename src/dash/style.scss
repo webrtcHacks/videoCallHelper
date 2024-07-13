@@ -2,16 +2,159 @@
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 
+body {
+  min-width: 800px; /* Minimum width before showing horizontal scroll */
+  background-color: #1a1a1a;
+  color: #ccc;
+  font-size: smaller; /*was originally 'small'*/
+  border-color: #1a1a1a;
+  opacity: 90%;
+}
+
 .container-fluid{
-  background-color: black;
-  border-color: black;
+
 }
 
-.dashBox {
-  overflow-y: hidden;
-  font-size: smaller;
+.col {
+  height: 100%;
+  align-content: center;
 }
 
+.col-1 {
+  height: 100%;
+  max-width: 120px;
+}
+
+.tabs {
+  display: flex;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #444;
+  height: 24px;
+  padding: 2px;
+}
+
+.tabs .tab {
+  padding: 5px 10px; /* Smaller padding for lower profile */
+  cursor: pointer;
+  border-right: 1px solid #444;
+  color: #ccc;
+  flex-shrink: 0;
+  height: 100%; /* Ensure tabs take full height of the top menu */
+  display: flex;
+  align-items: center; /* Center align items vertically */
+}
+
+.tabs .tab.active {
+  background-color: #444;
+  color: #ffffff;
+}
+
+.content {
+  display: none;
+  padding: 10px;
+  flex-grow: 1;
+  height: 125px;
+}
+
+.content.active {
+  display: flex;
+  align-items: flex-start; /* Align items to the start of the container */
+  flex-direction: row; /* Stack items horizontally */
+  gap: 10px; /* Add space between items */
+}
+
+.icon-button {
+  min-width: 80px;
+  max-width: 120px;
+  width: 100%;
+  text-align: center;
+  height: 100%;
+}
+
+.icon-button i {
+  font-size: 32px; /* Larger icon size */
+  margin-bottom: 5px;
+}
+
+.icon-button span {
+  font-size: 12px; /* Smaller text size */
+  display: block; /* Ensure text is on a new line */
+  line-height: 1.2;
+}
+
+@media (max-width: 1200px) {
+  .icon-button i {
+    font-size: 20px;
+  }
+
+  .icon-button span {
+    font-size: 12px;
+  }
+
+  .device-manager-selection-buttons button {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .icon-button span {
+    display: none;
+  }
+
+  .device-manager-selection-buttons button {
+    font-size: 8px;
+  }
+}
+
+.reload-warning {
+  display: none;
+  font-size: 14px;
+  margin: 10px 20%;
+  max-width: 200px;
+  text-align: center;
+}
+
+.reload-warning .btn {
+  margin-top: 10px;
+  width: 100%;
+  text-align: center;
+}
+
+.device-group {
+  display: flex;
+  /*flex-direction: row;*/
+  /*align-items: center;*/
+  margin: 0 0 5px;
+  max-width: 360px;
+  height: 80%;    /* I don't know why this works but 100% doesn't */
+}
+
+.device-group .icon-button {
+  margin-bottom: 10px;
+  margin-right: 0;
+}
+
+.vertical-divider {
+  border-left: 1px solid #444;
+  margin-left: 5px;
+  padding-left: 15px;
+}
+
+
+.device-manager-selection-buttons button {
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+/*
+h5 {
+  font-size: 14px;
+  margin-left: 10px;
+  margin-bottom: 2px;
+  color: #6c757d; /* $gray-600 -/
+  font-weight: bold;
+}
+*/
 
 h5 {
   font-size: $font-size-base * 0.875;
