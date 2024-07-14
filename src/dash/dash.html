@@ -59,52 +59,24 @@
             <div class="vertical-divider">
                 <h5>Remove Devices</h5>
                 <div class="device-group">
-                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Remove microphones from device selection">
+                    <button class="btn icon-button btn-secondary" id="microphone-devices-button" data-bs-toggle="tooltip"
+                            data-bs-placement="top" title="Show available microphones">
                         <i class="bi bi-mic"></i>
                         <span>Microphones</span>
                     </button>
-                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Remove cameras from device selection">
+                    <button class="btn icon-button btn-outline-secondary" id="camera-devices-button" data-bs-toggle="tooltip"
+                            data-bs-placement="top" title="Show available cameras">
                         <i class="bi bi-camera"></i>
                         <span>Cameras</span>
                     </button>
-                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Remove speakers from device selection">
+                    <button class="btn icon-button btn-outline-secondary" id="speaker-devices-button" data-bs-toggle="tooltip"
+                            data-bs-placement="top" title="Show available speakers">
                         <i class="bi bi-speaker"></i>
                         <span>Speakers</span>
                     </button>
                 </div>
             </div>
         </div>
-        <!--div class="col" data-bs-placement="top" title="Coming soon" disabled>
-            <div class="vertical-divider">
-                <h5>Simulate Device</h5>
-                <div class="device-group">
-                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Add a fake audio device" disabled>
-                        <i class="bi bi-mic"></i>
-                        <span>Microphone</span>
-                    </button>
-                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Add a fake video device" disabled>
-                        <i class="bi bi-camera-video"></i>
-                        <span>Camera</span>
-                    </button>
-                    <button class="btn icon-button btn-outline-secondary" data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Add a fake speaker device" disabled>
-                        <i class="bi bi-speaker"></i>
-                        <span>Speaker</span>
-                    </button>
-                </div>
-            </div>
-        </div-->
         <div class="col-9" id="device-manager-selections">
             <div class="reload-warning hidden" id="device-manager-reload-warning">
                 <span class="text-danger">Reload of this page required to enable this feature.</span>
@@ -113,32 +85,7 @@
                     <span>Reload Page</span>
                 </button>
             </div>
-            <!--camera devices--
-            <h5>Camera devices</h5>
-            <div class="device-group">
-                <button class="btn btn-outline-secondary">FaceTime HD Camera (3A71:F4B5)</button>
-                <button class="btn btn-outline-secondary">OBS Virtual Camera</button>
-                <button class="btn btn-outline-secondary">mmhmm Camera</button>
-                <button class="btn btn-outline-secondary">Logitech BRIO (046d:085e)</button>
-                <button class="btn btn-outline-secondary">Logitech Webcam C930e (046d:0843)</button>
-            </div>
-            -->
-            <h5>Microphone devices</h5>
-            <div class="device-manager-selection-buttons">
-                <!--
-                <button class="btn btn-outline-secondary">MacBook Pro Microphone (Built-in)</button>
-                <button class="btn btn-outline-secondary">Wave Link MicrophoneFX (Virtual)</button>
-                <button class="btn btn-outline-secondary">Wave Link Stream (Virtual)</button>
-                <button class="btn btn-outline-secondary">Microsoft Teams Audio Device (Virtual)</button>
-                <button class="btn btn-outline-secondary">mmhmm Studio Audio (Virtual)</button>
-                <button class="btn btn-outline-secondary">Default - Elgato Wave:3 (0fd9:0070)</button>
-                <button class="btn btn-outline-secondary">Elgato Wave:3 (0fd9:0070)</button>
-                <button class="btn btn-outline-secondary">Logitech BRIO (046d:085e)</button>
-                <button class="btn btn-outline-secondary">Logitech Webcam C930e (046d:0843)</button>
-                -->
-            </div>
         </div>
-
     </div>
     <!-- END: DEVICE MANAGER -->
 
