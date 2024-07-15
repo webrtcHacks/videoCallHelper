@@ -19,7 +19,7 @@ function toggleButton(button, state) {
     if (state === 'on') {
         button.classList.add('btn-secondary');
         span.textContent = span.textContent.replace('Enable', 'Disable');
-        reloadWarning.style.display = 'none';
+        //reloadWarning.style.display = 'none';
     } else if (state === 'reload-required') {
         button.classList.add('btn-outline-danger');
         span.textContent = span.textContent.replace('Enable', 'Disable');
@@ -27,7 +27,7 @@ function toggleButton(button, state) {
     } else {
         button.classList.add('btn-outline-secondary');
         span.textContent = span.textContent.replace('Disable', 'Enable');
-        reloadWarning.style.display = 'none';
+        //reloadWarning.style.display = 'none';
     }
 }
 
@@ -120,15 +120,27 @@ const speakerDevicesButton = document.querySelector('#speaker-devices-button');
 
 async function showDevices(id, kind, label) {
 
+    const clickedButton = document.querySelector(`#${id}`);
+
     [microphoneDevicesButton, cameraDevicesButton, speakerDevicesButton].forEach(button => {
-        button.classList.remove('btn-secondary');
-        button.classList.add('btn-outline-secondary');
+        if(button.id !== id){
+            button.classList.remove('btn-secondary');
+            button.classList.add('btn-outline-secondary');
+        }
     });
 
-    // set the clicked button to be btn-secondary
-    document.querySelector(`#${id}`).classList.remove('btn-outline-secondary');
-    document.querySelector(`#${id}`).classList.add('btn-secondary');
+    // switch the clicked button to btn-secondary if it is btn-outline-secondary
+    if (clickedButton.classList.contains('btn-outline-secondary')) {
+        clickedButton.classList.remove('btn-outline-secondary');
+        clickedButton.classList.add('btn-secondary');
+    } else{
+        clickedButton.classList.remove('btn-secondary');
+        clickedButton.classList.add('btn-outline-secondary');
+    }
 
+
+    // ToDo:
+    /*
     // Clear previous options
     deviceManagerSelections.innerHTML = `<h5>${label}</h5>`;
 
@@ -145,7 +157,10 @@ async function showDevices(id, kind, label) {
     });
 
     addButtonEventListeners();
+
+     */
 }
+
 
 // Event listeners for showing device buttons
 microphoneDevicesButton.addEventListener('click', async () => {
@@ -163,4 +178,32 @@ speakerDevicesButton.addEventListener('click', async() => {
 
 
 // Initialize device lists
-populateDeviceButtons().catch(err => console.error('Error populating device buttons:', err));
+//populateDeviceButtons().catch(err => console.error('Error populating device buttons:', err));
+
+
+document.querySelectorAll('.accordion-header button').forEach(button => {
+    button.addEventListener('click', function () {
+        const accordionItem = this.closest('.accordion-item');
+        const accordionBody = accordionItem.querySelector('.accordion-body');
+
+        // Toggle the active state of the clicked accordion item
+        if (accordionItem.classList.contains('active')) {
+            // It's active, so we'll hide it
+            accordionItem.classList.remove('active');
+            accordionBody.style.display = 'none'; // Hide the accordion body
+        } else {
+            // It's not active, close all others and show this one
+            document.querySelectorAll('.accordion-item').forEach(item => {
+                item.classList.remove('active');
+                const body = item.querySelector('.accordion-body');
+                body.style.display = 'none'; // Hide other accordion bodies
+            });
+
+            // Now, show the clicked accordion
+            accordionItem.classList.add('active');
+            accordionBody.style.display = ''; // Show the accordion body, remove the inline style to revert to default
+        }
+    });
+});
+
+
