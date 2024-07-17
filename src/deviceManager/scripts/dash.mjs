@@ -114,96 +114,112 @@ function addButtonEventListeners() {
     });
 }
 
-const microphoneDevicesButton = document.querySelector('#microphone-devices-button');
-const cameraDevicesButton = document.querySelector('#camera-devices-button');
-const speakerDevicesButton = document.querySelector('#speaker-devices-button');
-
-async function showDevices(id, kind, label) {
-
-    const clickedButton = document.querySelector(`#${id}`);
-
-    [microphoneDevicesButton, cameraDevicesButton, speakerDevicesButton].forEach(button => {
-        if(button.id !== id){
-            button.classList.remove('btn-secondary');
-            button.classList.add('btn-outline-secondary');
-        }
-    });
-
-    // switch the clicked button to btn-secondary if it is btn-outline-secondary
-    if (clickedButton.classList.contains('btn-outline-secondary')) {
-        clickedButton.classList.remove('btn-outline-secondary');
-        clickedButton.classList.add('btn-secondary');
-    } else{
-        clickedButton.classList.remove('btn-secondary');
-        clickedButton.classList.add('btn-outline-secondary');
-    }
-
-
-    // ToDo:
-    /*
+/**
+ * Update the labels in the targetDiv with checkboxes for each device of the specified kind
+ * @param targetDiv - the horizontal accordion-body div to populate with checkboxes
+ * @returns {Promise<void>}
+ */
+async function updateLabels(targetDiv, kind){
     // Clear previous options
-    deviceManagerSelections.innerHTML = `<h5>${label}</h5>`;
+    targetDiv.innerHTML = '';
 
-    const devices = storage.contents['deviceManager']?.currentDevices || [];
+    const currentDevices = storage.contents['deviceManager']?.currentDevices || [];
+    const excludedDevices = storage.contents['deviceManager']?.excludedDevices || [];
 
-    devices.filter(device => device.kind === kind).forEach(device => {
-        let button = document.createElement('button');
-        button.classList.add('btn', 'btn-outline-secondary', 'device-button');
-        button.dataset.deviceId = device.deviceId;
-        button.dataset.kind = device.kind;
-        button.textContent = device.label || `Unknown ${device.kind}`;
+    // Get labels for this kind of device
+    const currentDeviceLabels = currentDevices
+        .filter(device => device.kind === kind)
+        .map(device => device.label);
+    const excludedDeviceLabels = excludedDevices
+        .filter(device => device.kind === kind)
+        .map(device => device.label);
+    const uniqueLabels = new Set([...currentDeviceLabels, ...excludedDeviceLabels]);   // temp store for unique labels
 
-        deviceManagerSelections.appendChild(button);
+    uniqueLabels.forEach(label => {
+        let checkboxContainer = document.createElement('div');
+        checkboxContainer.classList.add('form-check');
+
+        let checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.classList.add('form-check-input');
+        checkbox.id = `device-${label}`;
+
+        let labelElement = document.createElement('label');
+        labelElement.classList.add('form-check-label');
+        labelElement.setAttribute('for', `device-${label}`);
+        labelElement.textContent = label || `Unknown ${kind}`;
+
+        // Apply strikethrough and checkmark for excluded devices
+        if (excludedDeviceLabels.includes(label)) {
+            checkbox.checked = true;
+            labelElement.classList.add('text-decoration-line-through');
+            if (!currentDeviceLabels.includes(label)) {
+                let checkmark = document.createElement('span');
+                checkmark.classList.add('missing-device-checkmark');
+                checkmark.innerHTML = '<i class="bi bi-x-circle text-decoration-none" ' +
+                    'data-bs-toggle="tooltip" title="Missing from current devices"></i>';
+                labelElement.insertBefore(checkmark, labelElement.firstChild);
+
+                // Add click event to remove labelElement
+                checkmark.addEventListener('click', (e) => {
+                    // ToDo: should we warn the user that the device might automatically be activated if they plug it in again?
+                    e.stopPropagation(); // Prevent checkbox toggle
+                    checkboxContainer.remove();
+                    excludedDevices.splice(excludedDevices.indexOf(label), 1);
+                });
+            }
+        } else {
+            labelElement.classList.add('text-decoration-none');
+        }
+
+        // Add event listener to toggle text-decoration-line-through
+        checkbox.addEventListener('change', async () => {
+            if (checkbox.checked) {
+                labelElement.classList.add('text-decoration-line-through');
+                // match the label to the item in the currentDevices list, then add it to excludedDevices
+                const device = currentDevices.find(device => device.label === label);
+                excludedDevices.push(device);
+            } else {
+                labelElement.classList.remove('text-decoration-line-through');
+                excludedDevices.splice(excludedDevices.indexOf(label), 1);
+            }
+            // ToDo: Error checking if nothing is left in the list
+            await storage.update('deviceManager', {excludedDevices});
+        });
+
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(labelElement);
+        targetDiv.appendChild(checkboxContainer);
     });
 
-    addButtonEventListeners();
-
-     */
 }
 
-
-// Event listeners for showing device buttons
-microphoneDevicesButton.addEventListener('click', async () => {
-    await showDevices('microphone-devices-button', 'audioinput', 'Microphone Devices');
-});
-
-cameraDevicesButton.addEventListener('click', async() => {
-    await showDevices('camera-devices-button', 'videoinput', 'Camera Devices');
-});
-
-speakerDevicesButton.addEventListener('click', async() => {
-    await showDevices('speaker-devices-button', 'audiooutput', 'Speaker Devices');
-});
-
-
-
-// Initialize device lists
-//populateDeviceButtons().catch(err => console.error('Error populating device buttons:', err));
-
-
-document.querySelectorAll('.accordion-header button').forEach(button => {
-    button.addEventListener('click', function () {
-        const accordionItem = this.closest('.accordion-item');
-        const accordionBody = accordionItem.querySelector('.accordion-body');
-
-        // Toggle the active state of the clicked accordion item
-        if (accordionItem.classList.contains('active')) {
-            // It's active, so we'll hide it
-            accordionItem.classList.remove('active');
-            accordionBody.style.display = 'none'; // Hide the accordion body
-        } else {
-            // It's not active, close all others and show this one
-            document.querySelectorAll('.accordion-item').forEach(item => {
-                item.classList.remove('active');
-                const body = item.querySelector('.accordion-body');
-                body.style.display = 'none'; // Hide other accordion bodies
-            });
-
-            // Now, show the clicked accordion
-            accordionItem.classList.add('active');
-            accordionBody.style.display = ''; // Show the accordion body, remove the inline style to revert to default
-        }
+async function showDevices(buttonId, kind, targetId) {
+    const targetDiv = document.querySelector(`#${targetId} div.accordion-body`);
+    document.querySelectorAll('.device-button').forEach(button => {
+        const isActive = button.id === buttonId;
+        button.classList.toggle('btn-secondary', isActive);
+        button.classList.toggle('btn-outline-secondary', !isActive);
     });
+    await updateLabels(targetDiv, kind);
+}
+
+const deviceButtonConfigs = {
+    'microphone-devices-button': ['audioinput', 'microphone-devices'],
+    'camera-devices-button': ['videoinput', 'camera-devices'],
+    'speaker-devices-button': ['audiooutput', 'speaker-devices']
+};
+
+Object.entries(deviceButtonConfigs).forEach(([buttonId, [kind, targetId]]) => {
+    document.querySelector(`#${buttonId}`)
+        .addEventListener('click', () => showDevices(buttonId, kind, targetId));
 });
 
+storage.addListener('deviceManager', async () => {
+    for (const [buttonId, [kind, targetId]] of Object.entries(deviceButtonConfigs)) {
+        if (document.querySelector(`#${buttonId}`).classList.contains('btn-secondary')) {
+            await updateLabels(document.querySelector(`#${targetId} div.accordion-body`), kind);
+        }
+    }
+});
 

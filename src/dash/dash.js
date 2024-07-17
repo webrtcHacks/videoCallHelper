@@ -53,6 +53,7 @@ function showReloadPrompt() {
     reloadWarning.style.display = 'block';
 }
 
+// ToDo: move to home.mjs?
 function toggleButton(buttonClass, state) {
 
     buttonClass.forEach(button => {
@@ -104,4 +105,30 @@ reloadButton.addEventListener('click', function () {
 
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => {
     new Tooltip(element);
+});
+
+// horizontal accordion logic
+document.querySelectorAll('.accordion-header button').forEach(button => {
+    button.addEventListener('click', function () {
+        const accordionItem = this.closest('.accordion-item');
+        const accordionBody = accordionItem.querySelector('.accordion-body');
+
+        // Toggle the active state of the clicked accordion item
+        if (accordionItem.classList.contains('active')) {
+            // It's active, so we'll hide it
+            accordionItem.classList.remove('active');
+            accordionBody.style.display = 'none'; // Hide the accordion body
+        } else {
+            // It's not active, close all others and show this one
+            document.querySelectorAll('.accordion-item').forEach(item => {
+                item.classList.remove('active');
+                const body = item.querySelector('.accordion-body');
+                body.style.display = 'none'; // Hide other accordion bodies
+            });
+
+            // Now, show the clicked accordion
+            accordionItem.classList.add('active');
+            accordionBody.style.display = ''; // Show the accordion body, remove the inline style to revert to default
+        }
+    });
 });

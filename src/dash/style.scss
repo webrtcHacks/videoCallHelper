@@ -137,12 +137,6 @@ body {
   padding-left: 15px;
 }
 
-
-.device-manager-selection-buttons button {
-  line-height: 1;
-  margin-bottom: 5px;
-}
-
 h5 {
   font-size: $font-size-base * 0.75;
   font-weight: $font-weight-bolder;
@@ -171,7 +165,8 @@ h5 {
 }
 
 .accordion-horizontal .accordion-body {
-  flex-wrap: wrap;
+  display: flex; // Use flexbox to manage its children
+  // flex-wrap: wrap;
   flex-grow: 1;
   transition: width 0.2s ease;
   height: 100%;
@@ -181,6 +176,33 @@ h5 {
   overflow: hidden;
 }
 
+.accordion-horizontal .accordion-collapse {
+  flex-grow: 1; // Ensure it grows to take available space
+  display: flex; // Use flexbox to manage its children
+  flex-direction: column; // Ensure its children are stacked vertically
+  width: auto; // Allow it to take the necessary width
+}
+
+.device-manager-selections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  width: 100%;
+}
+
+.form-check {
+  // display: flex;
+  // align-items: center;
+  width: 100%;
+}
+
+.missing-device-checkmark {
+  margin-right: 5px; // Adjust spacing as needed
+  transition: color 0.3s ease; // Smooth transition for color change
+}
+
+.missing-device-checkmark i:hover {
+  color: $danger; // Change color to red on hover
+}
 
 input#bcs_level {
   // width: 30px;
