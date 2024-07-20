@@ -32,12 +32,12 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 // ToDo: add these back one-by-one
 import '../deviceManager/scripts/dash.mjs';
+import '../selfView/scripts/dash.mjs';
 
 /*
 import '../presence/scripts/dash.mjs';
 import '../imageCapture/scripts/dash.mjs';
 import '../badConnection/scripts/dash.mjs';
-import '../selfView/scripts/dash.mjs';
 import '../videoPlayer/scripts/dash.mjs';
 */
 

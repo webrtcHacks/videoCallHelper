@@ -7,14 +7,14 @@
 <body>
 <div class="vch container-fluid m-0 p-0 overflow-hidden h-100" data-bs-theme="dark">
     <div class="tabs">
-        <div class="tab" data-target="#home">Home</div>
+        <div class="tab active" data-target="#home">Home</div>
         <div class="tab" data-target="#self-view">Self-view</div>
-        <div class="tab active" data-target="#device-manager">Device Manager</div>
+        <div class="tab" data-target="#device-manager">Device Manager</div>
         <div class="tab" data-target="#modify-stream">Modify Stream</div>
         <div class="tab" data-target="#record">Record</div>
         <div class="tab" data-target="#presence">Presence</div>
     </div>
-    <div class="content" id="home">
+    <div class="content active" id="home">
         <div class="col-1">
             <button class="btn icon-button btn-outline-secondary deviceManagerButton" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Enable the Device Manager">
@@ -39,15 +39,51 @@
             </div>
         </div>
     </div>
+
+
+    <!-- START: SELF-VIEW -->
     <div class="content" id="self-view">
-        <div class="icon-button">
-            <i class="bi bi-eye"></i>
-            <span>Self-view</span>
+        <div class="col-1">
+
+            <button class="btn icon-button btn-outline-secondary" id="blur-all" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Blur your self-view. Does not change what others sees.">
+                <i class="bi bi-person-fill blur-icon"></i>
+                <span>Turn Blur On</span>
+            </button>
+        </div>
+        <div class="col-1">
+        <button class="btn icon-button btn-outline-secondary" id="frame-all" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Show framing cross-hair. Does not change what others sees.">
+                <i class="bi bi-person-bounding-box"></i>
+                <span>Turn Framing On</span>
+            </button>
+        </div>
+        <!-- Experimenting with previewing self-view images.
+        <div class="vertical-divider">
+            <h5>Preview Images</h5>
+            <div class="d-flex flex-wrap">
+
+                <div class="position-relative me-3 mb-3">
+                    <img src="../images/selfviewExampleUHD.jpeg" alt="Preview 1" class="img-thumbnail self-view-preview-image">
+                    <div class="position-absolute top-50 start-0 translate-middle-y p-1">
+                        <button class="btn me-1 self-view-preview-btn">
+                            <i class="bi bi-person-circle blur-icon"></i>
+                        </button>
+                    </div>
+                    <div class="position-absolute top-50 end-0 translate-middle-y p-1">
+                        <button class="btn self-view-preview-btn">
+                            <i class="bi bi-person-bounding-box"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <-- END experiment -->
         </div>
     </div>
+    <!-- END: SELF-VIEW -->
 
     <!-- START: DEVICE MANAGER -->
-    <div class="content active" id="device-manager">
+    <div class="content" id="device-manager">
         <div class="col-1">
             <button class="btn icon-button btn-outline-secondary" id="device-manager-enabled" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Device Manager changes what media devices are listed">

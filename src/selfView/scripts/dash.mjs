@@ -1,83 +1,54 @@
-import {debug, storage} from "../../dash/dashCommon.mjs";
+import {debug, m, mh, storage} from "../../dash/dashCommon.mjs";
 
+const blurAllButton = document.querySelector('button#blur-all');
+const frameAllButton = document.querySelector('button#frame-all');
 
-const selfViewDiv = document.querySelector("div#hide_self_view_div");
-const selfViewCheckbox = document.querySelector("input#hide_self_view_check");
-const selfViewStatus = document.querySelector("span#hide_self_view_status");
+const blurAllCurrentState = storage.contents['selfView']?.hideView?.enabled;
+const frameAllCurrentState = storage.contents['selfView']?.showFraming?.enabled;
 
-const showFramingDiv = document.querySelector("div#show_framing_div");
-const showFramingCheck = document.querySelector("input#show_framing_check");
-const showFramingStatus = document.querySelector("span#show_framing_status");
+function toggleButton(button, state) {
+    const span = button.querySelector('span');
+    button.classList.remove('btn-outline-secondary', 'btn-outline-danger', 'btn-secondary');
 
-/**
- * Updates Self-view UI based on the current settings - blurs, framing guide
- */
-function updateSelfViewUI() {
-
-    // Hide/Obscure Self-View
-    try {
-        const hideViewEnabled = storage.contents['selfView']?.['hideView']?.enabled;
-        const hideViewActive = storage.contents['selfView']?.['hideView']?.active;
-
-        if (hideViewEnabled && hideViewActive)
-            selfViewStatus.innerText = "Obscuring self-view";
-        else if (hideViewEnabled && !hideViewActive)
-            selfViewStatus.innerText = "Looking for self-view";
-        else
-            selfViewStatus.innerText = "Click to enable";
-    } catch (e) {
-        debug("error updating self-view UI", e);
-        for (let child of selfViewDiv.children) {
-            child.disabled = true;
-            child.classList.add('text-muted');
-            child.classList.add('fw-lighter');
-        }
+    if (state === true) {
+        button.classList.add('btn-secondary');
+        span.textContent = span.textContent.replace("On", "Off");
+    } else {
+        button.classList.add('btn-outline-secondary');
+        span.textContent = span.textContent.replace("Off", "On");
     }
 
-    try {
-        // Show Framing
-        const showFramingEnabled = storage.contents['selfView']?.['showFraming']?.enabled;
-        const showFramingActive = storage.contents['selfView']?.['showFraming']?.active;
-
-        if (showFramingEnabled && showFramingActive)
-            showFramingStatus.innerText = "Showing framing";
-        else if (showFramingEnabled && !showFramingActive)
-            showFramingStatus.innerText = "Looking for self-view";
-        else
-            showFramingStatus.innerText = "Click to enable";
-    } catch (e) {
-        debug("error updating show framing UI", e);
-        for (let child of showFramingDiv.children) {
-            child.disabled = true;
-            child.classList.add('text-muted');
-        }
-    }
 }
 
-// debug("self-view settings:", storage.contents['selfView']);
-selfViewCheckbox.checked = storage.contents['selfView']?.hideView?.enabled || false;
-showFramingCheck.checked = storage.contents['selfView']?.showFraming?.enabled || false;
-updateSelfViewUI();
+toggleButton(blurAllButton, blurAllCurrentState);
+toggleButton(frameAllButton, frameAllCurrentState);
 
-
-selfViewCheckbox.onclick = async () => {
-    const enabled = selfViewCheckbox.checked;
-    // debug(`set self-view enabled to ${enabled}`);
-    const newContents = storage.contents['selfView'];
-    newContents['hideView'] = {enabled: enabled, active: newContents['hideView']?.active || false};
-    await storage.update('selfView', newContents);
-    updateSelfViewUI();
+blurAllButton.onclick = async ()=> {
+    debug('blurAllButton clicked');
+    const enabled = !storage.contents['selfView']?.hideView?.enabled;
+    await storage.update('selfView', {hideView: {enabled: enabled}});
+    toggleButton(blurAllButton, enabled);
 }
 
-showFramingCheck.onclick = async () => {
-    const enabled = showFramingCheck.checked;
-    // debug(`set self-view enabled to ${enabled}`);
-    const newContents = storage.contents['selfView'];
-    newContents['showFraming'] = {enabled: enabled, active: newContents['showFraming']?.active || false};
-    await storage.update('selfView', newContents);
-    updateSelfViewUI();
+frameAllButton.onclick = async ()=> {
+    debug('frameAllButton clicked');
+    const enabled = !storage.contents['selfView']?.showFraming?.enabled;
+    await storage.update('selfView', {showFraming: {enabled: enabled}});
+    toggleButton(frameAllButton, enabled);
 }
 
 storage.addListener('selfView', () => {
-    updateSelfViewUI();
+    if(blurAllCurrentState !== storage.contents['selfView']?.hideView?.enabled) {
+        toggleButton(blurAllButton, storage.contents['selfView']?.hideView?.enabled);
+    }
+    if(frameAllCurrentState !== storage.contents['selfView']?.showFraming?.enabled) {
+        toggleButton(frameAllButton, storage.contents['selfView']?.showFraming?.enabled);
+    }
+});
+
+
+// Not used
+mh.addListener(m.FRAME_STREAM, (data) => {
+    debug("frame capture data received", data);
+    // localVideoPreview.src = data.blobUrl;
 });

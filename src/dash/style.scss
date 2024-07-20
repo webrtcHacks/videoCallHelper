@@ -204,6 +204,42 @@ h5 {
   color: $danger; // Change color to red on hover
 }
 
+/**
+    * Self-view
+ */
+
+.blur-icon {
+  filter: blur(2px);
+}
+.icon-button:hover .blur-icon{
+  filter: blur(4px); // Increase blur on hover
+}
+
+/* //Experiment with previewing self-views  - NOT USED
+.self-view-preview-btn {
+    background-color: rgba($primary, 0.7);
+    border: $primary;
+    color: $white; // Ensure the icon color is visible
+    &:hover {
+      background-color: rgba($primary, 0.9); // Slightly increase opacity on hover
+    }
+  }
+
+.self-view-preview-image {
+  padding: 0;
+  height: 78px;
+}
+
+.self-view-preview-image:hover {
+  border: 5px solid fuchsia; // Thick fuchsia border
+  box-sizing: border-box; // Ensure the border is included in the element's dimensions
+}
+*/
+
+/**
+    * Device Manager
+ */
+
 input#bcs_level {
   // width: 30px;
   // appearance: slider-vertical;
