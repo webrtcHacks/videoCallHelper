@@ -1,7 +1,8 @@
-import {debug, m, mh, storage} from "../../dash/dashCommon.mjs";
+import {debug, c, m, mh, storage} from "../../dash/dashCommon.mjs";
 
-const blurAllButton = document.querySelector('button#blur-all');
-const frameAllButton = document.querySelector('button#frame-all');
+const blurAllButton = document.querySelector('#self-view-blur-all');
+const frameAllButton = document.querySelector('#self-view-frame-all');
+const switchElemButton = document.querySelector('#self-view-switch');
 
 const blurAllCurrentState = storage.contents['selfView']?.hideView?.enabled;
 const frameAllCurrentState = storage.contents['selfView']?.showFraming?.enabled;
@@ -37,6 +38,13 @@ frameAllButton.onclick = async ()=> {
     toggleButton(frameAllButton, enabled);
 }
 
+switchElemButton.onclick = async ()=> {
+    debug('switchElemButton clicked');
+    // await storage.update('selfView', {switchElem: true});
+    mh.sendMessage(c.CONTENT, m.SELF_VIEW_SWITCH_ELEMENT);
+}
+
+
 storage.addListener('selfView', () => {
     if(blurAllCurrentState !== storage.contents['selfView']?.hideView?.enabled) {
         toggleButton(blurAllButton, storage.contents['selfView']?.hideView?.enabled);
@@ -48,7 +56,9 @@ storage.addListener('selfView', () => {
 
 
 // Not used
+/*
 mh.addListener(m.FRAME_STREAM, (data) => {
     debug("frame capture data received", data);
-    // localVideoPreview.src = data.blobUrl;
+    localVideoPreview.src = data.blobUrl;
 });
+*/

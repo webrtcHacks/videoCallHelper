@@ -71,9 +71,9 @@ addScript('/scripts/inject.js');
 
 // Applets
 // ToDo: make these self-contained
-import {selfViewElementModifier} from "../../selfView/scripts/content.mjs";
 import {grabFrames} from "../../imageCapture/scripts/content.mjs";
 
+import  "../../selfView/scripts/content.mjs";
 import "../../deviceManager/scripts/content.mjs";
 import "../../badConnection/scripts/content.mjs";
 import "../../videoPlayer/scripts/content.mjs";
@@ -361,7 +361,8 @@ async function gumStreamStart(data) {
         // self-view
         // this works as long as I reuse the streamID?
         // await new selfViewElementModifier(origStream);
-        new selfViewElementModifier(origStream, storage);
+        // new selfViewElementModifier(origStream, storage);
+        // addStream(origStream);
     }
 
 }

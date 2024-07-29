@@ -44,19 +44,32 @@
     <!-- START: SELF-VIEW -->
     <div class="content" id="self-view">
         <div class="col-1">
-
-            <button class="btn icon-button btn-outline-secondary" id="blur-all" data-bs-toggle="tooltip"
+            <button class="btn icon-button btn-outline-secondary" id="self-view-blur-all" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Blur your self-view. Does not change what others sees.">
                 <i class="bi bi-person-fill blur-icon"></i>
                 <span>Turn Blur On</span>
             </button>
         </div>
         <div class="col-1">
-        <button class="btn icon-button btn-outline-secondary" id="frame-all" data-bs-toggle="tooltip"
+        <button class="btn icon-button btn-outline-secondary" id="self-view-frame-all" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Show framing cross-hair. Does not change what others sees.">
                 <i class="bi bi-person-bounding-box"></i>
                 <span>Turn Framing On</span>
             </button>
+        </div>
+        <div class="col-1">
+            <button class="btn icon-button btn-outline-secondary" id="self-view-switch" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Change the self-view element.">
+                <i class="bi bi-arrow-right-square"></i>
+                <span>Switch Self-view Video</span>
+            </button>
+        </div>
+        <div class="col-9 d-flex align-items-center justify-content-center h-100 m-3 p-2">
+            <p class="text-center text-secondary">
+                Use the <strong>Turn Blur On</strong> button to apply a blur effect to your self-view. This effect is local and does not affect what others see. <br>
+                The <strong>Turn Framing On</strong> button enables a framing cross-hair over your self-view for better alignment, without altering others' view. <br>
+                With the <strong>Switch Self-view Video</strong> button, you can change the self-view element to another video source.
+            </p>
         </div>
         <!-- Experimenting with previewing self-view images.
         <div class="vertical-divider">

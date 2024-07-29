@@ -698,7 +698,8 @@ export const MESSAGE = {
     DASH_INIT_DATA: 'dash_init_data',
 
     // self-view
-    SELF_VIEW: 'self_view',
+    // SELF_VIEW: 'self_view',
+    SELF_VIEW_SWITCH_ELEMENT: 'self_view_switch_element',
 
     // device manager
     GET_DEVICE_SETTINGS: 'get_device_settings',
