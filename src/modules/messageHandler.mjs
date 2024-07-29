@@ -700,6 +700,8 @@ export const MESSAGE = {
     // self-view
     // SELF_VIEW: 'self_view',
     SELF_VIEW_SWITCH_ELEMENT: 'self_view_switch_element',
+    REMOTE_TRACK_ADDED: 'remote_track_added',
+    REMOTE_TRACK_REMOVED: 'remote_track_removed',
 
     // device manager
     GET_DEVICE_SETTINGS: 'get_device_settings',

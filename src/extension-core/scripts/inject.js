@@ -74,9 +74,17 @@ async function processTrack(track, sourceLabel = "") {
         const trackData = {id, kind, label, readyState, enabled, contentHint, muted, deviceId};
         debug(`${sourceLabel}_${type}`, trackData);
         mh.sendMessage(c.BACKGROUND, `${sourceLabel}_track_${type}`, {trackData});
+
     }
 
-    track.addEventListener('ended', trackEventHandler);
+    if(sourceLabel==='remote')
+        mh.sendMessage(c.CONTENT, m.REMOTE_TRACK_ADDED, {trackData: {id: track.id, kind: track.kind, label: track.label}});
+
+
+    track.addEventListener('ended', (event)=>{
+        trackEventHandler(event);
+        mh.sendMessage(c.CONTENT, m.REMOTE_TRACK_REMOVED, {trackData: {id: track.id, kind: track.kind, label: track.label}});
+    });
 
     // these were firing too often
     // track.addEventListener('mute', trackEventHandler);

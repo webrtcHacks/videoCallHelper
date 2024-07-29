@@ -17,14 +17,14 @@ let currentVideoElement = null;
 
 // Monitor remote tracks
 const remoteTrackIds = new Set();
-window.remoteTrackIds = remoteTrackIds;
+window.remoteTrackIds = remoteTrackIds; // for debugging
 
-mh.addListener('remote_track_added', data => {
+mh.addListener(m.REMOTE_TRACK_ADDED, data => {
     debug("remote track added", data.trackData);
     if (data.trackData.kind === 'video')
         remoteTrackIds.add(data.trackData.id);
 });
-mh.addListener('remote_track_removed', data => {
+mh.addListener(m.REMOTE_TRACK_REMOVED, data => {
     debug("remote track removed", data.trackData);
     if (data.trackData.kind === 'video')
         remoteTrackIds.delete(data.trackData.id);
@@ -169,3 +169,4 @@ storage.addListener('selfView', async (newValue, changedValues) => {
 mh.addListener(m.SELF_VIEW_SWITCH_ELEMENT, () => {
     switchToNextElement();
 });
+
