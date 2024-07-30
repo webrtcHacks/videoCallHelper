@@ -237,6 +237,35 @@ h5 {
 */
 
 /**
+ * Stream modification
+ */
+
+/* Bad quality */
+
+
+#preview-button {
+  /*position: relative;*/
+  padding: 0;
+}
+
+#preview-button img {
+  width: 100%;
+  height: auto;
+  min-width: 80px;
+  max-width: 120px;
+}
+
+h6 {
+  font-size: $font-size-base * 0.66;
+  font-weight: $font-weight-bolder;
+  color: $gray-500;
+  text-transform: uppercase;
+}
+
+
+/************ OLD STUFF ************/
+
+/**
     * Device Manager
  */
 
