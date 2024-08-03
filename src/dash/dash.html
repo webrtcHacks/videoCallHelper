@@ -182,62 +182,71 @@
                 <span>Enable Stream Modification</span>
             </button>
         </div>
-        <div class="col-2 vertical-divider">
-            <h5>Bad quality Simulation</h5>
-            <div class="d-flex flex-wrap">
-                <div class="btn-group" role="group" aria-label="Quality Simulation">
-                    <button class="btn icon-button btn-outline-secondary" id="bad-quality-off" data-bs-toggle="tooltip"
-                            data-bs-placement="top" title="Turn off quality simulation">
-                        <i class="bi bi-reception-4"></i>
-                        <span>Normal</span>
-                    </button>
-                    <button class="btn icon-button btn-outline-secondary" id="bad-quality-moderate"
-                            data-bs-toggle="tooltip"
-                            data-bs-placement="top" title="Noticeable video issues and audio clipping">
-                        <i class="bi bi-reception-2"></i>
-                        <span>Moderate</span>
-                    </button>
-                    <button class="btn icon-button btn-outline-secondary" id="bad-quality-severe"
-                            data-bs-toggle="tooltip"
-                            data-bs-placement="top" title="Unintelligible audio and video">
-                        <i class="bi bi-reception-1"></i>
-                        <span>Severe</span>
-                    </button>
-                </div>
+        <div class="col-3 vertical-divider">
+            <h5>Quality Simulation</h5>
+            <div class="btn-group" role="group" aria-label="Quality Simulation">
+                <button class="btn icon-button btn-outline-secondary" id="bad-quality-off" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Turn off quality simulation">
+                    <i class="bi bi-reception-4"></i>
+                    <span>Normal</span>
+                </button>
+                <button class="btn icon-button btn-outline-secondary" id="bad-quality-moderate"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Noticeable video issues and audio clipping">
+                    <i class="bi bi-reception-2"></i>
+                    <span>Moderate</span>
+                </button>
+                <button class="btn icon-button btn-outline-secondary" id="bad-quality-severe"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Unintelligible audio and video">
+                    <i class="bi bi-reception-1"></i>
+                    <span>Severe</span>
+                </button>
             </div>
         </div>
-        <div class="col-2 vertical-divider">
+        <div class="col col-2-and-a-half  vertical-divider">
             <h5>Media Injection</h5>
             <div class="btn-group" role="group" aria-label="Media Injection">
-                <!--button class="btn btn-outline-secondary" id="preview-button" data-bs-toggle="tooltip" data-bs-placement="top" title="Preview Media">
-                    <img src="../images/selfviewExampleUHD.jpeg" alt="Preview 1" class="">
+                <button class="btn btn-outline-secondary" id="preview-button" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Preview Media">
+                    <video id="player-preview" class=""  muted playsinline></video>
                     <span class="preview-text">Preview</span>
-                </button-->
-                <button class="btn icon-button btn-outline-secondary" id="dpreview-button" data-bs-toggle="tooltip" data-bs-placement="top" title="Preview Media">
-                    <i class="bi bi-eye"></i>
-                    <span>Preview</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary" id="record-button" data-bs-toggle="tooltip" data-bs-placement="top" title="Record Media">
+                <button class="btn icon-button btn-outline-secondary" id="inject-button" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Inject Media">
+                    <i class="bi bi-box-arrow-in-down"></i>
+                    <span>Inject</span>
+                </button>
+                <button class="btn icon-button btn-outline-secondary blinking d-none" id="inject-stop-button" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Stop Media Injection">
+                    <i class="bi bi-stop-fill"></i>
+                    <span>Stop</span>
+                </button>
+                <button class="btn icon-button btn-outline-secondary" id="record-button" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Record New Media">
                     <i class="bi bi-record-circle"></i>
                     <span>Record</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary" id="add-media-button" data-bs-toggle="tooltip" data-bs-placement="top" title="Add Media">
+                <button class="btn icon-button btn-outline-secondary" id="add-media-button" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Add Media">
                     <i class="bi bi-file-earmark-arrow-up"></i>
                     <span>Upload</span>
                 </button>
             </div>
         </div>
-
-        <div class="col-1 vertical-divider">
+        <!--div class="col vertical-divider previews">
+            <div class="d-inline-block">
                 <h5>Camera</h5>
                 <img src="../images/selfviewExampleUHD.jpeg" alt="Preview 1"
                      class="img-thumbnail self-view-preview-image">
-        </div>
-        <div class="col-1">
+            </div>
+            <div class="d-inline-block">
                 <h5>Output</h5>
                 <img src="../images/selfviewExampleUHD.jpeg" alt="Preview 1"
                      class="img-thumbnail">
-        </div>
+            </div>
+        </div-->
+
     </div>
     <!-- END: STREAM MODIFICATION -->
 

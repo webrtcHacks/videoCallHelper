@@ -1,6 +1,7 @@
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
 @import "~bootstrap/scss/bootstrap";
-@import "bootstrap/scss/functions";
-@import "bootstrap/scss/variables";
 
 body {
   min-width: 800px; /* Minimum width before showing horizontal scroll */
@@ -64,11 +65,11 @@ body {
 }
 
 .icon-button {
-  min-width: 80px;
+  /*min-width: 80px;*/
   max-width: 120px;
   width: 100%;
   text-align: center;
-  height: 100%;
+  /*height: 100%;*/
 }
 
 .icon-button i {
@@ -83,6 +84,9 @@ body {
 }
 
 @media (max-width: 1200px) {
+  .icon-button {
+    min-width: 80px;
+  }
   .icon-button i {
     font-size: 20px;
   }
@@ -97,6 +101,10 @@ body {
 }
 
 @media (max-width: 1000px) {
+  .icon-button {
+    min-width: 60px;
+  }
+
   .icon-button span {
     display: none;
   }
@@ -243,25 +251,99 @@ h5 {
 /* Bad quality */
 
 
+/*
+.col-2 {
+  height: 100%;
+  min-width: 250px;
+  max-width: 300px;
+}
+
+ */
+
+.col-2-and-a-half {
+  height: 100%;
+  min-width: 300px;
+  max-width: 360px;
+}
+
+.btn {
+  height: 100%;
+}
+
+.btn-group {
+  /*min-height: 80px;*/
+}
+
+.btn-group .icon-button {
+  /*height: auto !important;*/
+}
+
 #preview-button {
-  /*position: relative;*/
+  position: relative;
   padding: 0;
+  width: auto;
+
+  /*
+    min-width: 80px;
+  max-width: 120px;
+  width: 100%;
+  text-align: center;
+  height: 100%;
+   */
 }
 
 #preview-button img {
   width: 100%;
-  height: auto;
-  min-width: 80px;
+  height: 100%; /* Ensure the image scales to fill the button */
+  object-fit: contain; /* Maintain the aspect ratio of the image */
+  display: block;
+}
+
+#preview-button .preview-text {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: $white;
+  background-color: rgba($black, 0.5);
+  /*padding: $spacer * 0.25;*/
+  border-bottom-left-radius: $border-radius;
+  font-size: $font-size-sm;
+  text-align: center;
+  width: 100%;
+}
+
+.previews {
+  display: flex;
+  flex-wrap: nowrap; /* Prevent wrapping */
+  overflow-x: auto; /* Allow horizontal scrolling if needed */
+}
+
+.previews .d-inline-block {
+  flex: 0 0 auto; /* Ensure the child elements do not shrink or grow */
+}
+
+.previews img {
+  width: 100%;
   max-width: 120px;
+  height: auto;
 }
 
-h6 {
-  font-size: $font-size-base * 0.66;
-  font-weight: $font-weight-bolder;
-  color: $gray-500;
-  text-transform: uppercase;
+#player-preview {
+  max-height: 69px;
+  object-fit: contain;
+  max-width: 124px;
+  min-width: 70px;
+  border-top-left-radius: $border-radius;
+  border-bottom-left-radius: $border-radius;
 }
 
+
+@media (min-width: 1200px) {
+  .icon-button {
+    min-width: 60px; /* Ensure consistent width on large screens */
+  }
+}
 
 /************ OLD STUFF ************/
 
