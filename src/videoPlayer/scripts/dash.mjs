@@ -10,13 +10,14 @@ const previewButton = document.querySelector("#preview-button");
 const stopButton = document.querySelector("#inject-stop-button");
 
 let arrayBuffer = null;
-let mimeType = null;
 let mediaRecorder;
 let recordedChunks = [];
 
 
 // Handle file input for adding media
 addMediaButton.addEventListener('click', async () => {
+    // Remove any existing players - assume one is there if there is an arrayBuffer
+
     try {
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
@@ -27,13 +28,23 @@ addMediaButton.addEventListener('click', async () => {
         });
 
         arrayBuffer = await file.arrayBuffer();
-        mimeType = file.type;
 
         // Play the buffer in the video element
         playerPreview.src = URL.createObjectURL(file);
         playerPreview.currentTime = 1;
         playerPreview.load();
 
+        // Load this into storage
+        const data = {
+            mimeType: file.type,
+            loop: true,
+            buffer: arrayBufferToBase64(arrayBuffer),
+            videoTimeOffsetMs: playerPreview.currentTime * 1000,
+            currentTime: new Date().getTime()
+        };
+
+        await storage.update('player', data);
+        debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
 
     } catch (err) {
         debug(err);
@@ -52,7 +63,7 @@ recordButton.addEventListener('click', async () => {
 
 // Start recording function
 async function startRecording() {
-    let stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
     mediaRecorder = new MediaRecorder(stream);
     playerPreview.srcObject = stream;
 
@@ -69,7 +80,7 @@ async function startRecording() {
         recordButton.innerHTML = '<i class="bi bi-record-circle"></i>';
         recordButton.classList.remove('recording');
 
-        const recordedBlob = new Blob(recordedChunks, { type: 'video/webm' });
+        const recordedBlob = new Blob(recordedChunks, {type: 'video/webm'});
         const url = URL.createObjectURL(recordedBlob);
         debug("recording:", recordedBlob, url);
         playerPreview.src = url;
@@ -90,71 +101,65 @@ function stopRecording() {
 }
 
 
-
-
 // Handle injection of media
-// content triggers injection based on a change to teh arrayBuffer
-// Handle injection of media
-injectButton.addEventListener('click', async () => {
+injectButton.onclick = async () => {
     if (!arrayBuffer) {
         debug("no media content to send");
         return;
     }
 
     debug("injecting media content");
+    mh.sendMessage(c.INJECT, m.PLAYER_START, {});
 
-    // ToDo: refactor this
-    const data = {
-        mimeType: mimeType,
-        loop: true,
-        buffer: arrayBufferToBase64(arrayBuffer),
-        videoTimeOffsetMs: playerPreview.currentTime * 1000,
-        currentTime: new Date().getTime()
-    };
+    // show the player in sync with the injection
+    playerPreview.currentTime = 0;
+    playerPreview.play();
 
-    await storage.update('player', data);
-    debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
-
+    // hide the inject button and show the stop button
     injectButton.classList.add('d-none');
     stopButton.classList.remove('d-none');
 
-});
+}
 
-stopButton.addEventListener('click', async () => {
-    debug("stopping injection");
-    mh.sendMessage(c.INJECT, m.PLAYER_STOP, {});
-    playerPreview.stop();
+stopButton.onclick = async () => {
+    debug("stopping injection playback");
+    mh.sendMessage(c.INJECT, m.PLAYER_PAUSE, {});
+    playerPreview.pause();
+    playerPreview.currentTime = 1;
     stopButton.classList.add('d-none');
     injectButton.classList.remove('d-none');
-});
+}
 
-// Initial setup - load the video from storage if it is there and preview it
+
+// Initial setup - load the preview video from storage
 if (storage.contents['player']?.buffer) {
     const buffer = storage.contents['player'].buffer;
     const mimeType = storage.contents['player'].mimeType;
 
     arrayBuffer = base64ToBuffer(buffer);
-    const blob = new Blob([arrayBuffer], { type: mimeType });
+    const blob = new Blob([arrayBuffer], {type: mimeType});
     playerPreview.src = URL.createObjectURL(blob);
     playerPreview.currentTime = 1;
     playerPreview.load();
 
     // remove the disabled class from the inject button
     injectButton.classList.remove('disabled');
+
 }
 
 
 // Play video on hover
 previewButton.addEventListener('mouseover', () => {
-    if(playerPreview.src){
+    if (playerPreview.src) {
         playerPreview.currentTime = 0;
-        playerPreview.play();
+        playerPreview.play()
+            .catch((err) => debug("error playing video ", err));
     }
 });
 
 // Pause video when not hovering
 previewButton.addEventListener('mouseout', () => {
-    if(playerPreview.src) {
+    if (playerPreview.src) {
         playerPreview.pause();
         playerPreview.currentTime = 1;
     }

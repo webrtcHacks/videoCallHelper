@@ -5,11 +5,18 @@ const wmh = new InjectToWorkerMessageHandler();
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️🎥 `);
 
 
-let playerAudioTrack = null;
+/** @type {HTMLVideoElement} */
+let videoPlayerElement = null;
+
+
+mh.addListener(m.PLAYER_TRANSFER, async (data) => {
+    debug("player transfer", data);
+    videoPlayerElement = document.querySelector(`video#${data.id}`);
+});
 
 
 /**
- * Setup the video player
+ * Set up the video player
  *  - video: create a canvas to capture and resize the video and get the track
  *  - audio: create a MediaStreamDestination to capture the audio and get the track
  *  - passes a readable stream to the worker
@@ -18,34 +25,39 @@ let playerAudioTrack = null;
  */
 export function setupPlayer(sourceTrack, workerName) {
 
-    let videoPlayer;
+    /** @type {MediaStreamTrack} */
+    let playerAudioTrack = null;
+    /** @type {MediaStreamTrackProcessor} */
+    let processor= null;
+    let hasAlreadyPlayed = false;
 
     /**
      * Set up the canvas or audio context on player start
      */
-    mh.addListener(m.PLAYER_START, async (data) => {
-        debug("player loaded: ", data);
-        /**@type {HTMLVideoElement} */
-        videoPlayer = document.querySelector(`video#${data.id}`);
-        debug(sourceTrack.getSettings());
+    /*mh.addListener(m.PLAYER_LOAD, async (data) => {
+        // stop any previous workers
+        if(processor){
+            debug("stopping previous player before loading a new one");
+            wmh.sendMessage(workerName, m.PLAYER_END);
+        }*/
 
-        let processor;
+        debug("Player setup", videoPlayerElement, sourceTrack.getSettings());
 
         if (sourceTrack.kind === "audio") {
 
             // ToDo: Google Meet uses 2 audio tracks but I can only attach a single context
             // use webAudio to capture audio from the video element
 
-            async function captureAudio(mediaElement){
+            function captureAudio(mediaElement){
                 if(!playerAudioTrack || playerAudioTrack?.readyState === 'ended'){
                     const audioCtx = new AudioContext();
-                    const sourceNode = audioCtx.createMediaElementSource(videoPlayer);
+                    const sourceNode = audioCtx.createMediaElementSource(videoPlayerElement);
                     const destinationNode = audioCtx.createMediaStreamDestination();
                     sourceNode.connect(destinationNode);
                     // mute the video without muting the source
                     audioCtx.setSinkId({type: "none"})
                         .catch((error) => debug("failed to mute audio - setSinkId error: ", error));
-                    videoPlayer.muted = false;
+                    videoPlayerElement.muted = false;
                     playerAudioTrack = destinationNode.stream.getAudioTracks()[0];
                 }
 
@@ -53,9 +65,9 @@ export function setupPlayer(sourceTrack, workerName) {
                 return playerAudioTrack;
             }
 
-            processor = new MediaStreamTrackProcessor(await captureAudio(videoPlayer));
+            processor = new MediaStreamTrackProcessor(captureAudio(videoPlayerElement));
         } else if (sourceTrack.kind === "video") {
-            debug("track settings: ", sourceTrack.getSettings());
+            // debug("track settings: ", sourceTrack.getSettings());
             const {height, width, frameRate} = sourceTrack.getSettings();
 
             /* Things that didn't work
@@ -82,7 +94,7 @@ export function setupPlayer(sourceTrack, workerName) {
 
             // Implementing a cover to fit strategy
             function drawVideoPlayerToCanvas() {
-                const sourceAspectRatio = videoPlayer.videoWidth / videoPlayer.videoHeight;
+                const sourceAspectRatio = videoPlayerElement.videoWidth / videoPlayerElement.videoHeight;
                 const targetAspectRatio = width / height;
                 let drawWidth, drawHeight, offsetX, offsetY;
 
@@ -101,7 +113,7 @@ export function setupPlayer(sourceTrack, workerName) {
                     offsetY = (height - drawHeight) / 2;
                 }
 
-                ctx.drawImage(videoPlayer, offsetX, offsetY, drawWidth, drawHeight);
+                ctx.drawImage(videoPlayerElement, offsetX, offsetY, drawWidth, drawHeight);
                 requestAnimationFrame(drawVideoPlayerToCanvas); // Keep updating the canvas with the video frame
             }
 
@@ -116,22 +128,58 @@ export function setupPlayer(sourceTrack, workerName) {
             processor = new MediaStreamTrackProcessor(playerVideoTrack);
         } else {
             debug("ERROR! Video player fail - unknown kind: ", sourceTrack);
+        }
+
+        debug(`${sourceTrack.kind} player loaded`);
+
+    //});
+
+    /**
+     * Start the player
+     *  - data not currently used
+     */
+    mh.addListener(m.PLAYER_START, async (data) => {
+        if(!videoPlayerElement){
+            debug("ERROR! Video player not loaded");
             return;
         }
 
-        const reader = processor.readable;
-
-        wmh.sendMessage(workerName, m.PLAYER_START, {reader}, [reader]);
-        await videoPlayer.play();
-
+        // if there is already a processor then assume we just need to resume
+        if(hasAlreadyPlayed){
+            wmh.sendMessage(workerName, m.PLAYER_RESUME);
+            videoPlayerElement.currentTime = 0;    // restart the video for now since I have no timing controls in dash
+            videoPlayerElement.play()
+                .catch((error) => debug("failed to resume video - error: ", error));
+        }
+        // otherwise start a new player transform in the worker
+        else {
+            const reader = processor.readable;
+            wmh.sendMessage(workerName, m.PLAYER_START, {reader}, [reader]);
+            videoPlayerElement.play()
+                .catch((error) => debug("failed to play video - error: ", error));
+            hasAlreadyPlayed = true;
+        }
     });
 
     /**
-     * Stop the player
+     * Pause the player
      */
-    mh.addListener(m.PLAYER_STOP, async (data) => {
-        debug("player stopped: ", data);
-        wmh.sendMessage(workerName, m.PLAYER_STOP);
-        videoPlayer.pause();
+    mh.addListener(m.PLAYER_PAUSE, async (data) => {
+        debug("player paused: ", data);
+        wmh.sendMessage(workerName, m.PLAYER_PAUSE);
+        videoPlayerElement.pause();
+    });
+
+    /**
+     * End the player
+     */
+    mh.addListener(m.PLAYER_END, async (data) => {
+        debug("player ended: ", data);
+        wmh.sendMessage(workerName, m.PLAYER_END);
+        if(videoPlayerElement){
+            videoPlayerElement.pause();
+            videoPlayerElement.remove();
+            videoPlayerElement = null;
+        }
     });
 }

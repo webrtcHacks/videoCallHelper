@@ -653,6 +653,7 @@ export const MESSAGE = {
 
     // used in inject.js
     GET_ALL_SETTINGS: 'get_all_settings',
+    INJECT_LOADED: 'inject_loaded',
 
     STREAM_TRANSFER_COMPLETE: 'stream_transfer_complete',
     STREAM_TRANSFER_FAILED: 'stream_transfer_failed',
@@ -713,20 +714,16 @@ export const MESSAGE = {
     // bad connection
     GET_BAD_CONNECTION_SETTINGS: 'get_background_connection_settings',
     UPDATE_BAD_CONNECTION_SETTINGS: 'update_bad_connection_settings',
-
-    /*
-    IMPAIRMENT_SETUP: 'setup_impairment',
-    IMPAIRMENT_PASSTHROUGH: 'passthrough',
-    IMPAIRMENT_MODERATE: 'moderate',
-    IMPAIRMENT_SEVERE: 'severe',
-     */
-
     IMPAIRMENT_SETUP: 'setup_impairment',
     IMPAIRMENT_CHANGE: 'change_impairment',  // maps to UPDATE_BAD_CONNECTION_SETTINGS
 
     // player
     PLAYER_START: 'player_start',
-    PLAYER_STOP: 'player_stop',
+    PLAYER_LOAD: 'player_load',
+    PLAYER_TRANSFER: 'player_transfer',
+    PLAYER_PAUSE: 'player_pause',
+    PLAYER_RESUME: 'player_resume',     // used in the worker to skip reading
+    PLAYER_END: 'player_end',               // used in the worker to end the transform
     FRAME_STREAM: 'frame_stream',
 
     // Inject->Worker

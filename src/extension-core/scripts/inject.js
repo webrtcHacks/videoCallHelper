@@ -156,8 +156,7 @@ async function shimGetUserMedia(constraints) {
         vch.gumTracks.push(deviceManager.unalteredStream.getTracks());
         await transferStream(deviceManager.unalteredStream);
         // await transferStream(fakeStream);
-        // ToDo: debugging
-        debug("returning fakeStream", fakeStream);
+        // debug("returning fakeStream", fakeStream);
         return fakeStream;
     }
     // ToDo: make badConnection and injectPlayer the same enabled switch
@@ -468,3 +467,6 @@ const vch = {
 }
 
 if (process.env.NODE_ENV) window.vch = vch;
+
+// Tell content script that the inject script is loaded
+await mh.sendMessage(c.CONTENT, m.INJECT_LOADED, {time: Date.now() });

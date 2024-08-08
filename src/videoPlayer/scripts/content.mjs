@@ -8,8 +8,19 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 🎥‍ 
 const storage = await new StorageHandler();
 const mh = new MessageHandler(c.CONTENT);
 
-
+/* type {HTMLVideoElement} */
+let videoPlayer = null;
 export let imagePreview = null; // used to hold the gUM preview image generator
+let injectReady = false;
+
+
+mh.addListener(m.INJECT_LOADED, async () => {
+    injectReady = true;
+});
+
+// await storage.update('player', {active: false});
+
+
 /*
    Not easy to send a stream to dash:
      * can't access the iframe content - CORS issues
@@ -53,6 +64,8 @@ mh.addListener(m.TOGGLE_DASH, async () => {
         debug("showPreview not started and dash closed");
 });
 
+// ToDo: consider if I want to show this
+/*
 // restart on a new stream
 mh.addListener(m.GUM_STREAM_START, async () => {
     if (window.vch.dashOpen) {
@@ -63,52 +76,122 @@ mh.addListener(m.GUM_STREAM_START, async () => {
 
 });
 
+ */
+
+/**
+ * Load a media file into a video element
+ * @returns {Promise<void>}
+ */
+ async function loadMedia() {
+
+     return new Promise(async (resolve, reject) => {
+
+         /**
+          * @param  {string} buffer - base64 encoded video file
+          * @param {string} mimeType - the mime type of the video file
+          * @param  {boolean} loop - loop the video (not used)
+          * @param {number} playbackOffset
+          */
+
+         const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = storage.contents['player'];
+         if(!buffer){
+             debug("no media content in storage to load");
+             reject("no media content in storage to load");
+         }
+         if(!mimeType){
+             debug("no mimeType in storage to load media");
+             reject("no mimeType in storage to load media");
+         }
+
+         const transmissionDelay = new Date().getTime() - currentTime;
+         const playbackOffset = (videoTimeOffsetMs + transmissionDelay) / 1000;
+
+         const arrayBuffer = base64ToBuffer(buffer);
+         const blob = new Blob([arrayBuffer], {type: mimeType}); // Ensure the MIME type matches the video format
+
+         // Set up the video player if it doesn't exist
+         if(!videoPlayer) {
+             // ToDo: use shadow DOM
+             videoPlayer = document.createElement('video');
+             videoPlayer.src = URL.createObjectURL(blob);
+             videoPlayer.loop = loop;
+             videoPlayer.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
+             videoPlayer.preload = "auto";
+             videoPlayer.hidden = true;
+             videoPlayer.muted = true;
+             // set the style to fit to cover
+             // videoPlayer.style.cssText = "object-fit:cover;";
+
+             // captureStream takes the source video size so this doesn't matter
+             // const {width, height} = streams.at(-1)?.getVideoTracks()[0]?.getSettings();
+             // videoPlayer.height = height;
+             // videoPlayer.width = width;
+
+             document.body.appendChild(videoPlayer);
+             debug("added video element", videoPlayer);
+
+              function sendVideoElement(){
+                 if(injectReady)
+                      mh.sendMessage(c.INJECT, m.PLAYER_TRANSFER, {id: videoPlayer.id});
+                 else
+                    setTimeout(async ()=> sendVideoElement(), 500)
+             }
+             sendVideoElement();
+
+
+             videoPlayer.oncanplay = async () => {
+                 videoPlayer.oncanplay = null;
+                 // videoPlayer.currentTime = playbackOffset;
+                 debug("Adjusted playback to match sync", playbackOffset);
+                 resolve();
+             };
+         }
+         else {
+             videoPlayer.src = URL.createObjectURL(blob);
+             debug("Adjusted playback to match sync", playbackOffset);
+             resolve();
+         }
+     });
+
+}
+
+
+/**
+ *  Look for storage changes and update media if a new media file is loaded
+ *   - used to preload media for faster playback
+ */
 storage.addListener('player', async (newValue) => {
     debug("player storage changed", newValue);
 
+    // In the future also check for changes to other video params
     if (newValue.buffer) {
-        // const buffer = base64ToBuffer(newValue.buffer);
-        // debug("buffer", buffer);
-        // newValue.buffer  = buffer;
-
-        const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = newValue;
-
-        const videoPlayer = document.createElement('video');
-        videoPlayer.autoplay = true;
-        videoPlayer.loop = loop;
-        videoPlayer.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
-        videoPlayer.preload = "auto";
-        videoPlayer.hidden = true;
-        videoPlayer.muted = true;
-        // set the style to fit to cover
-        // videoPlayer.style.cssText = "object-fit:cover;";
-
-        // captureStream takes the source video size so this doesn't matter
-        // const {width, height} = streams.at(-1)?.getVideoTracks()[0]?.getSettings();
-        // videoPlayer.height = height;
-        // videoPlayer.width = width;
-
-        document.body.appendChild(videoPlayer);
-        debug("added video element", videoPlayer);
-
-        videoPlayer.oncanplay = () => {
-            videoPlayer.oncanplay = null;
-            const transmissionDelay = new Date().getTime() - currentTime;
-            const playbackOffset = (videoTimeOffsetMs + transmissionDelay) / 1000;
-            videoPlayer.currentTime = playbackOffset;
-            debug("Adjusted playback to match sync", playbackOffset);
-            mh.sendMessage(c.INJECT, m.PLAYER_START, {id: videoPlayer.id});
-        };
-
-        const arrayBuffer = base64ToBuffer(buffer);
-        const blob = new Blob([arrayBuffer], {type: mimeType}); // Ensure the MIME type matches the video format
-        videoPlayer.src = URL.createObjectURL(blob);
-
-
-        // ToDo: revoke the blobURL when it is no longer needed
-        // URL.revokeObjectURL(blobUrl);
-
-        // ToDo: player controls
-
+        await loadMedia();
     }
 });
+
+
+/**
+ *  Tell inject to take the video player stream
+ */
+/*
+mh.addListener(m.GUM_STREAM_START, async () => {
+    if (!storage.contents['player']?.enabled) return;
+
+    if (videoPlayer) {
+        mh.sendMessage(c.INJECT, m.PLAYER_START, { id: videoPlayer.id });
+        // await storage.update('player', { active: true });
+    } else {
+        try {
+            await loadMedia();
+            mh.sendMessage(c.INJECT, m.PLAYER_START, { id: videoPlayer.id });
+            // await storage.update('player', { active: true });
+        } catch (error) {
+            debug("Error loading media", error);
+        }
+    }
+});
+ */
+
+
+
+await loadMedia();
