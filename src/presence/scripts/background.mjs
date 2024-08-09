@@ -33,7 +33,7 @@ const isPresenceActive = () => storage.contents?.presence?.active;
  */
 async function setPresenceState(isOn) {
     const color = isOn ? [255, 0, 0] : [0, 0, 0];
-    const iconPath = isOn ? "../images/v_rec.png" : "../images/v_128.png";
+    const iconPath = isOn ? "../media/v_rec.png" : "../media/v_128.png";
 
     await chrome.action.setIcon({path: iconPath});
 

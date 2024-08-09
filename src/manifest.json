@@ -2,18 +2,18 @@
   "name": "Video Call Helper",
   "action": {
     "default_icon": {
-      "16": "images/v_16.png",
-      "48": "images/v_48.png",
-      "128": "images/v_128.png"
+      "16": "media/v_16.png",
+      "48": "media/v_48.png",
+      "128": "media/v_128.png"
         },
     "default_title": "Video Call Helper"
   },
   "manifest_version": 3,
   "version": "0.3.1",
   "icons": {
-    "16": "images/v_16.png",
-    "48": "images/v_48.png",
-    "128": "images/v_128.png"
+    "16": "media/v_16.png",
+    "48": "media/v_48.png",
+    "128": "media/v_128.png"
   },
   "description": "Video Call Helper",
   "permissions": [
@@ -45,7 +45,7 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' ; object-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'",
+    "extension_pages": "script-src 'self'; script-src-elem 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'",
     "isolated_world": "script-src 'self' 'unsafe-inline'"
   },
   "options_page": "pages/options.html",
@@ -55,7 +55,7 @@
         "pages/*.html",
         "scripts/*.js",
         "styles/*.css",
-        "images/*.png"
+        "media/*.*"
       ],
       "matches": [
         "http://*/*",

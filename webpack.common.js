@@ -79,7 +79,7 @@ const extensionConfig = {
                 scheme: 'data',
                 type: 'asset/resource',
                 generator: {
-                    filename: `../images/[hash].svg`
+                    filename: `../media/[hash].svg`
                 }
             },
             {
@@ -151,7 +151,8 @@ const extensionConfig = {
         new CopyPlugin({
             patterns: [
                 // Icons
-                {from: "src/static/icons", to: "../images"},
+                {from: "src/static/icons", to: "../media"},
+                {from: "src/static/media", to: "../media"},
             ],
         }),
     ],

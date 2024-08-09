@@ -51,7 +51,7 @@ async function checkTabCommunication(tab) {
         await mh.ping(tab.id);
         debug(`Content script loaded on tab ${tab.id}`);
     } catch (error) {
-        const iconPath = "../images/v_error.png";
+        const iconPath = "../media/v_error.png";
         await chrome.action.setIcon({ tabId: tab.id, path: iconPath });
         const url = chrome.runtime.getURL("../pages/popup-error.html");
         await chrome.action.setPopup({ tabId: tab.id, popup: url });
@@ -153,7 +153,7 @@ chrome.action.onClicked.addListener(async (tab) => {
         // await mh.ping(tab.id);
         await mh.sendMessage(c.CONTENT, m.TOGGLE_DASH, { tabId: tab.id });
     } catch (error) {
-        const iconPath = "../images/v_error.png";
+        const iconPath = "../media/v_error.png";
         await chrome.action.setIcon({ tabId: tab.id, path: iconPath });
         const url = chrome.runtime.getURL("../pages/popup-error.html");
         await chrome.action.setPopup({ tabId: tab.id, popup: url });
@@ -169,6 +169,7 @@ await checkAllTabs();
 
 /**
  * Content Security Overrides
+ *  - needed for Teams
  */
 
     // ToDo: figure out how to actually modify or append the CSP header
