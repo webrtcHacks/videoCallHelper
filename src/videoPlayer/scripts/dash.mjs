@@ -16,7 +16,8 @@ let recordedChunks = [];
 
 // Handle file input for adding media
 addMediaButton.addEventListener('click', async () => {
-    // Remove any existing players - assume one is there if there is an arrayBuffer
+
+    playerPreview.src = "../media/loading_spinner.mp4";
 
     try {
         const fileInput = document.createElement('input');
@@ -63,8 +64,10 @@ recordButton.addEventListener('click', async () => {
 
 // Start recording function
 async function startRecording() {
-    let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+    // ToDo: try to reuse constraints from the user?
+    const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
     mediaRecorder = new MediaRecorder(stream);
+    playerPreview.src = null;
     playerPreview.srcObject = stream;
 
     mediaRecorder.ondataavailable = (event) => {
@@ -77,7 +80,7 @@ async function startRecording() {
         stream.getTracks().forEach(track => track.stop());
         playerPreview.srcObject = null;
 
-        recordButton.innerHTML = '<i class="bi bi-record-circle"></i>';
+        recordButton.innerHTML = '<i class="bi bi-record-circle"></i><span>Re-record</span>';
         recordButton.classList.remove('recording');
 
         const recordedBlob = new Blob(recordedChunks, {type: 'video/webm'});
@@ -88,16 +91,30 @@ async function startRecording() {
         playerPreview.load();
 
         arrayBuffer = await recordedBlob.arrayBuffer();
+
+        // Load this into storage
+        const data = {
+            mimeType: recordedBlob.type,
+            loop: true,
+            buffer: arrayBufferToBase64(arrayBuffer),
+            videoTimeOffsetMs: 0,
+            currentTime: new Date().getTime()
+        };
+
+        await storage.update('player', data);
+        debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
+
+
     };
 
     mediaRecorder.start();
-    recordButton.innerHTML = '<i class="bi bi-stop-fill blinking"></i>';
+    recordButton.innerHTML = '<i class="bi bi-stop-fill blinking"></i><span>Recording</span>';
 }
 
 // Stop recording function
 function stopRecording() {
     mediaRecorder.stop();
-    recordButton.innerHTML = '<i class="bi bi-record-circle"></i>';
+    recordButton.innerHTML = '<i class="bi bi-record-circle"></i><span>Record</span>';
 }
 
 
@@ -121,6 +138,7 @@ injectButton.onclick = async () => {
 
 }
 
+// Handle stopping the injection
 stopButton.onclick = async () => {
     debug("stopping injection playback");
     mh.sendMessage(c.INJECT, m.PLAYER_PAUSE, {});
@@ -165,15 +183,3 @@ previewButton.addEventListener('mouseout', () => {
     }
 });
 
-
-/*
-storage.addListener('player', (newValue) => {
-    debug("new player data received", newValue);
-    if (newValue.buffer && newValue.currentTime > lastRecordingTime) {
-        arrayBuffer = base64ToBuffer(newValue.buffer);
-        const blob = new Blob([arrayBuffer], { type: newValue.mimeType });
-        playerPreview.src = URL.createObjectURL(blob);
-        lastRecordingTime = newValue.currentTime;
-    }
-});
- */

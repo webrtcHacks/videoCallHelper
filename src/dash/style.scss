@@ -65,11 +65,9 @@ body {
 }
 
 .icon-button {
-  /*min-width: 80px;*/
   max-width: 120px;
   width: 100%;
   text-align: center;
-  /*height: 100%;*/
 }
 
 .icon-button i {
@@ -85,14 +83,21 @@ body {
 
 @media (max-width: 1200px) {
   .icon-button {
-    min-width: 80px;
+    width: 86px;
+    min-width: 60px; /* Ensure consistent width on large screens */
   }
+
   .icon-button i {
     font-size: 20px;
   }
 
   .icon-button span {
     font-size: 12px;
+  }
+
+  /* TODO: reconcile .btn-group with .icon-button */
+  .btn-group .btn {
+    width: 86px;
   }
 
   .device-manager-selection-buttons button {
@@ -274,22 +279,16 @@ h5 {
   /*min-height: 80px;*/
 }
 
-.btn-group .icon-button {
-  /*height: auto !important;*/
+.btn-group .btn {
+  height: 72px;
 }
+
 
 #preview-button {
   position: relative;
   padding: 0;
   width: auto;
-
-  /*
-    min-width: 80px;
   max-width: 120px;
-  width: 100%;
-  text-align: center;
-  height: 100%;
-   */
 }
 
 #preview-button img {
@@ -339,11 +338,7 @@ h5 {
 }
 
 
-@media (min-width: 1200px) {
-  .icon-button {
-    min-width: 60px; /* Ensure consistent width on large screens */
-  }
-}
+
 
 /************ OLD STUFF ************/
 
