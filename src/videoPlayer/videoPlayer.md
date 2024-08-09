@@ -25,14 +25,6 @@ Button listeners:
 * addMediaButton -  uses a file input to open any video file and then loads it to storage.
 
 
-
-TODO
-
-
-
-
-
-
 ## Content 
 
 * `loadMedia` function - sets up a new video element and sets a converted string buffer as its source
@@ -73,9 +65,15 @@ If paused it will just return the frame the transformManager gives to it
 
 ----
 TODO:
-- Recording
 - enable / disable logic
 - Review the PLAYER_END logic
-- Show "loading" in the previewVideo when loading
-- init storage.contents.player.enabled 
+- reconcile css issues
+- fix docs
+
+#### Stream modification  button
+
+Enabled & gUM -> disabled:  PLAYER_END & warning
+Enabled & no-gUM -> disabled: PLAYER_END & warning
+Disabled & gUM -> enabled:  warning
+Disabled & no-gUM -> enabled:  do nothing
 

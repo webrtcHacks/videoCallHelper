@@ -16,15 +16,15 @@ export function base64ToBuffer(base64) {
 
 /**
  * Helper to convert ArrayBuffer to base64 needed for localStorage
- * @param buffer
+ * @param {ArrayBuffer} buffer
  * @returns {string}
  */
 export function arrayBufferToBase64(buffer) {
-    let binary = '';
     const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
+    const chunkSize = 0x8000; // 32KB chunks
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
     }
     return window.btoa(binary);
 }
