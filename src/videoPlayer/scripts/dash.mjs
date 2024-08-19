@@ -18,8 +18,6 @@ let recordedChunks = [];
 addMediaButton.addEventListener('click', async () => {
 
     playerPreview.src = "../media/loading_spinner.mp4";
-    playerPreview.loop = true;
-    playerPreview.play();
 
     try {
         const fileInput = document.createElement('input');
@@ -102,7 +100,6 @@ async function startRecording() {
 
     // Get user media with updated constraints
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
     mediaRecorder = new MediaRecorder(stream);
     playerPreview.src = null;
     playerPreview.srcObject = stream;
