@@ -47,13 +47,14 @@ export async function showPreview() {
 }
 
 // Stop the preview image stream if the dash is closed
+/*
 mh.addListener(m.TOGGLE_DASH, async () => {
     // const iframe = document.querySelector('iframe#vch_dash');
     // if (!iframe)
         // wait for 500 ms to see if the dash is opening
         await new Promise(resolve => setTimeout(resolve, 500));
 
-    debug(`toggleDash: dash is ${window.vch.dashOpen ? "open" : "closed" }`);
+    debug(`toggleDash: dash is ${window.vch?.dashOpen ? "open" : "closed" }`);
 
     if (window.vch.dashOpen)
         await showPreview();
@@ -63,6 +64,7 @@ mh.addListener(m.TOGGLE_DASH, async () => {
     } else
         debug("showPreview not started and dash closed");
 });
+ */
 
 // ToDo: consider if I want to show this
 /*
@@ -96,7 +98,8 @@ mh.addListener(m.GUM_STREAM_START, async () => {
          const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = storage.contents['player'];
          if(!buffer){
              debug("no media content in storage to load");
-             reject("no media content in storage to load");
+             resolve();
+             // reject("no media content in storage to load");
          }
          if(!mimeType){
              debug("no mimeType in storage to load media");
@@ -165,7 +168,7 @@ storage.addListener('player', async (newValue) => {
 
     // In the future also check for changes to other video params
     if (newValue.buffer) {
-        await loadMedia();
+        await loadMedia().catch(error => debug("Error loading media into player", error));
     }
 });
 
@@ -194,4 +197,4 @@ mh.addListener(m.GUM_STREAM_START, async () => {
 
 
 
-await loadMedia();
+await loadMedia().catch(error => debug("Error loading media into player", error));
