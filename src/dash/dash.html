@@ -10,9 +10,9 @@
         <div class="tab" data-target="#home">Home</div>
         <div class="tab" data-target="#self-view">Self-view</div>
         <div class="tab" data-target="#device-manager">Device Manager</div>
-        <div class="tab active" data-target="#modify-stream">Modify Stream</div>
+        <div class="tab" data-target="#modify-stream">Modify Stream</div>
         <div class="tab" data-target="#record">Record</div>
-        <div class="tab" data-target="#presence">Presence</div>
+        <div class="tab active" data-target="#presence">Presence</div>
     </div>
     <div class="content" id="home">
         <div class="col-1">
@@ -174,7 +174,7 @@
     <!-- END: DEVICE MANAGER -->
 
     <!-- START: STREAM MODIFICATION  -->
-    <div class="content active" id="modify-stream">
+    <div class="content" id="modify-stream">
         <div class="col-1">
             <button class="btn icon-button btn-outline-secondary streamModificationButton" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Enable Stream Modification">
@@ -258,11 +258,118 @@
         </div>
     </div>
 
-    <div class="content" id="presence">
-        <div class="icon-button">
-            <i class="bi bi-person-check"></i>
-            <span>Presence</span>
+    <div class="content active" id="presence">
+        <!-- Presence Control -->
+        <div class="col col-2-and-a-half">
+            <button class="btn icon-button btn-outline-secondary" id="auto-update" data-bs-toggle="tooltip" data-bs-placement="top" title="Automatically update presence status">
+                <i class="bi bi-arrow-repeat"></i>
+                <span>Auto-update <br>ON</span>
+            </button>
+            <button class="btn icon-button btn-outline-secondary" id="manual-override" data-bs-toggle="tooltip" data-bs-placement="top" title="Manually set presence status">
+                <i class="bi bi-hand-index-thumb"></i>
+                <span>Force Status <br>ON</span>
+            </button>
         </div>
+
+        <!-- Presence Status -->
+        <div class="col col-2-and-a-half vertical-divider">
+            <div class="btn icon-button btn-outline-secondary presence-status-button" id="camera-in-use" data-bs-toggle="tooltip" data-bs-placement="top" title="Camera in use">
+                <span class="badge bg-secondary" id="camera-stream-count">0</span>
+                <i class="bi bi-camera"></i>
+                <span>Camera streams</span>
+            </div>
+            <div class="btn icon-button btn-outline-secondary presence-status-button" id="microphone-in-use" data-bs-toggle="tooltip" data-bs-placement="top" title="Microphone in use">
+                <span class="badge bg-secondary" id="microphone-stream-count">0</span>
+                <i class="bi bi-mic"></i>
+                <span>Mic streams</span>
+            </div>
+        </div>
+
+        <!-- Presence Config -->
+        <div class="col d-flex align-items-start">
+            <button class="btn icon-button btn-outline-secondary" id="toggle-tabs" data-bs-toggle="collapse" data-bs-target="#presenceConfigTabsContainer" aria-expanded="true" aria-controls="presenceConfigTabsContainer">
+                <i class="bi bi-gear"></i>
+                <span>Settings</span>
+            </button>
+            <div class="tab-group collapse ms-3" id="presenceConfigTabsContainer">
+                <div class="d-flex">
+                    <ul class="nav nav-tabs flex-column" id="presenceConfigTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="on-settings-tab" data-bs-toggle="tab" href="#on-settings" role="tab" aria-controls="on-settings" aria-selected="true">On Config</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="off-settings-tab" data-bs-toggle="tab" href="#off-settings" role="tab" aria-controls="off-settings" aria-selected="false">Off Config</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="btn btn-outline-secondary save-button" id="presence-save">
+                                <i class="bi bi-save me-2"></i>Save
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content ms-3" id="presenceConfigTabsContent">
+                        <div class="tab-pane fade show active" id="on-settings" role="tabpanel" aria-labelledby="on-settings-tab">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="presence-url">URL</label>
+                                        <input type="text" class="form-control" id="presence-url" placeholder="Enter URL">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="presence-method">Method</label>
+                                        <select class="form-control" id="presence-method">
+                                            <option value="GET">GET</option>
+                                            <option value="POST">POST</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="presence-headers">Headers</label>
+                                        <textarea class="form-control" id="presence-headers" rows="4" placeholder="Enter Headers"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="presence-body">Body</label>
+                                        <textarea class="form-control" id="presence-body" rows="4" placeholder="Enter Body"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="off-settings" role="tabpanel" aria-labelledby="off-settings-tab">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="presence-url-off">URL</label>
+                                        <input type="text" class="form-control" id="presence-url-off" placeholder="Enter URL">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="presence-method-off">Method</label>
+                                        <select class="form-control" id="presence-method-off">
+                                            <option value="GET">GET</option>
+                                            <option value="POST">POST</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="presence-headers-off">Headers</label>
+                                        <textarea class="form-control" id="presence-headers-off" rows="4" placeholder="Enter Headers"></textarea>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="presence-body-off">Body</label>
+                                        <textarea class="form-control" id="presence-body-off" rows="4" placeholder="Enter Body"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 </div>

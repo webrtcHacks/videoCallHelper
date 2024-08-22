@@ -177,7 +177,7 @@ h5 {
   border-radius: $btn-border-radius;
 }
 
-.accordion-horizontal .accordion-body {
+.accordion-horizontal-foo .accordion-body {
   display: flex; // Use flexbox to manage its children
   // flex-wrap: wrap;
   flex-grow: 1;
@@ -185,7 +185,19 @@ h5 {
   height: 100%;
   background-color: $gray-900;
   padding: 4px 2px;
-  max-height: 72px;
+  /*max-height: 72px;*/ /* TODO: when squished this breaks devices */
+  overflow: hidden;
+}
+
+.accordion-horizontal .accordion-body {
+  display: flex; /* Use flexbox to manage its children */
+  flex-grow: 0; /* Prevent vertical growth */
+  flex-basis: auto; /* Allow the element to take its content width */
+  flex-shrink: 1; /* Allow shrinking if necessary */
+  transition: width 0.2s ease;
+  height: 100%; /* Ensure the height is always 100% */
+  background-color: $gray-900;
+  padding: 4px 2px;
   overflow: hidden;
 }
 
@@ -337,7 +349,130 @@ h5 {
   border-bottom-left-radius: $border-radius;
 }
 
+/**
+    * Presence
+ */
+/*
+attempts to prevent the i and spans from turning to white on hover failed
+ */
 
+.presence-status-button:hover {
+  background-color: inherit; /* Keep the background color the same on hover */
+  color: inherit; /* Keep the text color the same on hover */
+}
+
+.presence-status-button.active {
+  /*background-color: $green; /* Green background for active buttons */
+  color: $white; /* White text for active buttons */
+  /*border-color: $green; /* Green border for active buttons */
+}
+
+.tab-group {
+  display: flex;
+  flex-direction: row;
+  height: 125px;
+  flex-grow: 1; /* Allow tab-group to use the rest of the available space */
+}
+
+.tab-content .form-group {
+  flex: 1;
+  margin-right: 10px;
+}
+
+.tab-content .form-control {
+  height: 30px;
+  padding: 5px;
+  font-size: 12px;
+}
+
+.tab-content .btn {
+  height: 30px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+#presenceConfigTabsContainer {
+  display: flex;
+  flex-direction: column;
+  margin-left: 10px;
+  flex-grow: 1; /* Allow presenceConfigTabsContainer to grow */
+}
+
+.nav-tabs {
+  font-size: 12px; /* Make the nav-tabs smaller */
+  padding: 0; /* Remove padding */
+}
+
+.tab-group {
+  display: flex;
+  flex-direction: row;
+  height: 125px;
+  flex-grow: 1; /* Allow tab-group to use the rest of the available space */
+  width: 100%; /* Ensure the tab-group takes full width */
+}
+
+.tab-content {
+  flex-grow: 1; /* Allow tab content to take the remaining space */
+  width: 100%; /* Ensure the tab-content takes full width */
+}
+
+.tab-pane .row {
+  display: flex;
+  flex-wrap: nowrap; /* Prevent wrapping */
+  gap: 5px; /* Add space between columns */
+  height: 100%; /* Ensure the row takes all available vertical space */
+  width: 100%; /* Ensure the row takes all available horizontal space */
+}
+
+.tab-pane .col {
+  flex: 1; /* Ensure columns take equal space */
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+  margin-left: 5px; /* Reduce left margin */
+  margin-right: 5px; /* Reduce right margin */
+}
+
+.tab-pane .form-group {
+  flex: 1; /* Allow form groups to grow */
+  margin-bottom: 10px; /* Add space between form groups */
+  margin-left: 5px; /* Reduce left margin */
+  margin-right: 5px; /* Reduce right margin */
+}
+
+#presence .nav-tabs {
+  font-size: 12px;
+  padding: 0;
+  flex-direction: column; /* Make tabs vertical */
+  min-width: 95px;
+}
+
+.save-button {
+  width: 100%; /* Ensure the button takes full width */
+  padding: 5px; /* Adjust padding */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#presence .tab-content .form-group {
+  flex: 1; /* Allow form groups to grow */
+  margin-bottom: 10px; /* Add space between form groups */
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+}
+
+#presence textarea {
+  flex-grow: 1; /* Allow the input and textarea to take the remaining space */
+  height: 100%; /* Ensure the input and textarea take full height */
+  padding: 5px;
+  font-size: 12px;
+}
+
+.col-flex-start {
+  width: auto; /* Take the minimum width necessary to hold its contents */
+  display: inline-block; /* Ensure it only takes up as much space as needed */
+  text-align: left; /* Align content to the left */
+}
 
 
 /************ OLD STUFF ************/

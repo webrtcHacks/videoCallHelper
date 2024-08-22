@@ -4,6 +4,7 @@ import {debug, storage} from "../../dash/dashCommon.mjs";
 // backend functions
 import {webRequest} from "./webRequest.mjs";
 
+/*
 const statusSpanElem = document.querySelector('span#presence_status');
 const enabledCheck = document.querySelector('input#enable_presence_check');
 const btnBusy = document.querySelector('button#busy');
@@ -12,6 +13,7 @@ const btnNotBusy = document.querySelector('button#not_busy');
 // initial state
 statusSpanElem.innerText = storage.contents?.presence?.active ? "active" : "inactive";
 enabledCheck.checked = storage.contents?.presence?.enabled;
+
 
 document.querySelector("button#presence_setup").onclick = async () => {
     const url = chrome.runtime.getURL("pages/presence.html");
@@ -45,3 +47,11 @@ storage.addListener('presence', (newValue) => {
 
 });
 /************ END presence ************/
+
+/*
+document.getElementById('toggle-tabs').addEventListener('click', () => {
+    debug("toggling tabs");
+    const tabGroup = document.getElementById('presenceConfigTabsContainer');
+    tabGroup.classList.toggle('collapse');
+});
+*/
