@@ -15,63 +15,59 @@
         <div class="tab active" data-target="#presence">Presence</div>
     </div>
     <div class="content" id="home">
-        <div class="col-1">
+        <div class="d-flex h-100">
             <button class="btn icon-button btn-outline-secondary deviceManagerButton" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Enable the Device Manager">
                 <i class="bi bi-menu-button"></i>
                 <span>Enable Device Manager</span>
             </button>
         </div>
-        <div class="col-1">
             <button class="btn icon-button btn-outline-secondary streamModificationButton" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Enable Stream Modification">
                 <i class="bi bi-emoji-smile-upside-down"></i>
                 <span>Enable Stream Modification</span>
             </button>
-        </div>
-        <div class="col-10">
             <div class="reload-warning" id="reloadWarning">
                 <span class="text-danger">Reload of this page required to enable this feature.</span>
                 <button class="btn btn-outline-danger reload-button">
                     <i class="bi bi-arrow-clockwise"></i>
                     <span>Reload Page</span>
                 </button>
-            </div>
         </div>
     </div>
 
     <!-- START: SELF-VIEW -->
     <div class="content" id="self-view">
-        <div class="col-1">
+        <div class="d-flex flex-row flex-nowrap h-100">
             <button class="btn icon-button btn-outline-secondary" id="self-view-blur-all" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Blur your self-view. Does not change what others sees.">
                 <i class="bi bi-person-fill blur-icon"></i>
                 <span>Turn Blur On</span>
             </button>
         </div>
-        <div class="col-1">
+        <div class="d-flex flex-row flex-nowrap h-100">
             <button class="btn icon-button btn-outline-secondary" id="self-view-frame-all" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Show framing cross-hair. Does not change what others sees.">
                 <i class="bi bi-person-bounding-box"></i>
                 <span>Turn Framing On</span>
             </button>
         </div>
-        <div class="col-1">
+        <div class="d-flex flex-row flex-nowrap h-100">
             <button class="btn icon-button btn-outline-secondary" id="self-view-switch" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Change the self-view element.">
                 <i class="bi bi-arrow-right-square"></i>
                 <span>Switch Self-view Video</span>
             </button>
         </div>
-        <div class="col-9 d-flex align-items-center justify-content-center h-100 m-3 p-2">
-            <p class="text-center text-secondary">
-                Use the <strong>Turn Blur On</strong> button to apply a blur effect to your self-view. This effect is
-                local and does not affect what others see. <br>
-                The <strong>Turn Framing On</strong> button enables a framing cross-hair over your self-view for better
-                alignment, without altering others' view. <br>
-                With the <strong>Switch Self-view Video</strong> button, you can change the self-view element to another
-                video source.
-            </p>
+        <div class="d-flex align-items-center justify-content-center h-100 m-3 p-2">
+                <p class="text-center text-secondary">
+                    Use the <strong>Turn Blur On</strong> button to apply a blur effect to your self-view. This effect is
+                    local and does not affect what others see. <br>
+                    The <strong>Turn Framing On</strong> button enables a framing cross-hair over your self-view for better
+                    alignment, without altering others' view. <br>
+                    With the <strong>Switch Self-view Video</strong> button, you can change the self-view element to another
+                    video source.
+                </p>
         </div>
         <!-- Experimenting with previewing self-view images.
         <div class="vertical-divider">
@@ -98,15 +94,15 @@
 
     <!-- START: DEVICE MANAGER -->
     <div class="content" id="device-manager">
-        <div class="col-1">
+        <div class="d-flex flex-row flex-nowrap h-100">
             <button class="btn icon-button btn-outline-secondary" id="device-manager-enabled" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Device Manager changes what media devices are listed">
                 <i class="bi bi-menu-button"></i>
                 <span>Enable Device Manager</span>
             </button>
         </div>
-        <div class="col">
-            <div class="vertical-divider">
+        <div class="d-flex flex-row flex-nowrap h-100 pb-2">
+            <div class="vertical-divider flex-grow-1">
                 <h5>Hide Devices</h5>
                 <div class="device-group accordion-horizontal" id="remove-devices-accordion">
 
@@ -156,7 +152,8 @@
                                     aria-expanded="true" aria-controls="microphone-devices"
                                     title="Remove microphones from device selection">
                                 <i class="bi bi-mic"></i>
-                                <span>Microphones</span>
+                                <span class="d-none d-lg-block d-xl-none mt-lg-1 d-block"><!--br class="m-0 p-0"-->Mics</span>
+                                <span class="d-none d-xl-block">Microphones</span>
                             </button>
                         </div>
                         <div class="accordion-collapse collapse" id="microphone-devices"
@@ -175,16 +172,16 @@
 
     <!-- START: STREAM MODIFICATION  -->
     <div class="content" id="modify-stream">
-        <div class="col-1">
+        <div class="d-flex h-100">
             <button class="btn icon-button btn-outline-secondary streamModificationButton" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Enable Stream Modification">
                 <i class="bi bi-emoji-smile-upside-down"></i>
                 <span>Enable Stream Modification</span>
             </button>
         </div>
-        <div class="col-3 vertical-divider">
+        <div class="d-flex flex-column h-100">
             <h5>Quality Simulation</h5>
-            <div class="btn-group" role="group" aria-label="Quality Simulation">
+            <div class="btn-group h-100" role="group" aria-label="Quality Simulation">
                 <button class="btn icon-button btn-outline-secondary" id="bad-quality-off" data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Turn off quality simulation">
                     <i class="bi bi-reception-4"></i>
@@ -204,13 +201,13 @@
                 </button>
             </div>
         </div>
-        <div class="col col-2-and-a-half  vertical-divider">
+        <div class="d-flex flex-column h-100 vertical-divider">
             <h5>Media Injection</h5>
             <div class="btn-group" role="group" aria-label="Media Injection">
-                <!-- TODO: reconcile icon-button with btn-group -->
-                <button class="btn btn-outline-secondary" id="preview-button" data-bs-toggle="tooltip"
+                <button class="btn btn-outline-secondary me-1" id="preview-button" data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Preview Media">
-                    <video id="player-preview" class=""  muted playsinline autoplay loop src="../media/loading_spinner.mp4"></video>
+                    <video id="player-preview" class="" muted playsinline autoplay loop
+                           src="../media/loading_spinner.mp4"></video>
                     <span class="preview-text">Preview</span>
                 </button>
                 <button class="btn icon-button btn-outline-secondary" id="inject-button" data-bs-toggle="tooltip"
@@ -218,7 +215,8 @@
                     <i class="bi bi-box-arrow-in-down"></i>
                     <span>Inject</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary blinking d-none" id="inject-stop-button" data-bs-toggle="tooltip"
+                <button class="btn icon-button btn-outline-secondary blinking d-none" id="inject-stop-button"
+                        data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Stop Media Injection">
                     <i class="bi bi-stop-fill"></i>
                     <span>Stop</span>
@@ -261,11 +259,13 @@
     <div class="content active" id="presence">
         <!-- Presence Control -->
         <div class="d-flex flex-row flex-nowrap h-100">
-            <button class="btn icon-button btn-outline-secondary" id="auto-update" data-bs-toggle="tooltip" data-bs-placement="top" title="Automatically update presence status">
+            <button class="btn icon-button btn-outline-secondary" id="auto-update" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Automatically update presence status">
                 <i class="bi bi-arrow-repeat"></i>
                 <span>Auto-update <br>ON</span>
             </button>
-            <button class="btn icon-button btn-outline-secondary" id="manual-override" data-bs-toggle="tooltip" data-bs-placement="top" title="Manually set presence status">
+            <button class="btn icon-button btn-outline-secondary" id="manual-override" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Manually set presence status">
                 <i class="bi bi-hand-index-thumb"></i>
                 <span>Force Status <br>ON</span>
             </button>
@@ -273,13 +273,17 @@
 
         <!-- Presence Status -->
         <div class="d-flex flex-row flex-nowrap vertical-divider h-100">
-            <div class="btn icon-button btn-outline-secondary presence-status-button" id="camera-in-use" data-bs-toggle="tooltip" data-bs-placement="top" title="Camera in use">
-                <div class="badge bg-secondary w-75" id="camera-stream-count">0</div><br>
+            <div class="btn icon-button btn-outline-secondary presence-status-button" id="camera-in-use"
+                 data-bs-toggle="tooltip" data-bs-placement="top" title="Camera in use">
+                <div class="badge bg-secondary w-75" id="camera-stream-count">0</div>
+                <br>
                 <i class="bi bi-camera"></i>
                 <span>Camera streams</span>
             </div>
-            <div class="btn icon-button btn-outline-secondary presence-status-button" id="microphone-in-use" data-bs-toggle="tooltip" data-bs-placement="top" title="Microphone in use">
-                <div class="badge bg-secondary w-75" id="microphone-stream-count">0</div><br>
+            <div class="btn icon-button btn-outline-secondary presence-status-button" id="microphone-in-use"
+                 data-bs-toggle="tooltip" data-bs-placement="top" title="Microphone in use">
+                <div class="badge bg-secondary w-75" id="microphone-stream-count">0</div>
+                <br>
                 <i class="bi bi-mic"></i>
                 <span>Mic streams</span>
             </div>
@@ -287,7 +291,9 @@
 
         <!-- Presence Config -->
         <div class="d-flex flex-row flex-nowrap vertical-divider align-items-start h-100 w-100">
-            <button class="btn icon-button btn-outline-secondary" id="toggle-tabs" data-bs-toggle="collapse" data-bs-target="#presenceConfigTabsContainer" aria-expanded="true" aria-controls="presenceConfigTabsContainer">
+            <button class="btn icon-button btn-outline-secondary" id="toggle-tabs" data-bs-toggle="collapse"
+                    data-bs-target="#presenceConfigTabsContainer" aria-expanded="true"
+                    aria-controls="presenceConfigTabsContainer">
                 <i class="bi bi-gear"></i>
                 <span>Settings</span>
             </button>
@@ -295,10 +301,12 @@
                 <div class="d-flex">
                     <ul class="nav nav-tabs flex-column" id="presenceConfigTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link active" id="on-settings-tab" data-bs-toggle="tab" href="#on-settings" role="tab" aria-controls="on-settings" aria-selected="true">On Config</a>
+                            <a class="nav-link active" id="on-settings-tab" data-bs-toggle="tab" href="#on-settings"
+                               role="tab" aria-controls="on-settings" aria-selected="true">On Config</a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" id="off-settings-tab" data-bs-toggle="tab" href="#off-settings" role="tab" aria-controls="off-settings" aria-selected="false">Off Config</a>
+                            <a class="nav-link" id="off-settings-tab" data-bs-toggle="tab" href="#off-settings"
+                               role="tab" aria-controls="off-settings" aria-selected="false">Off Config</a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="btn btn-outline-secondary save-button" id="presence-save">
@@ -307,12 +315,14 @@
                         </li>
                     </ul>
                     <div class="tab-content ms-3" id="presenceConfigTabsContent">
-                        <div class="tab-pane fade show active" id="on-settings" role="tabpanel" aria-labelledby="on-settings-tab">
+                        <div class="tab-pane fade show active" id="on-settings" role="tabpanel"
+                             aria-labelledby="on-settings-tab">
                             <div class="row">
                                 <div class="col px-0">
                                     <div class="form-group mb-1">
                                         <label for="presence-url">URL</label>
-                                        <input type="text" class="form-control" id="presence-url" placeholder="Enter URL">
+                                        <input type="text" class="form-control" id="presence-url"
+                                               placeholder="Enter URL">
                                     </div>
                                     <div class="form-group mb-1">
                                         <label for="presence-method">Method</label>
@@ -325,13 +335,15 @@
                                 <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-headers">Headers</label>
-                                        <textarea class="form-control" id="presence-headers" rows="4" placeholder="Enter Headers"></textarea>
+                                        <textarea class="form-control" id="presence-headers" rows="4"
+                                                  placeholder="Enter Headers"></textarea>
                                     </div>
                                 </div>
                                 <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-body">Body</label>
-                                        <textarea class="form-control" id="presence-body" rows="4" placeholder="Enter Body"></textarea>
+                                        <textarea class="form-control" id="presence-body" rows="4"
+                                                  placeholder="Enter Body"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -341,7 +353,8 @@
                                 <div class="col px-0">
                                     <div class="form-group mb-1">
                                         <label for="presence-url-off">URL</label>
-                                        <input type="text" class="form-control" id="presence-url-off" placeholder="Enter URL">
+                                        <input type="text" class="form-control" id="presence-url-off"
+                                               placeholder="Enter URL">
                                     </div>
                                     <div class="form-group mb-1">
                                         <label for="presence-method-off">Method</label>
@@ -354,13 +367,15 @@
                                 <div class="col px-0">
                                     <div class="form-group ">
                                         <label for="presence-headers-off">Headers</label>
-                                        <textarea class="form-control" id="presence-headers-off" rows="4" placeholder="Enter Headers"></textarea>
+                                        <textarea class="form-control" id="presence-headers-off" rows="4"
+                                                  placeholder="Enter Headers"></textarea>
                                     </div>
                                 </div>
                                 <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-body-off">Body</label>
-                                        <textarea class="form-control" id="presence-body-off" rows="4" placeholder="Enter Body"></textarea>
+                                        <textarea class="form-control" id="presence-body-off" rows="4"
+                                                  placeholder="Enter Body"></textarea>
                                     </div>
                                 </div>
                             </div>
