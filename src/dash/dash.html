@@ -260,7 +260,7 @@
 
     <div class="content active" id="presence">
         <!-- Presence Control -->
-        <div class="col col-2-and-a-half">
+        <div class="d-flex flex-row flex-nowrap h-100">
             <button class="btn icon-button btn-outline-secondary" id="auto-update" data-bs-toggle="tooltip" data-bs-placement="top" title="Automatically update presence status">
                 <i class="bi bi-arrow-repeat"></i>
                 <span>Auto-update <br>ON</span>
@@ -272,21 +272,21 @@
         </div>
 
         <!-- Presence Status -->
-        <div class="col col-2-and-a-half vertical-divider">
+        <div class="d-flex flex-row flex-nowrap vertical-divider h-100">
             <div class="btn icon-button btn-outline-secondary presence-status-button" id="camera-in-use" data-bs-toggle="tooltip" data-bs-placement="top" title="Camera in use">
-                <span class="badge bg-secondary" id="camera-stream-count">0</span>
+                <div class="badge bg-secondary w-75" id="camera-stream-count">0</div><br>
                 <i class="bi bi-camera"></i>
                 <span>Camera streams</span>
             </div>
             <div class="btn icon-button btn-outline-secondary presence-status-button" id="microphone-in-use" data-bs-toggle="tooltip" data-bs-placement="top" title="Microphone in use">
-                <span class="badge bg-secondary" id="microphone-stream-count">0</span>
+                <div class="badge bg-secondary w-75" id="microphone-stream-count">0</div><br>
                 <i class="bi bi-mic"></i>
                 <span>Mic streams</span>
             </div>
         </div>
 
         <!-- Presence Config -->
-        <div class="col d-flex align-items-start">
+        <div class="d-flex flex-row flex-nowrap vertical-divider align-items-start h-100 w-100">
             <button class="btn icon-button btn-outline-secondary" id="toggle-tabs" data-bs-toggle="collapse" data-bs-target="#presenceConfigTabsContainer" aria-expanded="true" aria-controls="presenceConfigTabsContainer">
                 <i class="bi bi-gear"></i>
                 <span>Settings</span>
@@ -309,12 +309,12 @@
                     <div class="tab-content ms-3" id="presenceConfigTabsContent">
                         <div class="tab-pane fade show active" id="on-settings" role="tabpanel" aria-labelledby="on-settings-tab">
                             <div class="row">
-                                <div class="col">
-                                    <div class="form-group">
+                                <div class="col px-0">
+                                    <div class="form-group mb-1">
                                         <label for="presence-url">URL</label>
                                         <input type="text" class="form-control" id="presence-url" placeholder="Enter URL">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group mb-1">
                                         <label for="presence-method">Method</label>
                                         <select class="form-control" id="presence-method">
                                             <option value="GET">GET</option>
@@ -322,13 +322,13 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col">
+                                <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-headers">Headers</label>
                                         <textarea class="form-control" id="presence-headers" rows="4" placeholder="Enter Headers"></textarea>
                                     </div>
                                 </div>
-                                <div class="col">
+                                <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-body">Body</label>
                                         <textarea class="form-control" id="presence-body" rows="4" placeholder="Enter Body"></textarea>
@@ -338,12 +338,12 @@
                         </div>
                         <div class="tab-pane fade" id="off-settings" role="tabpanel" aria-labelledby="off-settings-tab">
                             <div class="row">
-                                <div class="col">
-                                    <div class="form-group">
+                                <div class="col px-0">
+                                    <div class="form-group mb-1">
                                         <label for="presence-url-off">URL</label>
                                         <input type="text" class="form-control" id="presence-url-off" placeholder="Enter URL">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group mb-1">
                                         <label for="presence-method-off">Method</label>
                                         <select class="form-control" id="presence-method-off">
                                             <option value="GET">GET</option>
@@ -351,13 +351,13 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col">
-                                    <div class="form-group">
+                                <div class="col px-0">
+                                    <div class="form-group ">
                                         <label for="presence-headers-off">Headers</label>
                                         <textarea class="form-control" id="presence-headers-off" rows="4" placeholder="Enter Headers"></textarea>
                                     </div>
                                 </div>
-                                <div class="col">
+                                <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-body-off">Body</label>
                                         <textarea class="form-control" id="presence-body-off" rows="4" placeholder="Enter Body"></textarea>
