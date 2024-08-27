@@ -21,7 +21,17 @@ Expandable buttons
      - Save
 
 
-## Background
+OLD
+btnBusy
+  webRequest("on", storage.contents['presence']);
+  storage.update('presence', {active: true});
+btnNotBusy - the opposite
+
+storageListener would update enabledCheck & statusSpanElem
+
+
+
+## Background.mjs
 
 - sets up storage
 - listens for `NEW_TRACK` and `TRACK_ENDED`
@@ -33,6 +43,26 @@ added: resets trackData on reload - is that a good idea?
 
 presenceOn
 - checks for storage.contents.trackData.some(td => td.readyState === 'live') but never populates that
+
+
+setPresenceState
+- sets storage {active: state}
+- updates the icon
+- calls webRequest
+
+storage listener
+- calls presenceOn / presenceOff on change
+
+
+#  extension-core
+
+## background.js
+listens for `NEW_TRACK` and `TRACK_ENDED` messages from content.js and updates storage
+  TODO: move this to content.js
+    still need a clean-up to check for closed tabs
+
+## content.js
+monitorTrack - sends trackData messages to Background
 
 
 #### trackData issues

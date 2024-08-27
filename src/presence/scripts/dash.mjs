@@ -1,57 +1,182 @@
 import {debug, storage} from "../../dash/dashCommon.mjs";
-
-/************ START presence ************/
-// backend functions
 import {webRequest} from "./webRequest.mjs";
 
-/*
-const statusSpanElem = document.querySelector('span#presence_status');
-const enabledCheck = document.querySelector('input#enable_presence_check');
-const btnBusy = document.querySelector('button#busy');
-const btnNotBusy = document.querySelector('button#not_busy');
+/************ START presenceControl************/
 
-// initial state
-statusSpanElem.innerText = storage.contents?.presence?.active ? "active" : "inactive";
-enabledCheck.checked = storage.contents?.presence?.enabled;
+// Reference to the presence-enable button
+const presenceEnableButton = document.getElementById('presence-enable');
+const togglePresenceConfigTabsButton = document.getElementById('toggle-presence-config-tabs');
+const presenceConfigTabsContainer = document.getElementById('presence-config-tabs-container');
 
+const isEnabled = storage.contents?.presence?.enabled || false;
+const isForced = storage.contents?.presence?.active || false;
 
-document.querySelector("button#presence_setup").onclick = async () => {
-    const url = chrome.runtime.getURL("pages/presence.html");
-    await chrome.tabs.create({url});
+// Initial state setup for presence-enable button
+if (isEnabled) {
+    presenceEnableButton.classList.add('btn-secondary');
+    presenceEnableButton.classList.remove('btn-outline-secondary');
+    presenceEnableButton.querySelector('span').innerHTML = 'Auto-update <br>ON';
+} else {
+    presenceEnableButton.classList.add('btn-outline-secondary');
+    presenceEnableButton.classList.remove('btn-secondary');
+    presenceEnableButton.querySelector('span').innerHTML = 'Auto-update <br>OFF';
 }
 
-enabledCheck.onclick = async () => {
-    const enabled = enabledCheck.checked;
-    debug(`presence enabled set to ${enabled}`);
-    await storage.update('presence', {enabled: enabled});
+
+// Event listener for presence-enable button
+presenceEnableButton.addEventListener('click', async () => {
+    const newEnabledState = !isEnabled;
+    await storage.update('presence', {enabled: newEnabledState});
+
+    // Update button appearance and text
+    if (newEnabledState) {
+        presenceEnableButton.classList.remove('btn-outline-secondary');
+        presenceEnableButton.classList.add('btn-secondary');
+        presenceEnableButton.querySelector('span').innerHTML = 'Auto-update <br>ON';
+    } else {
+        presenceEnableButton.classList.remove('btn-secondary');
+        presenceEnableButton.classList.add('btn-outline-secondary');
+        presenceEnableButton.querySelector('span').innerHTML = 'Auto-update <br>OFF';
+    }
+
+    debug(`Presence status set to ${newEnabledState ? 'enabled' : 'disabled'}`);
+});
+
+
+// Event listener for toggle-presence-config-tabs button
+togglePresenceConfigTabsButton.addEventListener('click', () => {
+    presenceConfigTabsContainer.classList.toggle('show'); // Toggle the "show" class
+
+    // Optionally update the button text or icon
+    const isExpanded = !presenceConfigTabsContainer.classList.contains('d-none');
+    // togglePresenceConfigTabsButton.setAttribute('aria-expanded', `${isExpanded}`);
+    debug(`Presence Config Tabs ${isExpanded ? 'opened' : 'closed'}`);
+});
+/************ END presenceControl ************/
+
+/************ START presenceStatus ************/
+
+const camInUse = document.getElementById('camera-in-use');
+const micInUse = document.getElementById('microphone-in-use');
+const camStreamsCountDisplay  = document.getElementById('camera-stream-count');
+const micStreamsCountDisplay  = document.getElementById('microphone-stream-count');
+
+function updatePresenceStatus() {
+    const trackData = storage.contents.trackData || {};
+
+    const camStreamsCount = trackData.reduce((acc, track) =>
+        track.kind === 'video' && track.readyState === 'live' ? acc + 1 : acc, 0);
+    const micStreamsCount = trackData.reduce((acc, track) =>
+        track.kind === 'audio' && track.readyState === 'live' ? acc + 1 : acc, 0);
+
+    camStreamsCountDisplay.innerText = camStreamsCount;
+    micStreamsCountDisplay.innerText = micStreamsCount;
+
+    camInUse.classList.toggle('text-white', camStreamsCount > 0);
+    micInUse.classList.toggle('text-white', micStreamsCount > 0);
+
+    camInUse.classList.toggle('text-secondary-emphasis' );
+    micInUse.classList.toggle('text-secondary-emphasis');
+
+    // camInUse.classList.toggle('btn-outline-secondary', camStreamsCount === 0);
+    // camInUse.classList.toggle('btn-secondary', camStreamsCount !== 0);
+
+    // micInUse.classList.toggle('btn-outline-secondary', micStreamsCount === 0);
+    // micInUse.classList.toggle('btn-secondary', micStreamsCount !== 0);
+
+    debug(`Presence status updated: ${camStreamsCount} camera streams, ${micStreamsCount} microphone streams`);
 }
 
+storage.addListener('trackData', updatePresenceStatus);
+updatePresenceStatus();
 
-btnBusy.onclick = async () => {
-    await storage.update('presence', {active: true});
+
+/************ END presenceStatus ************/
+
+
+/************ START presenceConfig ************/
+
+// References to form fields and the save button
+const manualOverrideOnButton = document.getElementById('manual-override-on');
+const manualOverrideOffButton = document.getElementById('manual-override-off');
+const formOn = document.getElementById('on-settings-form');
+const formOff = document.getElementById('off-settings-form');
+const presenceSaveButton = document.getElementById('presence-save');
+
+// Event listener for manual-override button
+manualOverrideOnButton.onclick = ()=> {
     webRequest("on", storage.contents['presence']);
-    // ToDo: handle embrava
-};
-
-btnNotBusy.onclick = async () => {
-    await storage.update('presence', {active: false});
-    webRequest("off", storage.contents['presence']);
-    // ToDo: handle embrava
+    debug(`Force Status set to  'ON' `);
 }
 
-storage.addListener('presence', (newValue) => {
-    debug("presence changed", newValue);
-    statusSpanElem.innerText = newValue.active ? "active" : "inactive";
+manualOverrideOffButton.onclick = ()=>{
+    webRequest("off", storage.contents['presence']);
+    debug(`Force Status set to  'OFF' `);
+}
 
-    enabledCheck.checked = newValue.enabled;
 
-});
-/************ END presence ************/
+// Function to save settings without form submission
+async function saveSettings() {
+    let settings = storage.contents['presence'] || {};
 
-/*
-document.getElementById('toggle-tabs').addEventListener('click', () => {
-    debug("toggling tabs");
-    const tabGroup = document.getElementById('presenceConfigTabsContainer');
-    tabGroup.classList.toggle('collapse');
-});
-*/
+    if (formOn) {
+        const onSettings = new FormData(formOn);
+        settings.on = Object.fromEntries(onSettings.entries());
+    }
+
+    if (formOff) {
+        const offSettings = new FormData(formOff);
+        settings.off = Object.fromEntries(offSettings.entries());
+    }
+
+    storage.update('presence', settings).catch(err => debug(err));
+    debug('Settings saved:', settings);
+
+    // Reset the save button color after saving
+    presenceSaveButton.classList.remove('btn-danger');
+    presenceSaveButton.classList.add('btn-outline-secondary');
+}
+
+// Function to handle changes to the forms
+function handleFormChange() {
+    presenceSaveButton.classList.remove('btn-outline-secondary');
+    presenceSaveButton.classList.add('btn-danger');
+}
+
+// Attach event listeners to the forms
+if (formOn) {
+    formOn.addEventListener('input', handleFormChange);
+}
+
+if (formOff) {
+    formOff.addEventListener('input', handleFormChange);
+}
+
+// Attach event listener to the save button
+if (presenceSaveButton) {
+    presenceSaveButton.addEventListener('click', saveSettings);
+}
+
+// Function to refresh settings in the UI
+function displaySettings() {
+    const settings = storage.contents['presence'] || {};
+
+    if (formOn) {
+        formOn.querySelector("#presence-url").value = settings?.on?.onUrl || "";
+        formOn.querySelector("#presence-method").value = settings?.on?.onMethod || "GET";
+        formOn.querySelector("#presence-headers").value = settings?.on?.onHeaders || "";
+        formOn.querySelector("#presence-body").value = settings?.on?.onPostBody || "";
+    }
+
+    if (formOff) {
+        formOff.querySelector("#presence-url-off").value = settings?.off?.offUrl || "";
+        formOff.querySelector("#presence-method-off").value = settings?.off?.offMethod || "GET";
+        formOff.querySelector("#presence-headers-off").value = settings?.off?.offHeaders || "";
+        formOff.querySelector("#presence-body-off").value = settings?.off?.offPostBody || "";
+    }
+}
+
+// Initial call to display settings
+displaySettings();
+
+/************ END presenceConfig ************/

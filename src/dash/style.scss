@@ -12,15 +12,6 @@ body {
   opacity: 90%;
 }
 
-.container-fluid{
-
-}
-
-.col {
-  height: 100%;
-  align-content: center;
-}
-
 .tabs {
   display: flex;
   background-color: #1a1a1a;
@@ -47,7 +38,7 @@ body {
 
 .content {
   display: none;
-  padding: 10px;
+  padding: 10px 10px 4px;
   flex-grow: 1;
   height: 125px;
 }
@@ -60,7 +51,7 @@ body {
 }
 
 
-.icon-button {
+.icon-button, {
   width: 120px;
   text-align: center;
   margin-right: 5px;
@@ -84,7 +75,9 @@ body {
     min-width: 60px; /* Ensure consistent width on large screens */
   }
 
-  .icon-button i {
+
+
+  .icon-button, i {
     font-size: 20px;
   }
 
@@ -93,9 +86,9 @@ body {
   }
 
   /* TODO: reconcile .btn-group with .icon-button */
-  .btn-group .btn {
+ /* .btn-group .btn {
     width: 86px;
-  }
+  }*/
 
   .device-manager-selection-buttons button {
     font-size: 12px;
@@ -104,6 +97,10 @@ body {
 
 @media (max-width: 1000px) {
   .icon-button {
+    min-width: 60px;
+  }
+
+  .group-icon-btn {
     min-width: 60px;
   }
 
@@ -140,10 +137,7 @@ body {
   flex-direction: row;
   margin: 0 0 5px;
   max-width: 100%;
-  height: 80%; /* I don't know why this works but 100% doesn't */
-}
-
-.device-group .icon-button {
+  height: 90px; /* I don't know why this works but 100% doesn't */
 }
 
 .vertical-divider {
@@ -155,7 +149,8 @@ h5 {
   font-size: $font-size-base * 0.75;
   font-weight: $font-weight-bolder;
   border-bottom: 1px solid $gray-800;
-  padding-bottom: 5px;
+  padding-bottom: 4px;
+  margin-bottom: 0;
   color: $gray-500;
   text-transform: uppercase;
 }
@@ -178,17 +173,6 @@ h5 {
   border-radius: $btn-border-radius;
 }
 
-.accordion-horizontal-foo .accordion-body {
-  display: flex; // Use flexbox to manage its children
-  // flex-wrap: wrap;
-  flex-grow: 1;
-  transition: width 0.2s ease;
-  height: 100%;
-  background-color: $gray-900;
-  padding: 4px 2px;
-  overflow: hidden;
-}
-
 .accordion-horizontal .accordion-body {
   display: flex; /* Use flexbox to manage its children */
   flex-grow: 0; /* Prevent vertical growth */
@@ -199,6 +183,7 @@ h5 {
   background-color: $gray-900;
   padding: 4px 2px;
   overflow: hidden;
+  margin-left: -4px; /* Remove left margin */
 }
 
 .accordion-horizontal .accordion-collapse {
@@ -240,26 +225,6 @@ h5 {
   filter: blur(4px); // Increase blur on hover
 }
 
-/* //Experiment with previewing self-views  - NOT USED
-.self-view-preview-btn {
-    background-color: rgba($primary, 0.7);
-    border: $primary;
-    color: $white; // Ensure the icon color is visible
-    &:hover {
-      background-color: rgba($primary, 0.9); // Slightly increase opacity on hover
-    }
-  }
-
-.self-view-preview-image {
-  padding: 0;
-  height: 78px;
-}
-
-.self-view-preview-image:hover {
-  border: 5px solid fuchsia; // Thick fuchsia border
-  box-sizing: border-box; // Ensure the border is included in the element's dimensions
-}
-*/
 
 /**
  * Stream modification
@@ -267,13 +232,8 @@ h5 {
 
 /* Bad quality */
 
-.btn {
-  height: 100%;
-}
-
-#preview-button {
-  padding: 0;
-  width: auto;
+#preview-button{
+  width: 100%;
 }
 
 #preview-button img {
@@ -298,7 +258,8 @@ h5 {
 }
 
 #player-preview {
-  max-height: 69px;
+  /*max-height: 69px;*/
+  height: 100%;
   object-fit: contain;
   max-width: 124px;
   min-width: 70px;
@@ -313,9 +274,11 @@ h5 {
 attempts to prevent the i and spans from turning to white on hover failed
  */
 
+
+/* Prevent the presence status items from changing behavior on hover */
 .presence-status-button:hover {
-  background-color: inherit; /* Keep the background color the same on hover */
-  color: inherit; /* Keep the text color the same on hover */
+  background-color: inherit !important; /* Keep the background color the same on hover */
+  color: inherit !important; /* Keep the text color the same on hover */
 }
 
 .presence-status-button.active {
@@ -423,12 +386,30 @@ attempts to prevent the i and spans from turning to white on hover failed
   font-size: 12px;
 }
 
-.col-flex-start {
-  width: auto; /* Take the minimum width necessary to hold its contents */
-  display: inline-block; /* Ensure it only takes up as much space as needed */
-  text-align: left; /* Align content to the left */
+.rotate-270 {
+  transform: rotate(270deg);
+  transform-origin: center;
+  display: inline-block;
 }
 
+.btn-group i {
+  display: block;
+  font-size: 32px;
+}
+
+.btn-group span {
+  font-size: 12px; /* Smaller text size */
+  display: block; /* Ensure text is on a new line */
+  line-height: 1.2;
+}
+
+.group-icon-btn {
+    min-width: 100px;
+}
+
+#toggle-presence-config-tabs {
+  width: 24px;
+}
 
 /** OLD STYLES **/
 

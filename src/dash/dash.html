@@ -21,18 +21,19 @@
                 <i class="bi bi-menu-button"></i>
                 <span>Enable Device Manager</span>
             </button>
-        </div>
             <button class="btn icon-button btn-outline-secondary streamModificationButton" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Enable Stream Modification">
                 <i class="bi bi-emoji-smile-upside-down"></i>
                 <span>Enable Stream Modification</span>
             </button>
-            <div class="reload-warning" id="reloadWarning">
-                <span class="text-danger">Reload of this page required to enable this feature.</span>
-                <button class="btn btn-outline-danger reload-button">
-                    <i class="bi bi-arrow-clockwise"></i>
-                    <span>Reload Page</span>
-                </button>
+        </div>
+
+        <div class="reload-warning" id="reloadWarning">
+            <span class="text-danger">Reload of this page required to enable this feature.</span>
+            <button class="btn btn-outline-danger reload-button">
+                <i class="bi bi-arrow-clockwise"></i>
+                <span>Reload Page</span>
+            </button>
         </div>
     </div>
 
@@ -60,14 +61,14 @@
             </button>
         </div>
         <div class="d-flex align-items-center justify-content-center h-100 m-3 p-2">
-                <p class="text-center text-secondary">
-                    Use the <strong>Turn Blur On</strong> button to apply a blur effect to your self-view. This effect is
-                    local and does not affect what others see. <br>
-                    The <strong>Turn Framing On</strong> button enables a framing cross-hair over your self-view for better
-                    alignment, without altering others' view. <br>
-                    With the <strong>Switch Self-view Video</strong> button, you can change the self-view element to another
-                    video source.
-                </p>
+            <p class="text-center text-secondary">
+                Use the <strong>Turn Blur On</strong> button to apply a blur effect to your self-view. This effect is
+                local and does not affect what others see. <br>
+                The <strong>Turn Framing On</strong> button enables a framing cross-hair over your self-view for better
+                alignment, without altering others' view. <br>
+                With the <strong>Switch Self-view Video</strong> button, you can change the self-view element to another
+                video source.
+            </p>
         </div>
         <!-- Experimenting with previewing self-view images.
         <div class="vertical-divider">
@@ -101,14 +102,14 @@
                 <span>Enable Device Manager</span>
             </button>
         </div>
-        <div class="d-flex flex-row flex-nowrap h-100 pb-2">
+        <div class="d-flex flex-row flex-nowrap h-100">
             <div class="vertical-divider flex-grow-1">
                 <h5>Hide Devices</h5>
                 <div class="device-group accordion-horizontal" id="remove-devices-accordion">
 
                     <div class="accordion-item">
                         <div class="accordion-header" id="speaker-devices-accordion">
-                            <button class="btn icon-button btn-outline-secondary"
+                            <button class="btn icon-button btn-outline-secondary h-100"
                                     id="speaker-devices-button"
                                     data-bs-toggle="collapse" data-bs-target="#speaker-devices"
                                     aria-expanded="true" aria-controls="speaker-devices"
@@ -127,7 +128,7 @@
 
                     <div class="accordion-item">
                         <div class="accordion-header" id="camera-devices-accordion">
-                            <button class="btn icon-button btn-outline-secondary"
+                            <button class="btn icon-button btn-outline-secondary h-100"
                                     id="camera-devices-button"
                                     data-bs-toggle="collapse" data-bs-target="#camera-devices"
                                     aria-expanded="true" aria-controls="camera-devices"
@@ -146,7 +147,7 @@
 
                     <div class="accordion-item">
                         <div class="accordion-header" id="microphone-devices-accordion">
-                            <button class="btn icon-button btn-outline-secondary"
+                            <button class="btn icon-button btn-outline-secondary h-100"
                                     id="microphone-devices-button"
                                     data-bs-toggle="collapse" data-bs-target="#microphone-devices"
                                     aria-expanded="true" aria-controls="microphone-devices"
@@ -179,21 +180,21 @@
                 <span>Enable Stream Modification</span>
             </button>
         </div>
-        <div class="d-flex flex-column h-100">
+        <div class="d-flex flex-column h-100 vertical-divider">
             <h5>Quality Simulation</h5>
             <div class="btn-group h-100" role="group" aria-label="Quality Simulation">
-                <button class="btn icon-button btn-outline-secondary" id="bad-quality-off" data-bs-toggle="tooltip"
+                <button class="btn group-icon-btn btn-outline-secondary" id="bad-quality-off" data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Turn off quality simulation">
                     <i class="bi bi-reception-4"></i>
                     <span>Normal</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary" id="bad-quality-moderate"
+                <button class="btn group-icon-btn btn-outline-secondary" id="bad-quality-moderate"
                         data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Noticeable video issues and audio clipping">
                     <i class="bi bi-reception-2"></i>
                     <span>Moderate</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary" id="bad-quality-severe"
+                <button class="btn group-icon-btn btn-outline-secondary" id="bad-quality-severe"
                         data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Unintelligible audio and video">
                     <i class="bi bi-reception-1"></i>
@@ -203,30 +204,30 @@
         </div>
         <div class="d-flex flex-column h-100 vertical-divider">
             <h5>Media Injection</h5>
-            <div class="btn-group" role="group" aria-label="Media Injection">
-                <button class="btn btn-outline-secondary me-1" id="preview-button" data-bs-toggle="tooltip"
+            <div class="btn-group h-100" role="group" aria-label="Media Injection">
+                <button class="btn group-icon-btn btn-outline-secondary p-0" id="preview-button" data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Preview Media">
                     <video id="player-preview" class="" muted playsinline autoplay loop
                            src="../media/loading_spinner.mp4"></video>
                     <span class="preview-text">Preview</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary" id="inject-button" data-bs-toggle="tooltip"
+                <button class="btn group-icon-btn btn-outline-secondary" id="inject-button" data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Inject Media">
                     <i class="bi bi-box-arrow-in-down"></i>
                     <span>Inject</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary blinking d-none" id="inject-stop-button"
+                <button class="btn group-icon-btn  btn-outline-secondary blinking d-none" id="inject-stop-button"
                         data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Stop Media Injection">
                     <i class="bi bi-stop-fill"></i>
                     <span>Stop</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary" id="record-button" data-bs-toggle="tooltip"
+                <button class="btn group-icon-btn btn-outline-secondary" id="record-button" data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Record New Media">
                     <i class="bi bi-record-circle"></i>
                     <span>Record</span>
                 </button>
-                <button class="btn icon-button btn-outline-secondary" id="add-media-button" data-bs-toggle="tooltip"
+                <button class="btn group-icon-btn btn-outline-secondary" id="add-media-button" data-bs-toggle="tooltip"
                         data-bs-placement="top" title="Add Media">
                     <i class="bi bi-file-earmark-arrow-up"></i>
                     <span>Upload</span>
@@ -259,28 +260,23 @@
     <div class="content active" id="presence">
         <!-- Presence Control -->
         <div class="d-flex flex-row flex-nowrap h-100">
-            <button class="btn icon-button btn-outline-secondary" id="auto-update" data-bs-toggle="tooltip"
+            <button class="btn icon-button btn-outline-secondary" id="presence-enable" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Automatically update presence status">
                 <i class="bi bi-arrow-repeat"></i>
                 <span>Auto-update <br>ON</span>
-            </button>
-            <button class="btn icon-button btn-outline-secondary" id="manual-override" data-bs-toggle="tooltip"
-                    data-bs-placement="top" title="Manually set presence status">
-                <i class="bi bi-hand-index-thumb"></i>
-                <span>Force Status <br>ON</span>
             </button>
         </div>
 
         <!-- Presence Status -->
         <div class="d-flex flex-row flex-nowrap vertical-divider h-100">
-            <div class="btn icon-button btn-outline-secondary presence-status-button" id="camera-in-use"
+            <div class="btn icon-button btn-outline-secondary presence-status-button disabled text-secondary-emphasis" id="camera-in-use"
                  data-bs-toggle="tooltip" data-bs-placement="top" title="Camera in use">
                 <div class="badge bg-secondary w-75" id="camera-stream-count">0</div>
                 <br>
                 <i class="bi bi-camera"></i>
                 <span>Camera streams</span>
             </div>
-            <div class="btn icon-button btn-outline-secondary presence-status-button" id="microphone-in-use"
+            <div class="btn icon-button btn-outline-secondary presence-status-button disabled text-secondary-emphasis" id="microphone-in-use"
                  data-bs-toggle="tooltip" data-bs-placement="top" title="Microphone in use">
                 <div class="badge bg-secondary w-75" id="microphone-stream-count">0</div>
                 <br>
@@ -291,42 +287,61 @@
 
         <!-- Presence Config -->
         <div class="d-flex flex-row flex-nowrap vertical-divider align-items-start h-100 w-100">
-            <button class="btn icon-button btn-outline-secondary" id="toggle-tabs" data-bs-toggle="collapse"
-                    data-bs-target="#presenceConfigTabsContainer" aria-expanded="true"
-                    aria-controls="presenceConfigTabsContainer">
-                <i class="bi bi-gear"></i>
-                <span>Settings</span>
-            </button>
-            <div class="tab-group collapse ms-3" id="presenceConfigTabsContainer">
-                <div class="d-flex">
-                    <ul class="nav nav-tabs flex-column" id="presenceConfigTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link active" id="on-settings-tab" data-bs-toggle="tab" href="#on-settings"
-                               role="tab" aria-controls="on-settings" aria-selected="true">On Config</a>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link" id="off-settings-tab" data-bs-toggle="tab" href="#off-settings"
-                               role="tab" aria-controls="off-settings" aria-selected="false">Off Config</a>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="btn btn-outline-secondary save-button" id="presence-save">
-                                <i class="bi bi-save me-2"></i>Save
-                            </button>
-                        </li>
-                    </ul>
-                    <div class="tab-content ms-3" id="presenceConfigTabsContent">
-                        <div class="tab-pane fade show active" id="on-settings" role="tabpanel"
-                             aria-labelledby="on-settings-tab">
+            <div class="flex-column">
+                <h5 class="">Manual override</h5>
+                <div class="btn-group dropend d-flex flex-row" role="group" aria-label="Webhook Controls" -->
+                    <button class="btn group-icon-btn btn-outline-secondary" id="manual-override-on"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top" title="Manually trigger on webhook on">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Webhook <br>ON</span>
+                    </button>
+                    <button class="btn  group-icon-btn btn-outline-secondary" id="manual-override-off"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top" title="Manually trigger on webhook off">
+                        <i class="bi bi-x-circle-fill"></i>
+                        <span>Webhook<br>OFF</span>
+                    </button>
+                    <button class="btn  group-icon-btn btn-outline-secondary disabled text-secondary-emphasis me-0 ">
+                            <i class="bi bi-gear d-block"></i>
+                            <span class="d-block">Webhook<br>Settings</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
+                            data-bs-toggle="toggle-presence-config-tabs-container" aria-expanded="false"
+                            id="toggle-presence-config-tabs">
+                    </button>
+                </div>
+            </div>
+            <div class="tab-group collapse ms-3 " id="presence-config-tabs-container">
+                <ul class="nav nav-tabs d-flex flex-column" id="presenceConfigTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="on-settings-tab" data-bs-toggle="tab" href="#on-settings"
+                           role="tab" aria-controls="on-settings" aria-selected="true">On Config</a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="off-settings-tab" data-bs-toggle="tab" href="#off-settings"
+                           role="tab" aria-controls="off-settings" aria-selected="false">Off Config</a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="btn btn-outline-secondary save-button" id="presence-save">
+                            <i class="bi bi-save me-2"></i>Save
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content ms-3" id="presenceConfigTabsContent">
+                    <div class="tab-pane fade show active" id="on-settings" role="tabpanel"
+                         aria-labelledby="on-settings-tab">
+                        <form id="on-settings-form">
                             <div class="row">
                                 <div class="col px-0">
                                     <div class="form-group mb-1">
                                         <label for="presence-url">URL</label>
-                                        <input type="text" class="form-control" id="presence-url"
+                                        <input type="text" class="form-control" id="presence-url" name="onUrl"
                                                placeholder="Enter URL">
                                     </div>
                                     <div class="form-group mb-1">
                                         <label for="presence-method">Method</label>
-                                        <select class="form-control" id="presence-method">
+                                        <select class="form-control" id="presence-method" name="onMethod">
                                             <option value="GET">GET</option>
                                             <option value="POST">POST</option>
                                         </select>
@@ -335,54 +350,58 @@
                                 <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-headers">Headers</label>
-                                        <textarea class="form-control" id="presence-headers" rows="4"
+                                        <textarea class="form-control" id="presence-headers" name="onHeaders" rows="4"
                                                   placeholder="Enter Headers"></textarea>
                                     </div>
                                 </div>
                                 <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-body">Body</label>
-                                        <textarea class="form-control" id="presence-body" rows="4"
+                                        <textarea class="form-control" id="presence-body" name="onPostBody" rows="4"
                                                   placeholder="Enter Body"></textarea>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="tab-pane fade" id="off-settings" role="tabpanel" aria-labelledby="off-settings-tab">
+                        </form>
+                    </div>
+
+                    <div class="tab-pane fade" id="off-settings" role="tabpanel" aria-labelledby="off-settings-tab">
+                        <form id="off-settings-form">
                             <div class="row">
                                 <div class="col px-0">
                                     <div class="form-group mb-1">
                                         <label for="presence-url-off">URL</label>
-                                        <input type="text" class="form-control" id="presence-url-off"
+                                        <input type="text" class="form-control" id="presence-url-off" name="offUrl"
                                                placeholder="Enter URL">
                                     </div>
                                     <div class="form-group mb-1">
                                         <label for="presence-method-off">Method</label>
-                                        <select class="form-control" id="presence-method-off">
+                                        <select class="form-control" id="presence-method-off" name="offMethod">
                                             <option value="GET">GET</option>
                                             <option value="POST">POST</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="col px-0">
-                                    <div class="form-group ">
+                                    <div class="form-group">
                                         <label for="presence-headers-off">Headers</label>
-                                        <textarea class="form-control" id="presence-headers-off" rows="4"
-                                                  placeholder="Enter Headers"></textarea>
+                                        <textarea class="form-control" id="presence-headers-off" name="offHeaders"
+                                                  rows="4" placeholder="Enter Headers"></textarea>
                                     </div>
                                 </div>
                                 <div class="col px-0">
                                     <div class="form-group">
                                         <label for="presence-body-off">Body</label>
-                                        <textarea class="form-control" id="presence-body-off" rows="4"
-                                                  placeholder="Enter Body"></textarea>
+                                        <textarea class="form-control" id="presence-body-off" name="offPostBody"
+                                                  rows="4" placeholder="Enter Body"></textarea>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             </div>
+            <!--/div-->
         </div>
 
     </div>
