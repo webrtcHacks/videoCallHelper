@@ -71,12 +71,14 @@ addScript('/scripts/inject.js');
 
 // Applets
 // ToDo: make these self-contained
-import {grabFrames} from "../../imageCapture/scripts/content.mjs";
 
 import  "../../selfView/scripts/content.mjs";
 import "../../deviceManager/scripts/content.mjs";
 import "../../badConnection/scripts/content.mjs";
 import "../../videoPlayer/scripts/content.mjs";
+
+// ToDo: this is slow and blocking
+// import {grabFrames} from "../../imageCapture/scripts/content.mjs";
 
 
 
@@ -88,6 +90,7 @@ const dashStyle = `position:fixed;top:0;left:0;width:100%;max-height:${dashHeigh
 // const dashStyle = `position:fixed;top:0;left:0;width:100%;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 
 let iframe;
+// this getter is used to check if the dash is open or closed
 Object.defineProperty(window.vch, 'dashOpen', {
     get: function() {
         return iframe?.classList.contains('dashOpen') || false;
@@ -177,23 +180,21 @@ async function syncTrackInfo() {
 
     const [videoTrack] = stream.getVideoTracks();
     videoTrack.onended = (e) => {
-        debug("track stopped: ", e.srcElement);
-        const {id} = e.srcElement;
+        debug("track stopped: ", e.target);
+        const {id} = e.target;
         trackInfos = trackInfos.filter(info => info.id !== id);
         debug("updated trackInfos", trackInfos);
     };
 
     videoTrack.onmute = async e => {
         await mh.sendMessage(c.BACKGROUND, 'tab', 'mute')
-        debug("track muted: ", e.srcElement)
+        debug("track muted: ", e.target)
     };
     videoTrack.onunmute = async e => {
         await mh.sendMessage(c.BACKGROUND, 'tab', 'unmute')
-        debug("track unmuted: ", e.srcElement)
+        debug("track unmuted: ", e.target)
     };
 
-
-    // ToDo: spec check: find out if a gUM stream can ever have more than 1 video track
     const settings = videoTrack.getSettings();
     debug("syncTrackInfo:: settings: ", settings);
 
@@ -269,12 +270,23 @@ async function monitorTrack(track, streamId) {
         settings: track.getSettings()
     }
 
-    if (track.readyState === 'live') // remove !track.muted &&  since no mute state handing yet
+    if (track.readyState === 'live') {
         await mh.sendMessage(c.BACKGROUND, m.NEW_TRACK, trackData);
+        const trackData = await storage.contents.trackData || [];
+        if (trackData.some(td => td.id === id)) {
+            if (self.VERBOSE) debug(`track ${id} already in trackData array`);
+        } else {
+            trackData.push(trackData);
+            await storage.set('trackData', trackData);
+            if (self.VERBOSE) debug(`added ${id} to trackData array`, trackData);
+        }
+    }
 
     // Note: this only fires if the browser forces the track to stop; not for most user actions
     track.addEventListener('ended', async () => {
         trackData.readyState = 'ended';
+        const trackData = await storage.contents.trackData || [];
+        await storage.set('trackData', trackData.filter(td => td.id !== id));
         await mh.sendMessage(c.BACKGROUND, m.TRACK_ENDED, trackData);
         await checkActiveStreams();
     });
@@ -359,7 +371,7 @@ async function gumStreamStart(data) {
 
         // image capture
         // ToDo: consider passing data to grabFrames so I can filter out bcs
-        await grabFrames(origStream);
+        // await grabFrames(origStream);
 
         // self-view
         // this works as long as I reuse the streamID?

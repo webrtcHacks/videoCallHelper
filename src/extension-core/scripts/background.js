@@ -12,8 +12,8 @@ self.debug = debug;
 self.storage = storage;
 self.mh = mh;
 
-// Initialize trackData if not already set
-if (!storage.contents?.trackData) await storage.set('trackData', []);
+// Reset trackData
+await storage.set('trackData', []);
 
 // Applets
 import "../../presence/scripts/background.mjs";
@@ -56,6 +56,11 @@ async function checkTabCommunication(tab) {
         const url = chrome.runtime.getURL("../pages/popup-error.html");
         await chrome.action.setPopup({ tabId: tab.id, popup: url });
         debug(`Content script not loaded on tab ${tab.id}`);
+
+        // search remove any trackData items that match this tab.id
+        const trackData = await storage.contents.trackData;
+        const newTrackData = trackData.filter(td => td.tabId !== tab.id);
+        await storage.set('trackData', newTrackData);
     }
 }
 
@@ -109,31 +114,6 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         if (self.VERBOSE) debug(`tab ${tabId} refreshed`);
         // await checkTabCommunication(tab);
     }
-});
-
-/**
- * listens for new track messages and adds the track to trackData, sets presence
- */
-mh.addListener(m.NEW_TRACK, async data => {
-    debug("new track", data);
-    const { id, kind, label, state, streamId, tabId } = data;
-    const trackData = await storage.contents.trackData || [];
-    if (trackData.some(td => td.id === id)) {
-        if (self.VERBOSE) debug(`track ${id} already in trackData array`);
-    } else {
-        trackData.push(data);
-        await storage.set('trackData', trackData);
-        if (self.VERBOSE) debug(`added ${id} to trackData array`, trackData);
-    }
-});
-
-/**
- * Listens for track ended messages and removes the track from trackData
- */
-mh.addListener(m.TRACK_ENDED, async data => {
-    debug("track ended", data);
-    const trackData = await storage.contents.trackData || [];
-    await storage.set('trackData', trackData.filter(td => td.id !== data.id));
 });
 
 /**

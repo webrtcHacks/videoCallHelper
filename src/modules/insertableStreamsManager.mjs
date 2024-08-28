@@ -67,7 +67,7 @@ export class InsertableStreamsManager{
      * @private
      */
     #startWorker(){
-        const workerName = `vch-bcs-${this.sourceTrack.kind}-${this.sourceTrack.id.substr(0, 5)}`;
+        const workerName = `vch-${this.sourceTrack.kind}-${this.sourceTrack.id.substr(0, 5)}`;
 
         return new Promise((resolve, reject) => {
 
@@ -141,5 +141,4 @@ export class ProcessedMediaStream {
             return this.alteredStream
         });
     }
-
 }

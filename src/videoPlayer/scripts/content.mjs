@@ -197,4 +197,4 @@ mh.addListener(m.GUM_STREAM_START, async () => {
 
 
 
-await loadMedia().catch(error => debug("Error loading media into player", error));
+loadMedia().catch(error => debug("Error loading media into player", error));

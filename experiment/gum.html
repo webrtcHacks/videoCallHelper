@@ -52,6 +52,15 @@
 
 <script type="module">
 
+    // wait until the document and scripts are loaded using a promise await
+    await new Promise(resolve=>{
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("DOM loaded");
+            resolve("DOM loaded");
+        });
+    });
+
+
     const devicesBtn = document.querySelector('button#devices');
     const audioDeviceList = document.getElementById('audioDeviceList');
     const videoDeviceList = document.getElementById('videoDeviceList');
@@ -152,6 +161,8 @@
                 deviceId: audioDeviceId ? { exact: audioDeviceId } : undefined
             } : false
         };
+
+        console.log("Before gUM");
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         const [track] = stream.getVideoTracks();
         console.log("Source track:", track);
@@ -244,7 +255,7 @@
         calculateStats();
     });
 
-    // getCam();
+    // getMedia();
 
 </script>
 </body>
