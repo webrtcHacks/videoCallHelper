@@ -1,5 +1,9 @@
 import {debug, storage, mh, m, c} from "../../dash/dashCommon.mjs";
 import {arrayBufferToBase64, base64ToBuffer} from "./base64.mjs";
+import {IndexedDBHandler} from "./indexedDB.mjs";
+
+// used indexedDB to store the video buffer
+const db = new IndexedDBHandler('videoPlayer');
 
 // Selectors for the new elements
 const injectButton = document.querySelector("#inject-button");
@@ -39,17 +43,22 @@ addMediaButton.addEventListener('click', async () => {
         const data = {
             mimeType: file.type,
             loop: true,
-            buffer: arrayBufferToBase64(arrayBuffer),
+            // buffer: arrayBufferToBase64(arrayBuffer),
+            objectUrl: playerPreview.src,
             videoTimeOffsetMs: playerPreview.currentTime * 1000,
             currentTime: new Date().getTime()
         };
 
+        await db.set('buffer',  arrayBufferToBase64(arrayBuffer));
         await storage.update('player', data);
-        debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
+        // debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
 
     } catch (err) {
         debug(err);
+        return;
     }
+
+    injectButton.classList.toggle('disabled', true);
 });
 
 
@@ -130,13 +139,23 @@ async function startRecording() {
         const data = {
             mimeType: recordedBlob.type,
             loop: true,
-            buffer: arrayBufferToBase64(arrayBuffer),
+            // buffer: arrayBufferToBase64(arrayBuffer),
+            objectUrl: url,
             videoTimeOffsetMs: 0,
             currentTime: new Date().getTime()
         };
 
-        await storage.update('player', data);
-        debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
+        try{
+            await db.set('buffer',  arrayBufferToBase64(arrayBuffer));
+            await storage.update('player', data);
+        }
+        catch(err){
+            debug("error saving recording to storage", err);
+            return
+        }
+
+        debug("saved video size: ", arrayBuffer.byteLength);
+        injectButton.classList.toggle('disabled', false);
 
 
     };
@@ -182,24 +201,6 @@ stopButton.onclick = async () => {
     injectButton.classList.remove('d-none');
 }
 
-
-// Initial setup - load the preview video from storage
-if (storage.contents['player']?.buffer) {
-    const buffer = storage.contents['player'].buffer;
-    const mimeType = storage.contents['player'].mimeType;
-
-    arrayBuffer = base64ToBuffer(buffer);
-    const blob = new Blob([arrayBuffer], {type: mimeType});
-    playerPreview.src = URL.createObjectURL(blob);
-    playerPreview.currentTime = 1;
-    playerPreview.load();
-
-    // remove the disabled class from the inject button
-    injectButton.classList.remove('disabled');
-
-}
-
-
 // Play video on hover
 previewButton.addEventListener('mouseover', () => {
     if (playerPreview.src) {
@@ -214,6 +215,28 @@ previewButton.addEventListener('mouseout', () => {
     if (playerPreview.src) {
         playerPreview.pause();
         playerPreview.currentTime = 1;
+    }
+});
+
+// Initial setup - load the preview video from storage
+//if (storage.contents['player']?.buffer) {
+db.onOpened().then(async()=>{
+    const buffer = await db.get('buffer');
+    if (buffer?.length > 0) {
+        const mimeType = storage.contents['player'].mimeType;
+
+        arrayBuffer = base64ToBuffer(buffer);
+        const blob = new Blob([arrayBuffer], {type: mimeType});
+        playerPreview.src = URL.createObjectURL(blob);
+        playerPreview.currentTime = 1;
+        playerPreview.load();
+
+        // remove the disabled class from the inject button
+        injectButton.classList.remove('disabled');
+    }
+    else {
+        debug("no media content in db to load");
+        injectButton.classList.add('disabled');
     }
 });
 

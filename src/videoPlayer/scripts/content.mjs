@@ -95,28 +95,30 @@ mh.addListener(m.GUM_STREAM_START, async () => {
           * @param {number} playbackOffset
           */
 
-         const {buffer, mimeType, loop, videoTimeOffsetMs, currentTime} = storage.contents['player'];
-         if(!buffer){
-             debug("no media content in storage to load");
-             resolve();
-             // reject("no media content in storage to load");
-         }
+         const { objectUrl, mimeType, loop, videoTimeOffsetMs, currentTime} = storage.contents['player'];
+        if(!objectUrl){
+            debug("no objectUrl in storage to load media");
+            resolve("no objectUrl in storage to load media");
+            return
+        }
          if(!mimeType){
              debug("no mimeType in storage to load media");
              reject("no mimeType in storage to load media");
+             return
          }
 
          const transmissionDelay = new Date().getTime() - currentTime;
          const playbackOffset = (videoTimeOffsetMs + transmissionDelay) / 1000;
 
-         const arrayBuffer = base64ToBuffer(buffer);
-         const blob = new Blob([arrayBuffer], {type: mimeType}); // Ensure the MIME type matches the video format
+         // const arrayBuffer = base64ToBuffer(buffer);
+         // const blob = new Blob([arrayBuffer], {type: mimeType}); // Ensure the MIME type matches the video format
 
          // Set up the video player if it doesn't exist
          if(!videoPlayer) {
              // ToDo: use shadow DOM
              videoPlayer = document.createElement('video');
-             videoPlayer.src = URL.createObjectURL(blob);
+             //videoPlayer.src = URL.createObjectURL(blob);
+             videoPlayer.src = objectUrl;
              videoPlayer.loop = loop;
              videoPlayer.id = `vch-player-${Math.random().toString().substring(2, 6)}`;
              videoPlayer.preload = "auto";
@@ -150,8 +152,9 @@ mh.addListener(m.GUM_STREAM_START, async () => {
              };
          }
          else {
-             videoPlayer.src = URL.createObjectURL(blob);
-             debug("Adjusted playback to match sync", playbackOffset);
+             // videoPlayer.src = URL.createObjectURL(blob);
+             videoPlayer.src = objectUrl;
+             debug("Set video source", objectUrl);
              resolve();
          }
      });
@@ -167,7 +170,7 @@ storage.addListener('player', async (newValue) => {
     debug("player storage changed", newValue);
 
     // In the future also check for changes to other video params
-    if (newValue.buffer) {
+    if (newValue.currentTime) {
         await loadMedia().catch(error => debug("Error loading media into player", error));
     }
 });
@@ -195,6 +198,4 @@ mh.addListener(m.GUM_STREAM_START, async () => {
 });
  */
 
-
-
-loadMedia().catch(error => debug("Error loading media into player", error));
+await loadMedia().catch(error => debug("Error loading media into player", error));

@@ -3,11 +3,9 @@
 export const settings = {
     active: false,
     enabled: true,
-    buffer:  null,
-    command: "",
+    objectUrl: null,
     currentTime: 0,
     loop: false,
     mimeType: "",
-    status: "uninitialized",
     videoTimeOffsetMs: 0
 }

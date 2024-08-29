@@ -77,3 +77,11 @@ Enabled & no-gUM -> disabled: PLAYER_END & warning
 Disabled & gUM -> enabled:  warning
 Disabled & no-gUM -> enabled:  do nothing
 
+
+TODO:
+- background.mjs - open db, convert to object url and save to storage
+- content.mjs
+  - remove db
+  - listen for storage changes on url
+- dash.mjs
+  - verify UI logic 
