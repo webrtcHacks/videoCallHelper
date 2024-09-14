@@ -614,7 +614,7 @@ export class InjectToWorkerMessageHandler { // extends MessageHandler {
     /**
      * Add a listener for messages from workers
      * @param {string} command - the message command
-     * @param {functio} callback - the function to call when the message is received
+     * @param {function} callback - the function to call when the message is received
      */
     addListener(command, callback) {
         this.#listeners.push({command, callback});

@@ -52,6 +52,10 @@
 
 <script type="module">
 
+    window.onload = async () => {
+        console.log("Window loaded");
+    }
+
     // wait until the document and scripts are loaded using a promise await
     await new Promise(resolve=>{
         document.addEventListener('DOMContentLoaded', async () => {

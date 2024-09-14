@@ -84,6 +84,7 @@ export class StorageHandler {
                         `\n> Old value was`, oldValue, `\n> New value is`, newValue, `\n> Changed values are`, changedValues);
                      */
 
+                    // returns the newValue and any values that changed (NOT the old value)
                     this.#listeners.forEach(listener => {
                         if (listener.key === key)
                             listener.callback.call(listener.callback, newValue, changedValues)
@@ -236,11 +237,11 @@ export class StorageHandler {
     }
 
     /**
-     * Add a listener storage changes on a key
+     * Add a listener for storage changes on a key
      * @param {string} key - key to listen to
-     * @param {function} callback - callback function to run on change
+     * @param {function(object, object):void} callback - callback function to run on change with (newValue, changedValue)=>{}
      */
-    addListener = (key, callback = null) => {
+    addListener = (key, callback= null) => {
         this.#listeners.push({key, callback});
         this.debug(`added storage listener "${key}"`);
     }

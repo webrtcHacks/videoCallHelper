@@ -28,6 +28,7 @@ const isPresenceActive = () => storage.contents?.presence?.active;
 
 /**
  * Sets the presence state based on the isOn parameter
+ * Includes setting the icon, HID indicator, and calling the webRequest function
  * @param isOn
  * @returns {Promise<void>}
  */
@@ -46,7 +47,6 @@ async function setPresenceState(isOn) {
 
 /**
  * Turns the presence indicator on and off based on the presence settings
- * Includes setting the icon, HID indicator, and calling the webRequest function
  * @returns {Promise<void>}
  */
 async function presenceOn() {
