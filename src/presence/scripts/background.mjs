@@ -73,7 +73,7 @@ async function presenceOff() {
             if (isTrackLive())
                 debug("presenceOff check: some tracks still live", storage.contents.trackData);
             else if (isPresenceActive() && !isTrackLive()) {
-                debug("turn presence off here");
+                debug("turn presence off here", storage.contents.trackData);
                 await setPresenceState(false);
             }
             resolve();

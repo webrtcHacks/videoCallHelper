@@ -15,9 +15,9 @@ await StorageHandler.initStorage('trackData', trackDataSettingsProto);
  * @returns {Promise<void>}
  */
 async function removeTabTracks(tabId) {
-    if (self.VERBOSE) debug(`handleTabRemoved: ${tabId}`);
     const newTrackData = await storage.contents.trackData.filter(td => td.tabId !== tabId);
     await storage.set('trackData', newTrackData);
+    if (self.VERBOSE) debug(`handleTabRemoved: ${tabId}. trackData storage:`, newTrackData);
 }
 
 
@@ -36,10 +36,11 @@ mh.addListener(m.NEW_TRACK, async (newTrackData) => {
 
 
 mh.addListener(m.TRACK_ENDED, async (message) => {
-    const trackId = message.trackId;
-    const trackDataArray = await storage.contents.trackData || [];
-    const newTrackDataArray = trackDataArray.filter(td => td.trackId !== trackId);
+    const trackId = message.id;
+    const trackDataArray = storage.contents.trackData || [];
+    const newTrackDataArray = trackDataArray.filter(td => td.id !== trackId);
     await storage.set('trackData', newTrackDataArray);
+    if (self.VERBOSE) debug(`track ${trackId} removed. Remaining tracks`, storage.contents.trackData);
 });
 
 /**
@@ -54,14 +55,17 @@ chrome.tabs.onReplaced.addListener(async (tabId, removeInfo) => {
     await removeTabTracks(tabId);
 });
 
-// ToDo: should I just remove the trackData on startup?
+await storage.set('trackData', []);
+
 /**
  *  On start-up - remove any trackData items where the tabId no longer exists
- */
+
 const trackDataArray = await storage.contents.trackData || [];
 const currentTabs = await chrome.tabs.query({});
 const currentTabIds = currentTabs.map(tab => tab.id);
 const newTrackDataArray = trackDataArray.filter(td => currentTabIds.includes(td.tabId));
 await storage.set('trackData', newTrackDataArray);
 
-debug(`trackData on start-up`, newTrackDataArray);
+if(newTrackDataArray.length > 0)
+    debug(`trackData on start-up`, newTrackDataArray);
+*/
