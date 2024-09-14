@@ -12,16 +12,15 @@ self.debug = debug;
 self.storage = storage;
 self.mh = mh;
 
-// Reset trackData
-await storage.set('trackData', []);
 
 // Applets
+import "../../trackData/scripts/background.mjs";
 import "../../presence/scripts/background.mjs";
 import "../../imageCapture/scripts/background.mjs";
 import "../../deviceManager/scripts/background.mjs";
 import "../../selfView/scripts/background.mjs";
 import "../../badConnection/scripts/background.mjs";
-import "../../videoPlayer/scripts/background.mjs";
+// import "../../videoPlayer/scripts/background.mjs";
 
 debug(`Environment: ${process.env.NODE_ENV}`);
 
@@ -56,11 +55,6 @@ async function checkTabCommunication(tab) {
         const url = chrome.runtime.getURL("../pages/popup-error.html");
         await chrome.action.setPopup({ tabId: tab.id, popup: url });
         debug(`Content script not loaded on tab ${tab.id}`);
-
-        // search remove any trackData items that match this tab.id
-        const trackData = await storage.contents.trackData;
-        const newTrackData = trackData.filter(td => td.tabId !== tab.id);
-        await storage.set('trackData', newTrackData);
     }
 }
 
@@ -70,11 +64,6 @@ async function checkTabCommunication(tab) {
  * @returns {Promise<void>}
  */
 async function handleTabRemoved(tabId) {
-    // remove any tracks for that tab
-    const trackData = await storage.contents.trackData;
-    const newTrackData = trackData.filter(td => td.tabId !== tabId);
-    await storage.set('trackData', newTrackData);
-
     // Check if we should open the dash on this reload
     if (dashOpenNext === tabId) {
         setTimeout(async () => {

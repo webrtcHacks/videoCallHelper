@@ -12,19 +12,15 @@ debug("storage contents: ", settings);
 
 const streams = [];
 let trackInfos = [];
+let tabId = null;
 
 window.vch = {
     streams: streams,
     trackInfos: trackInfos,
     mh: mh,
-    storage: storage
+    storage: storage,
+    tabId: tabId
 };
-
-/*
-mh.addListener(m.GET_ALL_SETTINGS, async() => {
-    await mh.sendMessage(c.INJECT, m.ALL_SETTINGS, storage.contents);
-});
- */
 
 /************ START inject script injection ************/
 
@@ -70,8 +66,8 @@ addScript('/scripts/inject.js');
 /************ END inject script injection ************/
 
 // Applets
-// ToDo: make these self-contained
-
+import "../../trackData/scripts/content.mjs";
+import "../../trackData/scripts/content.mjs";
 import  "../../selfView/scripts/content.mjs";
 import "../../deviceManager/scripts/content.mjs";
 import "../../badConnection/scripts/content.mjs";
@@ -255,67 +251,10 @@ async function syncTrackInfo() {
      */
 }
 
-// Added for presence
-async function monitorTrack(track, streamId) {
-    debug(`new ${track.kind} track on stream ${streamId} with settings: `, track);
-    const {id, kind, label, readyState} = track;
-    const trackData = {
-        id,
-        kind,
-        label,
-        readyState: readyState,
-        streamId,
-        sourceUrl: window.location.href,            // To help with debugging
-        time: new Date().toLocaleString(),
-        settings: track.getSettings()
-    }
-
-    if (track.readyState === 'live') {
-        await mh.sendMessage(c.BACKGROUND, m.NEW_TRACK, trackData);
-        const trackData = await storage.contents.trackData || [];
-        if (trackData.some(td => td.id === id)) {
-            if (self.VERBOSE) debug(`track ${id} already in trackData array`);
-        } else {
-            trackData.push(trackData);
-            await storage.set('trackData', trackData);
-            if (self.VERBOSE) debug(`added ${id} to trackData array`, trackData);
-        }
-    }
-
-    // Note: this only fires if the browser forces the track to stop; not for most user actions
-    track.addEventListener('ended', async () => {
-        trackData.readyState = 'ended';
-        const trackData = await storage.contents.trackData || [];
-        await storage.set('trackData', trackData.filter(td => td.id !== id));
-        await mh.sendMessage(c.BACKGROUND, m.TRACK_ENDED, trackData);
-        await checkActiveStreams();
-    });
-
-    // ToDo: should I use this monitor function?
-    // use an interval to check if the track has ended
-    const monitor = setInterval(async () => {
-        if (track.readyState === 'ended') {
-            trackData.readyState = 'ended';
-            await mh.sendMessage(c.BACKGROUND, m.TRACK_ENDED, trackData);
-            clearInterval(monitor);
-        }
-    }, 2000);
-
-    // OBS making this go on and off
-    /*
-    track.addEventListener('mute', async (e) => {
-        trackData.state = 'muted';
-        await mh.sendMessage('background', m.TRACK_MUTE, trackData);
-    });
-
-    track.addEventListener('unmute', async (e) => {
-        trackData.state = 'unmuted';
-        await mh.sendMessage('background', m.TRACK_UNMUTE, trackData);
-    });
-     */
-}
-
-
+/**
+ * Check if any of the active streams have ended
+ * @returns {Promise<void>}
+ */
 async function checkActiveStreams() {
     for (const stream of streams) {
         if (stream.getTracks().length === 0
@@ -332,6 +271,12 @@ async function checkActiveStreams() {
 
 // ToDo: count errors back from the worker - cancel modification attempts if too many
 
+/**
+ * Handle the transfer of a gUM stream
+ * - the stream is transferred from the inject context via a video element
+ * @param data
+ * @returns {Promise<void>}
+ */
 async function gumStreamStart(data) {
     const id = data.id;
     const video = document.querySelector(`video#${id}`);
@@ -348,9 +293,6 @@ async function gumStreamStart(data) {
         await mh.sendMessage(c.INJECT, m.STREAM_TRANSFER_FAILED, {id, error: "no tracks found in stream"});
         return;
     }
-
-    // Added for presence
-    origStream.getTracks().forEach(track => monitorTrack(track, origStream.id));
 
     // ToDo: should really ignore streams and just monitor tracks
     origStream.addEventListener('removetrack', async (event) => {
