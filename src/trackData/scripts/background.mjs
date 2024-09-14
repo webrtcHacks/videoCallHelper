@@ -61,6 +61,7 @@ chrome.tabs.onReplaced.addListener(async (tabId, removeInfo) => {
 /**
  *  On start-up - remove any trackData items where the tabId no longer exists
 */
+
 const trackDataArray = await storage.contents.trackData || [];
 const currentTabs = await chrome.tabs.query({});
 const currentTabIds = currentTabs.map(tab => tab.id);
