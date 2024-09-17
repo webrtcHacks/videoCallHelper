@@ -222,11 +222,16 @@ MediaStream.prototype.addTrack = function (track) {
 
 const originalCloneTrack = MediaStreamTrack.prototype.clone;
 MediaStreamTrack.prototype.clone = function () {
+
+    // ToDo: track cloned tracks and send them to content for processing
+
     // check if track is in vch.gumTracks
     if(vch.gumTracks.includes(this)){
         const newTrack = originalCloneTrack.apply(this, arguments);
         vch.gumTracks.push(newTrack);
         debug(`cloned gUM ${this.kind} track: ${this.id}`, newTrack);
+
+        // No Stream-level event to detect when a track is cloned, so this will not be part of TrackData in storage without an event
         return newTrack;
     } else {
         debug("cloning non-gUM track", this);

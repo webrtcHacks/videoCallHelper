@@ -19,8 +19,16 @@ window.vch = {
     trackInfos: trackInfos,
     mh: mh,
     storage: storage,
-    tabId: tabId
+    tabId: tabId,
+    debug: process.env.NODE_ENV === 'development'
 };
+
+mh.addListener(m.HELLO, (message)=>{
+    window.vch.tabId = message.tabId;
+    // debug("hello", message);
+});
+mh.sendMessage(c.BACKGROUND, m.HELLO);
+
 
 /************ START inject script injection ************/
 

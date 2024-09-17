@@ -59,6 +59,20 @@ async function checkTabCommunication(tab) {
 }
 
 /**
+ * Respond to a hello from content to pass the tab id
+ */
+mh.addListener(m.HELLO, message => {
+    debug(`tab ${message.tabId} says "hello"`, message);
+    try{
+        mh.sendMessage(c.CONTENT, m.HELLO, {tabId: message.tabId});
+    }
+    catch (err){
+        debug(`error sending "hello" to ${message.tabId}`, err);
+    }
+});
+
+
+/**
  * Handles tab removal and refresh - removes any tracks associated with that tab, updates presence
  * @param tabId
  * @returns {Promise<void>}
@@ -76,7 +90,9 @@ async function handleTabRemoved(tabId) {
 /**
  * Tab event listeners
  */
+
 chrome.tabs.onCreated.addListener(async (tab) => {
+    // only run on http tabs
     if (!tab.url.match(/^http/i)) {
         await chrome.action.disable(tab.id);
     }

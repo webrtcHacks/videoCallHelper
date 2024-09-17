@@ -134,7 +134,10 @@ export class MessageHandler {
             switch (this.context) {
                 case CONTEXT.BACKGROUND:
                     if (to === CONTEXT.CONTENT || to === CONTEXT.INJECT) {
-                        this.tabId = data.tabId; // this.tabId || data.tabId;
+                        // background->content requires that you specify the tab. This needs to be specified in the message.
+                        // It would be better if you could specify the tab in the method and then use c.CONTEXT to send to all tabs
+                        // ToDo: handle individual communication to tabs better
+                        this.tabId = data.tabId;
                         // this.debug(`target tabId: ${this.tabId}`);
                         try {
                             chrome.tabs.sendMessage(this.tabId, {...messageToSend});
@@ -324,7 +327,7 @@ export class MessageHandler {
      *
      * @param {string} message - the message to listen for
      * @param {function} callback - the function to call when the message is received
-     * @param {string} tabId - the tabId to listen for messages from
+     * @param {number} tabId - the tabId to listen for messages from
      * @returns {void}
      */
     addListener = (message = "", callback = null, tabId) => {
@@ -650,6 +653,7 @@ export const CONTEXT = {
 export const MESSAGE = {
     PING: 'ping',   // background -> content
     PONG: 'pong',   // content -> background
+    HELLO: 'hello', // content <-> background for getting tab
 
     // used in inject.js
     GET_ALL_SETTINGS: 'get_all_settings',
@@ -694,6 +698,7 @@ export const MESSAGE = {
     TRACK_ENDED: 'track_ended',
     TRACK_MUTE: 'track_mute',
     TRACK_UNMUTE: 'track_unmute',
+    CLONE_TRACK: 'clone_track',
 
     // dash.js
     DASH_INIT_DATA: 'dash_init_data',

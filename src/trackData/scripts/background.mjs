@@ -1,66 +1,47 @@
-import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {StorageHandler} from "../../modules/storageHandler.mjs";
 import {settings as trackDataSettingsProto} from "../../trackData/scripts/settings.mjs";    // just an empty array
-self.VERBOSE = true;
 
-const debug = Function.prototype.bind.call(console.log, console, `🫥🎼`);
-const storage = await new StorageHandler();
-const mh = new MessageHandler(c.BACKGROUND);
-
-await StorageHandler.initStorage('trackData', trackDataSettingsProto);
+const VERBOSE = true;
+const debug = VERBOSE ? Function.prototype.bind.call(console.log, console, `🫥🛤`) : ()=>{};
+const storage = await new StorageHandler(debug);
 
 /**
  * Remove all trackData items that match the tabId from storage
- * @param tabId
+ * @param tabId - the tabId to remove
+ * @param change - optional string for debugging
  * @returns {Promise<void>}
  */
-async function removeTabTracks(tabId) {
+async function removeTabTracks(tabId, change = "") {
     const newTrackData = await storage.contents.trackData.filter(td => td.tabId !== tabId);
     await storage.set('trackData', newTrackData);
-    if (self.VERBOSE) debug(`handleTabRemoved: ${tabId}. trackData storage:`, newTrackData);
+    debug(`tab ${change} - checking tracks on ${tabId}. trackData storage:`, newTrackData);
 }
 
-
-mh.addListener(m.NEW_TRACK, async (newTrackData) => {
-    debug(`Received new track data`, newTrackData);
-
-    const trackDataArray = await storage.contents.trackData || [];
-    if (trackDataArray.some(td => td.id === newTrackData.id)) {
-        if (self.VERBOSE) debug(`track ${id} already in trackData array`);
-        return
-    }
-    trackDataArray.push(newTrackData);
-    await storage.set('trackData', trackDataArray);
-    if (self.VERBOSE) debug(`added ${newTrackData.id} to trackData array`, trackDataArray);
-});
-
-
-mh.addListener(m.TRACK_ENDED, async (message) => {
-    const trackId = message.id;
-    const trackDataArray = storage.contents.trackData || [];
-    const newTrackDataArray = trackDataArray.filter(td => td.id !== trackId);
-    await storage.set('trackData', newTrackDataArray);
-    if (self.VERBOSE) debug(`track ${trackId} removed. Remaining tracks`, storage.contents.trackData);
-});
 
 /**
  * Tab event listeners
  */
 
-chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
-    await removeTabTracks(tabId);
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+    await removeTabTracks(tabId, "removed");
 });
 
-chrome.tabs.onReplaced.addListener(async (tabId, removeInfo) => {
-    await removeTabTracks(tabId);
+chrome.tabs.onReplaced.addListener(async (tabId) => {
+    await removeTabTracks(tabId, "replaced");
 });
 
-// Don't reset storage on start-up since background can restart
-// await storage.set('trackData', []);
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete')
+        await removeTabTracks(tabId, "refreshed");
+    // else debug(`tab ${tabId} updated with status: ${changeInfo.status}`);
+
+});
 
 /**
  *  On start-up - remove any trackData items where the tabId no longer exists
 */
+
+await StorageHandler.initStorage('trackData', trackDataSettingsProto);
 
 const trackDataArray = await storage.contents.trackData || [];
 const currentTabs = await chrome.tabs.query({});
