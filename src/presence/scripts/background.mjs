@@ -7,7 +7,6 @@
  */
 
 import {StorageHandler} from "../../modules/storageHandler.mjs";
-import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {settings as presenceSettingsProto} from "../../presence/scripts/settings.mjs";
 import {glow} from "./embrava.mjs";                                                 // HID light
 import {webRequest} from "./webRequest.mjs";                                        // web request function
@@ -16,7 +15,6 @@ const PRESENCE_OFF_DELAY = 2000; // time to wait before turning off presence aft
 
 const debug = Function.prototype.bind.call(console.log, console, `🫥🟢`);
 const storage = await new StorageHandler();
-const mh = new MessageHandler(c.BACKGROUND);
 
 // initialize presence settings
 await StorageHandler.initStorage('presence', presenceSettingsProto);
@@ -93,13 +91,14 @@ storage.addListener('presence', async (newValue, changedValue) => {
     }
 });
 
-// Check if a track was still live on tab close
-chrome.tabs.onRemoved.addListener(async ()=> await presenceOff());
-
 /**
  * Listeners for track changes and calls the presenceOn and presenceOff functions
  */
-mh.addListener(m.NEW_TRACK, async () => {await presenceOn()} );
-mh.addListener(m.TRACK_ENDED, async()=> {await presenceOff()} );
+storage.addListener('trackData', async (newValue, changedValue) => {
+    if (newValue.length === 0) {
+        await presenceOff();
+    } else if (newValue.some(td => td.readyState === 'live')) {
+        await presenceOn();
+    }
+});
 
-// debug("presence background script loaded");

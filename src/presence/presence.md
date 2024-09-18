@@ -1,81 +1,60 @@
+# 🟢 Presence Applet
+Detects if the camera and/or microphone is being used (via trackData).  The presence of a camera and/or microphone stream is considered "on". 
+Displays the number of camera and microphone streams. 
+Can be configured to send a webhook to a specified URL when presence is "on" or "off".
+I use this to display a busy light outside my office to let visitors know when I am on calls.
 
-## Dash
+## Storage
+
+```javascript
+presence = {
+  on: {
+    onUrl: "",
+    onMethod: "POST",
+    onPostBody: "",
+    onHeaders: "",
+  },
+  off: {
+    offUrl: "",
+    offMethod: "POST",
+    offPostBody: "",
+    offHeaders: "",
+  },
+  hid: false,
+  active: false,
+  enabled: false
+}
+```
+## Modules
+
+### Dash
 Buttons
 - Auto-update
 - {Manual-override} Busy / Not busy
-- Camera in use? - get from trackData with badge
-- Microphone in use?  - get from trackData with badge
+- Camera in use - badge count from trackData
+- Microphone in use?  - badge count from trackData
 
-Expandable buttons
+Expandable buttons:
 - presence on config
-  -  URL text box
+  - URL text box
   - Headers
   - Body
   - Get / Post switch?
   - Save
 - presence off config
-    -  URL text box
+    - URL text box
     - Headers
     - Body
     - Get / Post switch?
-     - Save
+- Save
 
+### Background.mjs
 
-OLD
-btnBusy
-  webRequest("on", storage.contents['presence']);
-  storage.update('presence', {active: true});
-btnNotBusy - the opposite
+- initializes the presence object in storage if it isn't there
+- listens for storage changes and triggers on / off actions
+- Sets the icon based on the presence state
+- Calls webRequest on presence change
 
-storageListener would update enabledCheck & statusSpanElem
-
-
-
-## Background.mjs
-
-- sets up storage
-- listens for `NEW_TRACK` and `TRACK_ENDED`
-- listens for tabs.onRemoved
-- calls the webhook
-- manages the glow light
-
-added: resets trackData on reload - is that a good idea?
-
-presenceOn
-- checks for storage.contents.trackData.some(td => td.readyState === 'live') but never populates that
-
-
-setPresenceState
-- sets storage {active: state}
-- updates the icon
-- calls webRequest
-
-storage listener
-- calls presenceOn / presenceOff on change
-
-
-#  extension-core
-
-## background.js
-listens for `NEW_TRACK` and `TRACK_ENDED` messages from content.js and updates storage
-  TODO: move this to content.js
-    still need a clean-up to check for closed tabs
-
-## content.js
-monitorTrack - sends trackData messages to Background
-
-
-#### trackData issues
-1. doesn't clear when tab is refreshed
-2. doesn't pick-up clones
-3. random background resets clear this
-
-trackData managed in background.js
-`NEW_TRACK` and `TRACK_ENDED` messages sent from content.js
-
-
-who uses trackData?
-- Presence
-- 
+TODO: webhook is called twice when both audio and video are captured at the same time
 
 
