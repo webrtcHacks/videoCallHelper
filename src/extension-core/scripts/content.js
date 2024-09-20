@@ -23,6 +23,10 @@ window.vch = {
     debug: process.env.NODE_ENV === 'development'
 };
 
+/**
+ * Get the tabId from background
+ *  - tabId is not directly exposed to content context
+ */
 mh.addListener(m.HELLO, (message)=>{
     window.vch.tabId = message.tabId;
     // debug("hello", message);

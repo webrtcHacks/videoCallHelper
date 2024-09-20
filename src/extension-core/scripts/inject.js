@@ -147,7 +147,15 @@ const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.medi
 
 // shim getUserMedia; return alterStream track if vch-audio or vch-video is in the constraints
 async function shimGetUserMedia(constraints) {
-    // ToDo: need to handle the case when a subsequent gUM call asks for vch-(audio|video) when
+
+    /*
+    // Setup fake vch-camera / vch-video devices like a virtual cam/mic device that can be controlled from the dash
+    // The original idea was to use this for any alteredStream functionality,
+    // but this had big UI implications and would require the app to have device change feature (they usually do)
+    // and for the user to know how to use this.
+    // The flow seemed complicated, so I removed this for now.
+
+    // future: need to handle the case when a subsequent gUM call asks for vch-(audio|video) when
     //  it was already created - do I force the stop of the old one and start a new worker? Reuse?
     //  Does track.stop() even stop the worker?
 
@@ -159,14 +167,20 @@ async function shimGetUserMedia(constraints) {
         // debug("returning fakeStream", fakeStream);
         return fakeStream;
     }
-    // ToDo: make badConnection and injectPlayer the same enabled switch
-    else if (vch?.settings['badConnection']?.enabled) {
-        const stream = await origGetUserMedia(constraints);
-        vch.gumTracks.push(...stream.getTracks());
-        await transferStream(stream);
+    else
+     */
 
-        const alteredStream = await new ProcessedMediaStream(stream);
-        // const alteredStream = await new AlterStream(stream);
+    if (vch?.settings['badConnection']?.enabled || vch?.settings['videoPlayer']?.enabled === undefined) {
+        const stream = await origGetUserMedia(constraints);         // get the original stream
+
+        const alteredStream = await new ProcessedMediaStream(stream);   // modify the stream
+
+        const tracks = stream.getTracks();
+        vch.gumTracks.push(...tracks);  // save the original track data
+
+        const alteredTrackIds = tracks.map(track => track.id);      // keep track if the source tracks have been altered, needed to see the impact of disabling stream modification
+        await transferStream(stream, m.GUM_STREAM_START, {alteredTrackIds});               // transfer the stream to content.js
+
         debug("returning alteredStream", alteredStream);
         return alteredStream;
     } else {

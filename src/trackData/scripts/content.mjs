@@ -11,14 +11,16 @@ const TRACK_CHECK_INTERVAL = 2000;  // hwo often to check tracks in ms
  * Monitor a track and send messages when status changes  to the background script
  * @param track - the track to monitor
  * @param streamId - the id of the stream the track is on
+ * @param altered - flag to indicate if the track has been altered
  * @returns {Promise<void>}
  */
-async function monitorTrack(track, streamId) {
+async function monitorTrack(track, streamId, altered = false) {
     if(!window.vch.tabId){
         debug("ERROR - failed to monitor track because tabId is missing");
         return
     }
-    // debug(`new ${track.kind} track on stream ${streamId} with settings: `, track);
+
+    debug(`new ${track.kind} track on stream ${streamId} with settings: `, track);
     const {id, kind, label, readyState} = track;
     const newTrackData = {
         id,
@@ -29,7 +31,8 @@ async function monitorTrack(track, streamId) {
         sourceUrl: window.location.href,            // To help with debugging
         time: new Date().toLocaleString(),
         settings: track.getSettings(),
-        tabId: window.vch.tabId
+        tabId: window.vch.tabId,
+        altered: altered
     }
 
     if (track.readyState === 'live') {
@@ -73,7 +76,10 @@ async function monitorTrack(track, streamId) {
 mh.addListener(m.GUM_STREAM_START, async (data) => {
     const video = document.querySelector(`video#${data.id}`);
     const origStream = video.srcObject;
-    origStream.getTracks().forEach(track => monitorTrack(track, origStream.id));
+
+    const {alteredTrackIds} = data;
+    debug(`new gUM stream ${origStream.id} with data: `, data);
+    origStream.getTracks().forEach(track => monitorTrack(track, origStream.id, alteredTrackIds?.includes(track.id)));
 
     // events
     origStream.addEventListener('addtrack', async (event) => {
