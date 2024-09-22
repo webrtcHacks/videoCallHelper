@@ -58,7 +58,7 @@ addMediaButton.addEventListener('click', async () => {
         return;
     }
 
-    injectButton.classList.toggle('disabled', true);
+    injectButton.classList.toggle('disabled', false);
 });
 
 
@@ -146,8 +146,9 @@ async function startRecording() {
         };
 
         try{
-            await db.set('buffer',  arrayBufferToBase64(arrayBuffer));
-            await storage.update('player', data);
+            await db.set('buffer',  arrayBufferToBase64(arrayBuffer));                       // store for future access
+            await storage.set('temp', {buffer: arrayBufferToBase64(arrayBuffer)});  // temp transfer
+            await storage.update('player', data);                                                  // other player settings
         }
         catch(err){
             debug("error saving recording to storage", err);
@@ -218,9 +219,14 @@ previewButton.addEventListener('mouseout', () => {
     }
 });
 
-// Initial setup - load the preview video from storage
-//if (storage.contents['player']?.buffer) {
-db.onOpened().then(async()=>{
+/**
+ * Load the video buffer from storage
+ * - set the preview video source
+ * - enable the inject button if there is a buffer
+ *  - put the buffer in the temp storage for content to use
+ * @returns {Promise<void>}
+ */
+async function handleBuffer(){
     const buffer = await db.get('buffer');
     if (buffer?.length > 0) {
         const mimeType = storage.contents['player'].mimeType;
@@ -230,13 +236,36 @@ db.onOpened().then(async()=>{
         playerPreview.src = URL.createObjectURL(blob);
         playerPreview.currentTime = 1;
         playerPreview.load();
+        playerPreview.pause();
 
         // remove the disabled class from the inject button
         injectButton.classList.remove('disabled');
+
+        // Need this to trigger player load
+        const data = storage.contents['player'];
+        data.currentTime = new Date().getTime();
+
+        await storage.update('temp', {buffer});  // temp transfer
+        debug("loaded video arrayBuffer:", arrayBuffer.byteLength);
+
     }
     else {
         debug("no media content in db to load");
         injectButton.classList.add('disabled');
     }
+}
+
+// Initial setup - load the preview video from storage, send the video to inject
+db.onOpened().then(async()=>{
+    if(storage.contents['player']?.enabled)
+        await handleBuffer();
 });
 
+// add a storage listener for player. if enabled changed to true then load the buffer
+storage.addListener('player', async (newValue, changedValue) => {
+    debug("player storage changed (new, whatChanged)", newValue, changedValue);
+    if (changedValue?.enabled && newValue?.enabled) {
+        debug("player enabled");
+        await handleBuffer();
+    }
+});

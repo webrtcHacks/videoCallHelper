@@ -653,7 +653,7 @@ export const CONTEXT = {
 export const MESSAGE = {
     PING: 'ping',   // background -> content
     PONG: 'pong',   // content -> background
-    HELLO: 'hello', // content <-> background for getting tab
+    TAB_ID: 'tab_id', // content <-> background for getting tab
 
     // used in inject.js
     GET_ALL_SETTINGS: 'get_all_settings',
@@ -725,7 +725,6 @@ export const MESSAGE = {
     // player
     PLAYER_START: 'player_start',
     PLAYER_LOAD: 'player_load',
-    PLAYER_TRANSFER: 'player_transfer',
     PLAYER_PAUSE: 'player_pause',
     PLAYER_RESUME: 'player_resume',     // used in the worker to skip reading
     PLAYER_END: 'player_end',               // used in the worker to end the transform

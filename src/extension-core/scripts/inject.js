@@ -463,6 +463,13 @@ navigator.mediaDevices.removeEventListener = function (type, listener) {
     return originalRemoveEventListener(type, listener);
 };
 
+// Get the tab id
+mh.addListener(m.TAB_ID, message => {
+    vch.tabId = message.tabId;
+    debug(`this is tab ${message.tabId}`);
+});
+
+// ToDo: make this more general
 // Settings updates that impact the inject context
 mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
     debug("UPDATE_BAD_CONNECTION_SETTINGS", data);
@@ -483,6 +490,7 @@ const vch = {
     pcTracks: [],
     gumTracks: [],      // original, pre-shimmed getUserMedia tracks
     pcs: [],
+    tabId: null
 }
 
 if (process.env.NODE_ENV) window.vch = vch;

@@ -21,7 +21,6 @@ export class IndexedDBHandler {
 
     /**
      * Debug log function for IndexedDB operations
-     * @type {any}
      */
     static debug = Function.prototype.bind.call(console.debug, console, `vch 💾 `);
 
@@ -30,17 +29,45 @@ export class IndexedDBHandler {
      */
     init() {
         this.dbReadyPromise = new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, 1);
+            const request = indexedDB.open(this.dbName);
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                db.createObjectStore(this.storeName, { keyPath: 'key' });
+                if (!db.objectStoreNames.contains(this.storeName)) {
+                    db.createObjectStore(this.storeName, {keyPath: 'key'});
+                    IndexedDBHandler.debug(`Object store '${this.storeName}' created successfully.`);
+                }
             };
 
             request.onsuccess = (event) => {
                 this.db = event.target.result;
-                IndexedDBHandler.debug('IndexedDB initialized successfully.');
-                resolve(); // Resolve the promise when the database is ready
+
+                // Check if the object store exists
+                if (!this.db.objectStoreNames.contains(this.storeName)) {
+                    this.db.close();
+                    // Reopen the database with a higher version to trigger onupgradeneeded
+                    const versionRequest = indexedDB.open(this.dbName, this.db.version + 1);
+
+                    versionRequest.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        db.createObjectStore(this.storeName, {keyPath: 'key'});
+                        IndexedDBHandler.debug(`Object store '${this.storeName}' created on version upgrade.`);
+                    };
+
+                    versionRequest.onsuccess = (event) => {
+                        this.db = event.target.result;
+                        IndexedDBHandler.debug('IndexedDB initialized successfully with new object store.');
+                        resolve(); // Resolve the promise when the database is ready
+                    };
+
+                    versionRequest.onerror = (event) => {
+                        IndexedDBHandler.debug('Error reinitializing IndexedDB:', event.target.errorCode);
+                        reject('Error reinitializing IndexedDB: ' + event.target.errorCode);
+                    };
+                } else {
+                    IndexedDBHandler.debug('IndexedDB initialized successfully.');
+                    resolve(); // Resolve the promise when the database is ready
+                }
             };
 
             request.onerror = (event) => {
@@ -49,6 +76,15 @@ export class IndexedDBHandler {
             };
         });
     }
+
+    /**
+     * onOpened method that returns a promise resolving when IndexedDB is ready
+     * @returns {Promise<void>}
+     */
+    onOpened() {
+        return this.dbReadyPromise;
+    }
+
 
     /**
      * onOpened method that returns a promise resolving when IndexedDB is ready
@@ -91,7 +127,7 @@ export class IndexedDBHandler {
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(this.storeName, 'readwrite');
             const store = transaction.objectStore(this.storeName);
-            const request = store.add({ key, data: value });
+            const request = store.put({key, data: value});
 
             request.onsuccess = () => {
                 IndexedDBHandler.debug(`IndexedDB: Successfully set key ${key}`);
@@ -115,7 +151,7 @@ export class IndexedDBHandler {
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(this.storeName, 'readwrite');
             const store = transaction.objectStore(this.storeName);
-            const request = store.put({ key, data: value });
+            const request = store.put({key, data: value});
 
             request.onsuccess = () => {
                 IndexedDBHandler.debug(`IndexedDB: Successfully updated key ${key}`);

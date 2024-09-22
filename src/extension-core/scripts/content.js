@@ -27,11 +27,17 @@ window.vch = {
  * Get the tabId from background
  *  - tabId is not directly exposed to content context
  */
-mh.addListener(m.HELLO, (message)=>{
-    window.vch.tabId = message.tabId;
-    // debug("hello", message);
+mh.addListener(m.TAB_ID, (message)=>{
+    const tabId = message.tabId;
+    if(!tabId){
+        debug("ERROR: tabId not provided on TAB_ID listener", message);
+        return;
+    }
+    debug(`this is tab ${tabId}`);
+    window.vch.tabId = tabId;
+    mh.sendMessage(c.INJECT, m.TAB_ID, {tabId: tabId});
 });
-mh.sendMessage(c.BACKGROUND, m.HELLO);
+mh.sendMessage(c.BACKGROUND, m.TAB_ID);
 
 
 /************ START inject script injection ************/
