@@ -19,17 +19,30 @@ const mh = new MessageHandler(c.INJECT);
 // exit if shim already loaded for some reason
 if (window.vch) throw new Error("vch already loaded");
 
+// Globals & debug helpers
+const vch = {
+    mh,
+    settings: {},
+    deviceManager: {},
+    pcTracks: [],
+    gumTracks: [],      // original, pre-shimmed getUserMedia tracks
+    pcs: [],
+    tabId: null
+}
+window.vch = vch;
+
 // get data
 const scriptElement = document.querySelector('script#vch-inject');
 const vchSettings = JSON.parse(scriptElement.dataset.settings);
 debug("initial settings", vchSettings);
+window.vch.settings = vchSettings;
 scriptElement.remove(); // now we don't need this
 
 // ToDo: use the settings to initialize any other inject context modules
 
 // ForDeviceManager
 const deviceManager = new DeviceManager(vchSettings['deviceManager'] ?? null);
-
+window.vch.deviceManager = deviceManager;
 
 // Put the stream in a temp DOM element for transfer to content.js context
 // content.js will swap with a replacement stream
@@ -474,6 +487,8 @@ mh.addListener(m.TAB_ID, message => {
 mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
     debug("UPDATE_BAD_CONNECTION_SETTINGS", data);
     vch.settings.badConection = data;
+    if(data.tabId)
+        vch.tabId = data.tabId;
 });
 
 
@@ -483,17 +498,8 @@ mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
  */
 debug("injected");
 
-const vch = {
-    mh,
-    settings: vchSettings,
-    deviceManager,
-    pcTracks: [],
-    gumTracks: [],      // original, pre-shimmed getUserMedia tracks
-    pcs: [],
-    tabId: null
-}
 
-if (process.env.NODE_ENV) window.vch = vch;
+// if (process.env.NODE_ENV) window.vch = vch;
 
 // Tell content script that the inject script is loaded
 await mh.sendMessage(c.CONTENT, m.INJECT_LOADED, {time: Date.now() });

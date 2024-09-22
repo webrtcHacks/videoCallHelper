@@ -37,7 +37,13 @@ mh.addListener(m.TAB_ID, (message)=>{
     window.vch.tabId = tabId;
     mh.sendMessage(c.INJECT, m.TAB_ID, {tabId: tabId});
 });
-mh.sendMessage(c.BACKGROUND, m.TAB_ID);
+
+await mh.sendMessage(c.BACKGROUND, m.REQUEST_TAB_ID)
+
+/*
+document.addEventListener('', async () => {
+});
+*/
 
 
 /************ START inject script injection ************/

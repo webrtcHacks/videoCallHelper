@@ -3,9 +3,8 @@ import {StorageHandler} from "../../modules/storageHandler.mjs";
 const mh = new MessageHandler(c.CONTENT);
 const storage = await new StorageHandler();
 // const debug = process.env.NODE_ENV === 'development' ? Function.prototype.bind.call(console.info, console, `🫥🛤`) : ()=>{};
-// const debug = window.vch.debug ? Function.prototype.bind.call(console.info, console, `🫥🛤`) : ()=>{};
 const debug = Function.prototype.bind.call(console.info, console, `🫥🛤`);
-const TRACK_CHECK_INTERVAL = 2000;  // hwo often to check tracks in ms
+const TRACK_CHECK_INTERVAL = 2000;  // how often to check tracks in ms
 
 /**
  * Monitor a track and send messages when status changes  to the background script
@@ -16,7 +15,18 @@ const TRACK_CHECK_INTERVAL = 2000;  // hwo often to check tracks in ms
  */
 async function monitorTrack(track, streamId, altered = false) {
     if(!window.vch.tabId){
-        debug("ERROR - failed to monitor track because tabId is missing");
+        debug(`WARNING: tabId missing. Waiting tabId from background script before monitoring ${track.kind} track ${track.id}`);
+        mh.removeListener(m.TAB_ID);
+        mh.addListener(m.TAB_ID, async (message) => {
+            const {tabId} = message;
+            if(tabId) {
+                window.vch.tabId = tabId;
+                await monitorTrack(track, streamId, altered);
+            }
+            else
+                debug("ERROR obtaining tabId from background script", message);
+        });
+        await mh.sendMessage(c.BACKGROUND, m.REQUEST_TAB_ID);
         return
     }
 

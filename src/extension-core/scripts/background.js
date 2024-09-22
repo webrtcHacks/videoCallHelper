@@ -28,17 +28,24 @@ const DASH_OPEN_NEXT_WAIT = 1000; // time to wait before opening the dash on the
 let dashOpenNext; // flag to open the dash on the next tab reload
 
 /**
- * Checks if the tabs stored in chrome.storage are still available
+ * Checks if the tabs stored in chrome.storage are still available with a debug statement on status
+ * @returns {Promise<void>}
  */
 async function checkAllTabs() {
     const currentTabs = await chrome.tabs.query({});
+    const activeTabs = [], inactiveTabs = [];
+
     for (const tab of currentTabs) {
-        await checkTabCommunication(tab);
+        (await checkTabCommunication(tab) ? activeTabs : inactiveTabs).push(tab.id);
     }
+
+    debug(`Tab check: \n  - Active tabs: ${activeTabs.join(", ")}\n  - Inactive tabs: ${inactiveTabs.join(", ")}`);
 }
 
 /**
  * Checks if the content script can communicate with the background script
+ * @param {number}tab - the tab to check
+ * @returns {Promise<boolean>}
  */
 async function checkTabCommunication(tab) {
     if (!tab.url.match(/^http/i)) {
@@ -48,33 +55,35 @@ async function checkTabCommunication(tab) {
 
     try {
         await mh.ping(tab.id);
-        debug(`Content script loaded on tab ${tab.id}`);
+        // debug(`Content script loaded on tab ${tab.id}`);
+        return true
     } catch (error) {
         const iconPath = "../media/v_error.png";
         await chrome.action.setIcon({ tabId: tab.id, path: iconPath });
         const url = chrome.runtime.getURL("../pages/popup-error.html");
         await chrome.action.setPopup({ tabId: tab.id, popup: url });
-        debug(`Content script not loaded on tab ${tab.id}`);
+        // debug(`Content script not loaded on tab ${tab.id}`);
+        return false
     }
 }
 
 /**
  * Respond to a hello from content to pass the tab id
  */
-mh.addListener(m.HELLO, message => {
-    debug(`tab ${message.tabId} says "hello"`, message);
+mh.addListener(m.REQUEST_TAB_ID, message => {
+    debug(`tab ${message.tabId} is online`);
     try{
-        mh.sendMessage(c.CONTENT, m.HELLO, {tabId: message.tabId});
+        mh.sendMessage(c.CONTENT, m.TAB_ID, {tabId: message.tabId});
     }
     catch (err){
-        debug(`error sending "hello" to ${message.tabId}`, err);
+        debug(`error sending TAB_ID to ${message.tabId}`, err);
     }
 });
 
 
 /**
  * Handles tab removal and refresh - removes any tracks associated with that tab, updates presence
- * @param tabId
+ * @param {number}tabId - the tab that was removed
  * @returns {Promise<void>}
  */
 async function handleTabRemoved(tabId) {
