@@ -107,9 +107,16 @@ import "../../videoPlayer/scripts/content.mjs";
 const dashHeight = 150;
 // ToDo: inline CSS with webpack
 const dashStyle = `position:fixed;top:0;left:0;width:100%;max-height:${dashHeight}px;z-index:2147483647;transition:{height:500, ease: 0}; opacity:97%; border-color: black; border-width: 0`;
-// const dashStyle = `position:fixed;top:0;left:0;width:100%;z-index:1000;transition:{height:500, ease: 0}; opacity:97%; border-color: black`;
 
 let iframe;
+
+// Shadow DOM setup
+const shadowContainer = document.createElement('div');
+shadowContainer.id = 'vch-dash-container';
+const shadowRoot = shadowContainer.attachShadow({ mode: 'open' });
+document.body.appendChild(shadowContainer);
+
+
 // this getter is used to check if the dash is open or closed
 Object.defineProperty(window.vch, 'dashOpen', {
     get: function() {
@@ -120,7 +127,7 @@ Object.defineProperty(window.vch, 'dashOpen', {
 async function toggleDash() {
 
     // see if the iframe has already been loaded
-    iframe = document.querySelector('iframe#vch_dash');
+    iframe = shadowRoot.querySelector('iframe#vch_dash');
     // add the iframe
     if (!iframe) {
         iframe = document.createElement('iframe');
@@ -131,7 +138,7 @@ async function toggleDash() {
         // iframe.sandbox;      // ToDo: turn iframe.sandbox on with the right settings for prod
         iframe.allow = "camera; microphone";                    // add camera and mic permissions
         iframe.classList.add('dashOpen');
-        document.body.appendChild(iframe);
+        shadowRoot.appendChild(iframe);
         iframe.style.visibility = "visible";
         // document.body.style.marginTop = `${dashHeight}px`;
 
@@ -143,7 +150,6 @@ async function toggleDash() {
     } else {
         // Close if open
         if (iframe.classList.contains('dashOpen')) {
-            // document.body.style.marginTop = "0px";
             iframe.style.height = "0px";
             iframe.height = 0;
             iframe.classList.remove('dashOpen');
@@ -151,12 +157,9 @@ async function toggleDash() {
         }
         // open if closed
         else {
-            // document.body.style.marginTop = `${dashHeight}px`;
             iframe.style.height = `${dashHeight}px`;
             iframe.height = dashHeight;
             iframe.classList.add('dashOpen');
-            // debug("opened dash");
-            // await showPreview();
         }
     }
 }
