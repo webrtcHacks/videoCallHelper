@@ -50,6 +50,7 @@ storage.addListener('player', async (newValue) => {
             videoPlayerElement.src = URL.createObjectURL(blob);
             storage.delete('temp').catch(err => debug(err));
             debug("loaded player media", buffer.length);
+            mh.sendMessage(c.DASH, m.PLAYER_CANPLAY);
         }
         else
             debug("failed load player media - invalid buffer", buffer);

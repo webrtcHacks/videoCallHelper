@@ -13,15 +13,17 @@ const playerPreview = document.querySelector('video#player-preview');
 const previewButton = document.querySelector("#preview-button");
 const stopButton = document.querySelector("#inject-stop-button");
 
+const loadingVideo = chrome.runtime.getURL('media/loading_spinner.mp4');
 let arrayBuffer = null;
 let mediaRecorder;
 let recordedChunks = [];
+let previewBlobUrl = null;
 
 
 // Handle file input for adding media
 addMediaButton.addEventListener('click', async () => {
 
-    playerPreview.src = "../media/loading_spinner.mp4";
+    playerPreview.src = loadingVideo; // "../media/loading_spinner.mp4";
 
     try {
         const fileInput = document.createElement('input');
@@ -203,10 +205,10 @@ stopButton.onclick = async () => {
 }
 
 // Play video on hover
-previewButton.addEventListener('mouseover', () => {
+previewButton.addEventListener('mouseover', async () => {
     if (playerPreview.src) {
         playerPreview.currentTime = 0;
-        playerPreview.play()
+        await playerPreview.play()
             .catch((err) => debug("error playing video ", err));
     }
 });
@@ -231,15 +233,11 @@ async function handleBuffer(){
     if (buffer?.length > 0) {
         const mimeType = storage.contents['player'].mimeType;
 
+        playerPreview.src = loadingVideo;
+
         arrayBuffer = base64ToBuffer(buffer);
         const blob = new Blob([arrayBuffer], {type: mimeType});
-        playerPreview.src = URL.createObjectURL(blob);
-        playerPreview.currentTime = 1;
-        playerPreview.load();
-        playerPreview.pause();
-
-        // remove the disabled class from the inject button
-        injectButton.classList.remove('disabled');
+        previewBlobUrl = URL.createObjectURL(blob);
 
         // Need this to trigger player load
         const data = storage.contents['player'];
@@ -268,4 +266,15 @@ storage.addListener('player', async (newValue, changedValue) => {
         debug("player enabled");
         await handleBuffer();
     }
+});
+
+// remove the disabled class from the inject button when the player can play
+mh.addListener(m.PLAYER_CANPLAY, async (message) => {
+    // show the preview
+    playerPreview.src = previewBlobUrl;
+    playerPreview.currentTime = 1;
+    playerPreview.load();
+    playerPreview.pause();
+
+    injectButton.classList.remove('disabled');
 });
