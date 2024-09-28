@@ -225,6 +225,13 @@ export class MessageHandler {
                 // Todo: something is sending data as a string: "{}"
                 let data = typeof request?.data === 'string' ? JSON.parse(request.data) : request?.data || {};
 
+                // ignore prerender and cached tabs since we cannot respond to them(?)
+                if(sender.documentLifecycle === 'prerender' || sender.documentLifecycle === 'cached'){
+                    if(VERBOSE)
+                        this.debug(`ignoring ${sender.documentLifecycle} tab message "${message}" on tab ${sender.tab?.id}. Request: `, request);
+                    return;
+                }
+
                 // background doesn't its own tabId in sender
                 // We need it in cases when background is responding to a request from content,
                 // so it is appended as `data.tabId` there
@@ -233,6 +240,7 @@ export class MessageHandler {
                     data.tabId = tabId;
                     this.tabId = tabId;
                 }
+
 
                 // skip messages not sent to this listener's context and ignore messages to self
                 if (from === this.context)
@@ -377,8 +385,8 @@ export class MessageHandler {
                 if (response && response.message === MESSAGE.PONG) {
                     resolve();
                 } else {
-                    const error = new Error("unhandled ping failure");
-                    if (VERBOSE) this.debug("unhandled ping failure: ", response);
+                    const error = new Error(`unhandled ping failure on tab ${tabId}`);
+                    if (VERBOSE) this.debug(error.message, response);
                     reject(error);
                 }
             });
@@ -653,7 +661,8 @@ export const CONTEXT = {
 export const MESSAGE = {
     PING: 'ping',   // background -> content
     PONG: 'pong',   // content -> background
-    TAB_ID: 'tab_id', // content <-> background for getting tab
+    REQUEST_TAB_ID: 'request_tab_id', // content -> background for getting tab
+    TAB_ID: 'tab_id', // background -> content for sending tab
 
     // used in inject.js
     GET_ALL_SETTINGS: 'get_all_settings',
@@ -725,6 +734,7 @@ export const MESSAGE = {
     // player
     PLAYER_START: 'player_start',
     PLAYER_LOAD: 'player_load',
+    PLAYER_CANPLAY: 'player_canplay',       // from content to dash when player can play
     PLAYER_PAUSE: 'player_pause',
     PLAYER_RESUME: 'player_resume',     // used in the worker to skip reading
     PLAYER_END: 'player_end',               // used in the worker to end the transform
