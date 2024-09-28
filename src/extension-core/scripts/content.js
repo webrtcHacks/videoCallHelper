@@ -114,7 +114,14 @@ let iframe;
 const shadowContainer = document.createElement('div');
 shadowContainer.id = 'vch-dash-container';
 const shadowRoot = shadowContainer.attachShadow({ mode: 'open' });
-document.body.appendChild(shadowContainer);
+if(document.body) {
+    document.body.appendChild(shadowContainer);
+}
+else {
+    document.addEventListener('DOMContentLoaded', async () => {
+        document.body.appendChild(shadowContainer);
+    });
+}
 
 
 // this getter is used to check if the dash is open or closed
