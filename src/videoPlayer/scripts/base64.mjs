@@ -17,14 +17,31 @@ export function base64ToBuffer(base64) {
 /**
  * Helper to convert ArrayBuffer to base64 needed for localStorage
  * @param {ArrayBuffer} buffer
- * @returns {string}
+ * @returns {Promise<string>}
  */
 export function arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
-    const chunkSize = 0x8000; // 32KB chunks
-    let binary = '';
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-    }
-    return window.btoa(binary);
+    return new Promise((resolve, reject) => {
+        try {
+            const blob = new Blob([buffer]);
+            const reader = new FileReader();
+
+            reader.onloadend = () => {
+                const dataUrl = reader.result;
+                // Extract base64 part of Data URL
+                const base64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+                if(base64.length === 0)
+                    reject(`Error converting ArrayBuffer to base64 - buffer is 0 length: ${dataUrl}`);
+                else
+                    resolve(base64);
+            };
+
+            reader.onerror = (error) => {
+                reject(`Error reading Blob as Data URL: ${error}`);
+            };
+
+            reader.readAsDataURL(blob);
+        } catch (error) {
+            reject(`Conversion error: ${error}`);
+        }
+    });
 }

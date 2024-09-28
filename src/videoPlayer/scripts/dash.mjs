@@ -9,6 +9,7 @@ const db = new IndexedDBHandler('videoPlayer');
 const injectButton = document.querySelector("#inject-button");
 const recordButton = document.querySelector("#record-button");
 const addMediaButton = document.querySelector("#add-media-button");
+/** @type {HTMLVideoElement} */
 const playerPreview = document.querySelector('video#player-preview');
 const previewButton = document.querySelector("#preview-button");
 const stopButton = document.querySelector("#inject-stop-button");
@@ -18,6 +19,9 @@ let arrayBuffer = null;
 let mediaRecorder;
 let recordedChunks = [];
 let previewBlobUrl = null;
+let readyToPlay = false;
+const MAX_FILE_SIZE_MB = 250; // 250MB
+const MAX_RECORDING_TIME_SEC = 120; // 60 seconds
 
 
 // Handle file input for adding media
@@ -34,33 +38,60 @@ addMediaButton.addEventListener('click', async () => {
             fileInput.onchange = () => resolve(fileInput.files);
         });
 
+        if(!file){
+            debug("no file selected");
+            return;
+        }
+
+        // Read only the first 250MB of the file
+        const maxSize = MAX_FILE_SIZE_MB * 1024 * 1024; // 250MB in bytes
+        if (file.size > maxSize) {
+            debug(`file size exceeds the ${MAX_FILE_SIZE_MB}MB limit`);
+            alert(`File size exceeds the ${MAX_FILE_SIZE_MB}MB limit. Please select a smaller file.`);
+            // return;
+        }
+
         arrayBuffer = await file.arrayBuffer();
 
         // Play the buffer in the video element
         playerPreview.src = URL.createObjectURL(file);
-        playerPreview.currentTime = 1;
+        if(playerPreview.duration > 1)
+            playerPreview.currentTime = 1;
         playerPreview.load();
+        playerPreview.pause();
 
         // Load this into storage
         const data = {
             mimeType: file.type,
-            loop: true,
+            // loop: true,
             // buffer: arrayBufferToBase64(arrayBuffer),
-            objectUrl: playerPreview.src,
-            videoTimeOffsetMs: playerPreview.currentTime * 1000,
+            // objectUrl: playerPreview.src,
+            // videoTimeOffsetMs: playerPreview.currentTime * 1000,
             currentTime: new Date().getTime()
         };
 
-        await db.set('buffer',  arrayBufferToBase64(arrayBuffer));
+        previewBlobUrl = playerPreview.src;
+        readyToPlay = false;
+        const buffer = await arrayBufferToBase64(arrayBuffer);
+        if(buffer?.length === 0){
+            debug("error converting arrayBuffer to base64");
+            return;
+        }
+
+        await db.set('buffer',  buffer);
+        await storage.set('temp', {buffer});  // temp transfer
+        debug(`loaded selected ${fileInput.files[0].name}:`, arrayBuffer.byteLength);
+        // ToDo: do I need to keep this in memory?
+        // arrayBuffer = null;
+        // Trigger the transfer
         await storage.update('player', data);
-        // debug("saved video arrayBuffer:", storage.contents['player'].buffer.length);
 
     } catch (err) {
         debug(err);
-        return;
+        // return;
     }
 
-    injectButton.classList.toggle('disabled', false);
+    //injectButton.classList.toggle('disabled', false);
 });
 
 
@@ -119,6 +150,7 @@ async function startRecording() {
         if (event.data.size > 0) {
             recordedChunks.push(event.data);
         }
+
     };
 
     mediaRecorder.onstop = async () => {
@@ -142,15 +174,16 @@ async function startRecording() {
             mimeType: recordedBlob.type,
             loop: true,
             // buffer: arrayBufferToBase64(arrayBuffer),
-            objectUrl: url,
+            // objectUrl: url,
             videoTimeOffsetMs: 0,
             currentTime: new Date().getTime()
         };
 
         try{
-            await db.set('buffer',  arrayBufferToBase64(arrayBuffer));                       // store for future access
-            await storage.set('temp', {buffer: arrayBufferToBase64(arrayBuffer)});  // temp transfer
-            await storage.update('player', data);                                                  // other player settings
+            const buffer = arrayBufferToBase64(arrayBuffer);
+            await db.set('buffer', buffer);                       // store for future access
+            await storage.update('player', data); // other player settings
+
         }
         catch(err){
             debug("error saving recording to storage", err);
@@ -158,7 +191,9 @@ async function startRecording() {
         }
 
         debug("saved video size: ", arrayBuffer.byteLength);
-        injectButton.classList.toggle('disabled', false);
+        arrayBuffer = null;
+
+        // injectButton.classList.toggle('disabled', false);
 
 
     };
@@ -186,7 +221,8 @@ injectButton.onclick = async () => {
 
     // show the player in sync with the injection
     playerPreview.currentTime = 0;
-    playerPreview.play();
+    await playerPreview.play()
+        .catch((err) => debug("error playing video ", err));
 
     // hide the inject button and show the stop button
     injectButton.classList.add('d-none');
@@ -226,16 +262,20 @@ previewButton.addEventListener('mouseout', () => {
  * - set the preview video source
  * - enable the inject button if there is a buffer
  *  - put the buffer in the temp storage for content to use
+ * @param {string} [buffer] - optional base64 encoded video buffer. If not provided it will be fetched from indexDb
+ * @param {string} [playerPreviewSrc] - optional source for the player preview video
  * @returns {Promise<void>}
  */
-async function handleBuffer(){
-    const buffer = await db.get('buffer');
+async function handleBuffer(buffer = "", playerPreviewSrc = loadingVideo){
+    if(!buffer)
+        buffer = await db.get('buffer');
     if (buffer?.length > 0) {
-        const mimeType = storage.contents['player'].mimeType;
 
         playerPreview.src = loadingVideo;
 
         arrayBuffer = base64ToBuffer(buffer);
+
+        const mimeType = storage.contents['player'].mimeType;
         const blob = new Blob([arrayBuffer], {type: mimeType});
         previewBlobUrl = URL.createObjectURL(blob);
 
@@ -259,22 +299,46 @@ db.onOpened().then(async()=>{
         await handleBuffer();
 });
 
+// ToDo:check enabled changed to true
+// load on not enabled to enabled
 // add a storage listener for player. if enabled changed to true then load the buffer
 storage.addListener('player', async (newValue, changedValue) => {
     debug("player storage changed (new, whatChanged)", newValue, changedValue);
-    if (changedValue?.enabled && newValue?.enabled) {
-        debug("player enabled");
+    if (changedValue.enabled) {
+        debug("player now enabled");
         await handleBuffer();
+
     }
 });
 
 // remove the disabled class from the inject button when the player can play
-mh.addListener(m.PLAYER_CANPLAY, async (message) => {
+mh.addListener(m.PLAYER_CANPLAY, async () => {
+    readyToPlay = true;
     // show the preview
     playerPreview.src = previewBlobUrl;
     playerPreview.currentTime = 1;
     playerPreview.load();
     playerPreview.pause();
 
-    injectButton.classList.remove('disabled');
+    // ToDo: need to check active tracks
+    if(storage.contents.trackData.some(track => track.readyState === 'live'))
+        injectButton.classList.remove('disabled');
 });
+
+storage.addListener('trackData', async (newValue) => {
+
+    if(storage.contents.trackData.some(track => track.readyState === 'live') && readyToPlay){
+        readyToPlay = true;
+        injectButton.classList.remove('disabled');
+    }
+    else{
+        readyToPlay = false;
+        playerPreview.pause();
+        playerPreview.currentTime = 1;
+        stopButton.classList.add('d-none');
+        injectButton.classList.remove('d-none');
+        injectButton.classList.add('disabled');
+    }
+
+});
+
