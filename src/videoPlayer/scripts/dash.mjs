@@ -98,7 +98,7 @@ addMediaButton.addEventListener('click', async () => {
 // Handle recording
 recordButton.addEventListener('click', async () => {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
-        stopRecording();
+        mediaRecorder.stop();
     } else {
         await startRecording();
     }
@@ -107,16 +107,18 @@ recordButton.addEventListener('click', async () => {
 // Start recording function
 async function startRecording() {
 
+    /*
+     * Get media based on the last used device
+     */
     // try to reuse the last device
     const trackData = storage.contents.trackData;
 
     const latestAudioTrack = trackData
         .filter(track => track.kind === 'audio')
-        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest);
-
+        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest, {});
     const latestVideoTrack = trackData
         .filter(track => track.kind === 'video')
-        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest);
+        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest, {});
 
 
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -146,6 +148,12 @@ async function startRecording() {
     playerPreview.src = null;
     playerPreview.srcObject = stream;
 
+    /*
+     * Recording setup
+     */
+
+    /**type {Timeout} */
+    let maxDurationTimer;
     mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
             recordedChunks.push(event.data);
@@ -154,24 +162,29 @@ async function startRecording() {
     };
 
     mediaRecorder.onstop = async () => {
+        debug("mediaRecorder.onstop");
+        clearTimeout(maxDurationTimer);
         stream.getTracks().forEach(track => track.stop());
+
         playerPreview.srcObject = null;
+        // playerPreview.src = loadingVideo; // "../media/loading_spinner.mp4";
 
         recordButton.innerHTML = '<i class="bi bi-record-circle"></i><span>Re-record</span>';
         recordButton.classList.remove('recording');
 
-        const recordedBlob = new Blob(recordedChunks, {type: 'video/webm'});
-        const url = URL.createObjectURL(recordedBlob);
-        debug("recording:", recordedBlob, url);
-        playerPreview.src = url;
+
+        const recordedBlob = new Blob(recordedChunks, {type: mediaRecorder.mimeType});
+        previewBlobUrl = URL.createObjectURL(recordedBlob);
+        playerPreview.src = previewBlobUrl;
         playerPreview.loop = true;
         playerPreview.load();
+        playerPreview.pause();
+        debug("set preview recording:", recordedBlob, previewBlobUrl);
 
-        arrayBuffer = await recordedBlob.arrayBuffer();
 
         // Load this into storage
         const data = {
-            mimeType: recordedBlob.type,
+            mimeType: mediaRecorder.mimeType,
             loop: true,
             // buffer: arrayBufferToBase64(arrayBuffer),
             // objectUrl: url,
@@ -180,39 +193,48 @@ async function startRecording() {
         };
 
         try{
-            const buffer = arrayBufferToBase64(arrayBuffer);
-            await db.set('buffer', buffer);                       // store for future access
+            // const recordedBlob = new Blob(recordedChunks, {type: mediaRecorder.mimeType});
+            arrayBuffer = await recordedBlob.arrayBuffer();
+            const buffer = await arrayBufferToBase64(arrayBuffer);
+            if(buffer?.length === 0){
+                debug("error converting arrayBuffer to base64");
+                return;
+            }
+            await db.set('buffer',  buffer);
+            await storage.set('temp', {buffer});  // temp transfer
+            debug("saved recording to db", buffer.length);
             await storage.update('player', data); // other player settings
-
+            debug("saved video size: ", arrayBuffer?.byteLength);
         }
         catch(err){
             debug("error saving recording to storage", err);
             return
         }
 
-        debug("saved video size: ", arrayBuffer.byteLength);
         arrayBuffer = null;
-
-        // injectButton.classList.toggle('disabled', false);
-
+        recordedChunks = [];
 
     };
 
     mediaRecorder.start();
     recordButton.innerHTML = '<i class="bi bi-stop-fill blinking"></i><span>Recording</span>';
-}
 
-// Stop recording function
-function stopRecording() {
-    mediaRecorder.stop();
-    recordButton.innerHTML = '<i class="bi bi-record-circle"></i><span>Record</span>';
+    maxDurationTimer = setTimeout(() => {
+        mediaRecorder.stop();
+    }, MAX_RECORDING_TIME_SEC * 1000);
 }
 
 
 // Handle injection of media
 injectButton.onclick = async () => {
-    if (!arrayBuffer) {
+    /*if (!arrayBuffer) {
         debug("no media content to send");
+        return;
+    }*/
+
+    // if the preview still has the loading video, then the video is not ready
+    if(playerPreview.src === loadingVideo){
+        debug("video not ready to inject", playerPreview.src);
         return;
     }
 
@@ -304,7 +326,7 @@ db.onOpened().then(async()=>{
 // add a storage listener for player. if enabled changed to true then load the buffer
 storage.addListener('player', async (newValue, changedValue) => {
     debug("player storage changed (new, whatChanged)", newValue, changedValue);
-    if (changedValue.enabled) {
+    if (changedValue.enabled && newValue.enabled) {
         debug("player now enabled");
         await handleBuffer();
 
