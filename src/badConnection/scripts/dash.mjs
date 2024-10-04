@@ -55,3 +55,32 @@ badQualitySevereButton.addEventListener("click", setQualitySevere);
 
 // Initialize the settings on page load
 updateQualitySimulation();
+
+
+// Set initial UI state
+if(storage.contents['badConnection'].enabled) {
+    [badQualityOffButton, badQualityModerateButton, badQualitySevereButton].forEach(button => {
+        button.classList.remove("disabled");
+    });
+}
+else {
+    [badQualityOffButton, badQualityModerateButton, badQualitySevereButton].forEach(button => {
+        button.classList.add("disabled");
+    });
+}
+
+// update state if enabled changes
+storage.addListener('badConnection', (newValue, changedValue) => {
+    if ('enabled' in changedValue) {
+        if(newValue.enabled) {
+            [badQualityOffButton, badQualityModerateButton, badQualitySevereButton].forEach(button => {
+                button.classList.remove("disabled");
+            });
+        }
+        else {
+            [badQualityOffButton, badQualityModerateButton, badQualitySevereButton].forEach(button => {
+                button.classList.add("disabled");
+            });
+        }
+    }
+});

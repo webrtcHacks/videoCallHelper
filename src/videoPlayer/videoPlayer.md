@@ -94,6 +94,10 @@ If paused it will just return the frame the transformManager gives to it
 - `PLAYER_RESUME` - sets `pause` to false
 - `PLAYER_END` - removes the transform from the transform manager
 
+## Pages
+
+I originally experimented with making recordings in a separate page - [recorder.html]("pages/recorder.html). 
+This is not used currently.
 
 # TODO & In-progress
 

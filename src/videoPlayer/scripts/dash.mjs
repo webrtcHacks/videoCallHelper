@@ -1,6 +1,6 @@
-import { debug, storage, mh, m, c } from "../../dash/dashCommon.mjs";
-import { arrayBufferToBase64, base64ToBuffer } from "./base64.mjs";
-import { IndexedDBHandler } from "./indexedDB.mjs";
+import {debug, storage, mh, m, c} from "../../dash/dashCommon.mjs";
+import {arrayBufferToBase64, base64ToBuffer} from "./base64.mjs";
+import {IndexedDBHandler} from "./indexedDB.mjs";
 
 // Use IndexedDB to store the video buffer
 const db = new IndexedDBHandler('videoPlayer');
@@ -64,7 +64,7 @@ async function processVideoBlob(blob, mimeType, isRecording = false) {
 
         // Save buffer to IndexedDB and temporary storage
         await db.set('buffer', buffer);
-        await storage.set('temp', { buffer });
+        await storage.set('temp', {buffer});
         debug("Saved video to db", buffer.length);
 
         // Prepare data for storage
@@ -113,21 +113,20 @@ async function handleBuffer(buffer = "") {
         arrayBuffer = base64ToBuffer(buffer);
 
         const mimeType = storage.contents['player'].mimeType;
-        const blob = new Blob([arrayBuffer], { type: mimeType });
+        const blob = new Blob([arrayBuffer], {type: mimeType});
         previewBlobUrl = URL.createObjectURL(blob);
 
         // Update player data to trigger player load
         const data = storage.contents['player'];
         data.currentTime = Date.now();
 
-        await storage.update('temp', { buffer });
+        await storage.update('temp', {buffer});
         debug("Loaded video ArrayBuffer:", arrayBuffer.byteLength);
     } else {
         debug("No media content in DB to load");
         injectButton.classList.add('disabled');
     }
 }
-
 
 
 /**
@@ -161,8 +160,8 @@ async function getMediaConstraints() {
 
     // Update getUserMedia constraints
     return {
-        audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
-        video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true,
+        audio: audioDeviceId ? {deviceId: {exact: audioDeviceId}} : true,
+        video: videoDeviceId ? {deviceId: {exact: videoDeviceId}} : true,
     };
 }
 
@@ -231,7 +230,7 @@ async function startRecording() {
         recordButton.innerHTML = '<i class="bi bi-record-circle"></i><span>Re-record</span>';
         recordButton.classList.remove('recording');
 
-        const recordedBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+        const recordedBlob = new Blob(recordedChunks, {type: mediaRecorder.mimeType});
         await processVideoBlob(recordedBlob, mediaRecorder.mimeType, true);
 
         recordedChunks = [];
@@ -322,14 +321,38 @@ db.onOpened().then(async () => {
     }
 });
 
+
 /**
  * Listen for changes in player storage and handle enabling the player.
  */
 storage.addListener('player', async (newValue, changedValue) => {
     debug("Player storage changed (new, whatChanged):", newValue, changedValue);
+    if('enabled' in changedValue) {
+        if (newValue.enabled) {
+            debug("Player now enabled");
+            await handleBuffer();
+            [injectButton, recordButton, addMediaButton, previewButton]
+                .forEach(button => button.classList.remove('disabled'));
+        } else {
+            debug("Player now disabled");
+            playerPreview.src = "";
+            [injectButton, recordButton, addMediaButton, previewButton]
+                .forEach(button => button.classList.add('disabled'));
+
+        }
+    }
+
     if (changedValue.enabled && newValue.enabled) {
         debug("Player now enabled");
         await handleBuffer();
+        [injectButton, recordButton, addMediaButton, previewButton]
+            .forEach(button => button.classList.remove('disabled'));
+    }
+    else if ('enabled' in changedValue && newValue.enabled === false) {
+        debug("Player now disabled");
+        playerPreview.src = "";
+        [injectButton, recordButton, addMediaButton, previewButton]
+            .forEach(button => button.classList.add('disabled'));
     }
 });
 
@@ -367,3 +390,14 @@ storage.addListener('trackData', async () => {
     }
 });
 
+// Set initial UI state
+if (storage.contents['player']?.enabled) {
+    playerPreview.src = loadingVideo;
+    [injectButton, recordButton, addMediaButton, previewButton]
+        .forEach(button => button.classList.remove('disabled'));
+}
+else {
+    playerPreview.src = "";
+    [injectButton, recordButton, addMediaButton, previewButton]
+        .forEach(button => button.classList.add('disabled'));
+}

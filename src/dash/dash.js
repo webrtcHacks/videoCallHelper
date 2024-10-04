@@ -4,7 +4,7 @@
  */
 
 import './style.scss';
-import {storage, mh} from "./dashCommon.mjs";
+import {storage, mh, debug} from "./dashCommon.mjs";
 import {Tooltip} from "bootstrap";
 
 // To help with debugging
@@ -88,15 +88,78 @@ deviceManagerButtons.forEach(button => button.addEventListener('click', function
     }
 }));
 
-streamModificationButtons.forEach(button => button.addEventListener('click', function () {
+streamModificationButtons.forEach(button => button.addEventListener('click', async function () {
+
+    /* Logic
+    * off -> on
+    *  if modified tracks -> reload-required
+    *  else -> on & enable
+    *
+    * reload-required -> cancel
+    *
+    * on -> off
+    *  if modified tracks -> kill any workers with warning?
+    *  if not modified tracks -> disable
+     */
+
+    // check if any track in trackData has altered and readyState === 'live'
+    const trackDataArray = await storage.contents.trackData || [];
+    const isModified = trackDataArray.some(td => td.altered && td.readyState === 'live');
+
+
+    // get current button state - on, off, or reload-required
+    const currentState = button.classList.contains('btn-outline-secondary') ? 'off' :
+        button.classList.contains('btn-outline-danger') ? 'reload-required' : 'on';
+
+    if(currentState === 'off') {
+        if(isModified) {
+            toggleButton(streamModificationButtons, 'reload-required');
+            showReloadPrompt();
+        }
+        else {
+            toggleButton(streamModificationButtons, 'on');
+            await storage.update('badConnection', {enabled: true});
+            await storage.update('player', {enabled: true});
+        }
+    }
+    else if(currentState === 'reload-required') {
+        toggleButton(streamModificationButtons, 'off');
+        await storage.update('badConnection', {enabled: false});
+        await storage.update('player', {enabled: false});
+    }
+    else if(currentState === 'on') {
+        if(isModified) {
+            // kill any workers with warning?
+            debug('Warning: disabling stream modification while there are modified tracks');
+            toggleButton(streamModificationButtons, 'off');
+            await storage.update('badConnection', {enabled: false});
+            await storage.update('player', {enabled: false});
+        }
+        else {
+            toggleButton(streamModificationButtons, 'off');
+            await storage.update('badConnection', {enabled: false});
+            await storage.update('player', {enabled: false});
+        }
+    }
+    else {
+        debug('Error: unknown streamModifiationButton state');
+    }
+
+    /*
     if (button.classList.contains('btn-outline-secondary')) {
         toggleButton(streamModificationButtons, 'reload-required');
         showReloadPrompt();
     } else if (button.classList.contains('btn-outline-danger')) {
         toggleButton(streamModificationButtons, 'on');
+        await storage.update('badConnection', {enabled: true});
+        await storage.update('player', {enabled: true});
     } else {
         toggleButton(streamModificationButtons, 'off');
+        await storage.update('badConnection', {enabled: false});
+        await storage.update('player', {enabled: false});
     }
+
+     */
 }));
 
 reloadButton.addEventListener('click', function () {
@@ -142,3 +205,4 @@ if(storage.contents['deviceManager']?.enabled) {
     deviceManagerButtons.forEach(button =>
         toggleButton(deviceManagerButtons, 'on'));
 }
+
