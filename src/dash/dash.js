@@ -4,6 +4,7 @@
  */
 
 import './style.scss';
+import {settings as dashSettingsProto} from "./settings.mjs";
 import {storage, mh, debug} from "./dashCommon.mjs";
 import {Tooltip} from "bootstrap";
 
@@ -14,17 +15,43 @@ window.vch = {
     // player: {}
 }
 
+await StorageHandler.initStorage('dash', dashSettingsProto);
+
+
 /**
- * Tab switching
+ * Dash tab switching
  */
 document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', function () {
+    tab.addEventListener('click', async function () {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.content').forEach(content => content.classList.remove('active'));
         this.classList.add('active');
-        document.querySelector(this.getAttribute('data-target')).classList.add('active');
+
+        const thisTarget = this.getAttribute('data-target');
+        document.querySelector(thisTarget).classList.add('active');
+        await storage.update("dash", {lastMenuItem: thisTarget});
     });
 });
+
+/**
+ * Open the stored dash tab from storage
+ * @returns {void}
+ */
+function activateStoredTab() {
+    const lastTab = storage.contents['dash']?.lastMenuItem || "self-view";
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        const thisTarget = tab.getAttribute('data-target');
+        if (thisTarget === lastTab) {
+            tab.classList.add('active');
+            document.querySelector(thisTarget).classList.add('active');
+        } else {
+            tab.classList.remove('active');
+            document.querySelector(thisTarget).classList.remove('active');
+        }
+    });
+}
+activateStoredTab();
 
 /**
  * Applet script imports
@@ -36,10 +63,12 @@ import '../selfView/scripts/dash.mjs';
 import '../badConnection/scripts/dash.mjs';
 import '../videoPlayer/scripts/dash.mjs';
 import '../presence/scripts/dash.mjs';
+import {StorageHandler} from "../modules/storageHandler.mjs";
 
 /*
 import '../imageCapture/scripts/dash.mjs';
 */
+
 
 /** Home tab */
 
