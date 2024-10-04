@@ -29,7 +29,8 @@ const initSettings = {
     enabled: settings?.enabled || false
 };
 
-await storage.update('imageCapture', initSettings);
+// ToDo: move this somewhere else?
+// await storage.update('imageCapture', initSettings);
 
 
 /**
