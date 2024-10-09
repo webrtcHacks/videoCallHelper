@@ -7,6 +7,34 @@ const deviceManagerSelections = document.querySelector('div#device-manager-selec
 // Initialize state
 let enabledButtonCurrentState = storage.contents['deviceManager']?.enabled ? 'on' : 'off';
 
+// horizontal accordion logic
+document.querySelectorAll('.accordion-header button').forEach(button => {
+    button.addEventListener('click', function () {
+        const accordionItem = this.closest('.accordion-item');
+        const accordionBody = accordionItem.querySelector('.accordion-body');
+
+        // Toggle the active state of the clicked accordion item
+        if (accordionItem.classList.contains('active')) {
+            // It's active, so we'll hide it
+            accordionItem.classList.remove('active');
+            accordionBody.style.display = 'none'; // Hide the accordion body
+        } else {
+            // It's not active, close all others and show this one
+            document.querySelectorAll('.accordion-item').forEach(item => {
+                item.classList.remove('active');
+                const body = item.querySelector('.accordion-body');
+                body.style.display = 'none'; // Hide other accordion bodies
+            });
+
+            // Now, show the clicked accordion
+            accordionItem.classList.add('active');
+            accordionBody.style.display = ''; // Show the accordion body, remove the inline style to revert to default
+        }
+    });
+});
+
+// moved to dash.js
+/*
 function showReloadPrompt() {
     reloadWarning.style.display = 'block';
 }
@@ -42,8 +70,9 @@ enabledButton.addEventListener('click', function () {
         toggleButton(enabledButton, 'off');
     }
 });
+ */
 
-toggleButton(enabledButton, enabledButtonCurrentState);
+// toggleButton(enabledButton, enabledButtonCurrentState);
 
 // New functionality to handle device listings as buttons
 async function populateDeviceButtons() {

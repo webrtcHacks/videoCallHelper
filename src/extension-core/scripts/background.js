@@ -139,6 +139,13 @@ mh.addListener(m.DASH_OPEN_NEXT, async data => {
 });
 
 /**
+ * Reload the current tab
+ */
+mh.addListener(m.RELOAD, async data => {
+    await chrome.tabs.reload(data.tabId);
+});
+
+/**
  * Extension icon control - toggles the dash on the current tab
  */
 chrome.action.onClicked.addListener(async (tab) => {

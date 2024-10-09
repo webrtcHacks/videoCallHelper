@@ -450,3 +450,28 @@ attempts to prevent the i and spans from turning to white on hover failed
   right: 10px;
   cursor: pointer;
 }
+
+
+/*
+ * Warning Toast
+ */
+
+.toast-container {
+  z-index: 1055; /* Ensure it appears above other elements */
+}
+
+.toast {
+  border: 1px solid $danger;
+  background-color: rgba($danger, 0.9);
+  color: $white;
+}
+
+.toast .btn-outline-light {
+  border-color: $white;
+  color: $white;
+}
+
+.toast .btn-outline-light:hover {
+  background-color: $white;
+  color: $danger;
+}

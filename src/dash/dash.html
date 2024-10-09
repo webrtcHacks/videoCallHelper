@@ -28,6 +28,7 @@
             </button>
         </div>
 
+        <!-- TODO: Remove this -->
         <div class="reload-warning" id="reloadWarning">
             <span class="text-danger">Reload of this page required to enable this feature.</span>
             <button class="btn btn-outline-danger reload-button">
@@ -96,7 +97,7 @@
     <!-- START: DEVICE MANAGER -->
     <div class="content" id="device-manager">
         <div class="d-flex flex-row flex-nowrap h-100">
-            <button class="btn icon-button btn-outline-secondary" id="device-manager-enabled" data-bs-toggle="tooltip"
+            <button class="btn icon-button btn-outline-secondary deviceManagerButton" id="device-manager-enabled" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Device Manager changes what media devices are listed">
                 <i class="bi bi-menu-button"></i>
                 <span>Enable Device Manager</span>
@@ -256,8 +257,8 @@
         </div>
     </div>
 
+    <!-- START: PRESENCE CONTROL-->
     <div class="content" id="presence">
-        <!-- Presence Control -->
         <div class="d-flex flex-row flex-nowrap h-100">
             <button class="btn icon-button btn-outline-secondary" id="presence-enable" data-bs-toggle="tooltip"
                     data-bs-placement="top" title="Automatically update presence status">
@@ -290,7 +291,7 @@
         <div class="d-flex flex-row flex-nowrap vertical-divider align-items-start h-100 w-100">
             <div class="flex-column">
                 <h5 class="">Manual override</h5>
-                <div class="btn-group dropend d-flex flex-row" role="group" aria-label="Webhook Controls" -->
+                <div class="btn-group dropend d-flex flex-row" role="group" aria-label="Webhook Controls">
                     <button class="btn group-icon-btn btn-outline-secondary" id="manual-override-on"
                             data-bs-toggle="tooltip"
                             data-bs-placement="top" title="Manually trigger on webhook on">
@@ -405,7 +406,29 @@
             <!--/div-->
         </div>
 
+
+  </div>
+    <!-- END: PRESENCE CONTROL-->
+
+    <!-- START: WARNING TOAST-->
+    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-2 pe-5">
+        <div id="reload-toast" class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+            <div class="toast-header fs-5">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong class="me-auto">WARNING</strong>
+                <button type="button" class="btn-close me-2 m-auto fs-6" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="warning-toast-text">
+                Page refresh required. Your call will disconnect.
+            </div>
+            <div class="d-flex justify-content-start ms-2">
+                <button type="button" class="btn btn-outline-light btn-sm mb-2 me-2" id="cancel-toast">Cancel</button>
+                <button type="button" class="btn btn-outline-light btn-sm mb-2" id="refresh-toast">Refresh</button>
+            </div>
+        </div>
     </div>
+    <!-- END: WARNING TOAST-->
+
 
 </div>
 

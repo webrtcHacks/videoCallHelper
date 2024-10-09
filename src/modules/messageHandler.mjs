@@ -711,6 +711,7 @@ export const MESSAGE = {
 
     // dash.js
     DASH_INIT_DATA: 'dash_init_data',
+    RELOAD: 'reload',       // refresh the page
 
     // self-view
     // SELF_VIEW: 'self_view',

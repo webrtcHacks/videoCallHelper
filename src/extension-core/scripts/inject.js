@@ -183,7 +183,9 @@ async function shimGetUserMedia(constraints) {
     else
      */
 
-    if (vch?.settings['badConnection']?.enabled || vch?.settings['videoPlayer']?.enabled === undefined) {
+    // ToDo: make a single switch for this;
+    //  right now videoPlayer settings now coming through, but these two are tied together in dash so it doesn't matter
+    if (vch?.settings['badConnection']?.enabled || vch?.settings['videoPlayer']?.enabled) {
         const stream = await origGetUserMedia(constraints);         // get the original stream
 
         const alteredStream = await new ProcessedMediaStream(stream);   // modify the stream
@@ -486,7 +488,7 @@ mh.addListener(m.TAB_ID, message => {
 // Settings updates that impact the inject context
 mh.addListener(m.UPDATE_BAD_CONNECTION_SETTINGS, (data) => {
     debug("UPDATE_BAD_CONNECTION_SETTINGS", data);
-    vch.settings.badConection = data;
+    vch.settings.badConnection = data;
     if(data.tabId)
         vch.tabId = data.tabId;
 });
