@@ -1,7 +1,5 @@
 import {debug, storage} from "../../dash/dashCommon.mjs";
 
-const enabledButton = document.querySelector('button#device-manager-enabled');
-const reloadWarning = document.querySelector('div#device-manager-reload-warning');
 const deviceManagerSelections = document.querySelector('div#device-manager-selections');
 
 // Initialize state
@@ -33,46 +31,6 @@ document.querySelectorAll('.accordion-header button').forEach(button => {
     });
 });
 
-// moved to dash.js
-/*
-function showReloadPrompt() {
-    reloadWarning.style.display = 'block';
-}
-
-function toggleButton(button, state) {
-    debug('starting enable button state: ', state);
-    const span = button.querySelector('span');
-    button.classList.remove('btn-outline-secondary', 'btn-outline-danger', 'btn-secondary');
-
-    if (state === 'on') {
-        button.classList.add('btn-secondary');
-        span.textContent = span.textContent.replace('Enable', 'Disable');
-        //reloadWarning.style.display = 'none';
-    } else if (state === 'reload-required') {
-        button.classList.add('btn-outline-danger');
-        span.textContent = span.textContent.replace('Enable', 'Disable');
-        showReloadPrompt();
-    } else {
-        button.classList.add('btn-outline-secondary');
-        span.textContent = span.textContent.replace('Disable', 'Enable');
-        //reloadWarning.style.display = 'none';
-    }
-}
-
-enabledButton.addEventListener('click', function () {
-    debug('enabledButton clicked');
-    if (enabledButton.classList.contains('btn-outline-secondary')) {
-        toggleButton(enabledButton, 'reload-required');
-        reloadWarning.style.display = 'block';
-    } else if (enabledButton.classList.contains('btn-outline-danger')) {
-        toggleButton(enabledButton, 'on');
-    } else {
-        toggleButton(enabledButton, 'off');
-    }
-});
- */
-
-// toggleButton(enabledButton, enabledButtonCurrentState);
 
 // New functionality to handle device listings as buttons
 async function populateDeviceButtons() {
@@ -146,9 +104,10 @@ function addButtonEventListeners() {
 /**
  * Update the labels in the targetDiv with checkboxes for each device of the specified kind
  * @param targetDiv - the horizontal accordion-body div to populate with checkboxes
+ * @param kind - the kind of device to list (audioinput, videoinput, audiooutput)
  * @returns {Promise<void>}
  */
-async function updateLabels(targetDiv, kind){
+async function updateLabels(targetDiv, kind) {
     // Clear previous options
     targetDiv.innerHTML = '';
 
@@ -162,16 +121,25 @@ async function updateLabels(targetDiv, kind){
     const excludedDeviceLabels = excludedDevices
         .filter(device => device.kind === kind)
         .map(device => device.label);
-    const uniqueLabels = new Set([...currentDeviceLabels, ...excludedDeviceLabels]);   // temp store for unique labels
+    const uniqueLabels = new Set([...currentDeviceLabels, ...excludedDeviceLabels]); // temp store for unique labels
 
     uniqueLabels.forEach(label => {
         let checkboxContainer = document.createElement('div');
         checkboxContainer.classList.add('form-check');
 
+        /*
         let checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.classList.add('form-check-input');
         checkbox.id = `device-${label}`;
+         */
+        let checkbox = document.createElement('span');
+        checkbox.classList.add('form-check-input', 'bi', 'bi-square');
+        checkbox.id = `device-${label}`;
+        checkbox.setAttribute('role', 'checkbox');
+        checkbox.setAttribute('aria-checked', 'false');
+        checkbox.tabIndex = 0; // Make it focusable
+
 
         let labelElement = document.createElement('label');
         labelElement.classList.add('form-check-label');
@@ -180,8 +148,9 @@ async function updateLabels(targetDiv, kind){
 
         // Apply strikethrough and checkmark for excluded devices
         if (excludedDeviceLabels.includes(label)) {
-            checkbox.checked = true;
-            labelElement.classList.add('text-decoration-line-through');
+            checkbox.classList.replace('bi-square', 'bi-x-square');
+            // checkbox.checked = true;
+            labelElement.classList.add('text-decoration-line-through', 'text-muted');
             if (!currentDeviceLabels.includes(label)) {
                 let checkmark = document.createElement('span');
                 checkmark.classList.add('missing-device-checkmark');
@@ -202,13 +171,15 @@ async function updateLabels(targetDiv, kind){
         }
 
         // Add event listener to toggle text-decoration-line-through
-        checkbox.addEventListener('change', async () => {
-            if (checkbox.checked) {
+        checkbox.addEventListener('click', async () => {
+            if (checkbox.classList.contains('bi-square')) {
+                checkbox.classList.replace('bi-square', 'bi-x-square');
                 labelElement.classList.add('text-decoration-line-through');
                 // match the label to the item in the currentDevices list, then add it to excludedDevices
                 const device = currentDevices.find(device => device.label === label);
                 excludedDevices.push(device);
             } else {
+                checkbox.classList.replace('bi-x-square', 'bi-square');
                 labelElement.classList.remove('text-decoration-line-through');
                 excludedDevices.splice(excludedDevices.indexOf(label), 1);
             }
@@ -220,9 +191,15 @@ async function updateLabels(targetDiv, kind){
         checkboxContainer.appendChild(labelElement);
         targetDiv.appendChild(checkboxContainer);
     });
-
 }
 
+/**
+ * Show the devices of the specified kind in the targetDiv
+ * @param {string} buttonId - the id of the button that was clicked
+ * @param {string} kind - the kind of device to list (audioinput, videoinput, audiooutput)
+ * @param {string} targetId - the id of the div to populate with device labels
+ * @returns {Promise<void>}
+ */
 async function showDevices(buttonId, kind, targetId) {
     const targetDiv = document.querySelector(`#${targetId} div.accordion-body`);
     document.querySelectorAll('.device-button').forEach(button => {

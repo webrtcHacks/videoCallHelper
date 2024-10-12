@@ -68,7 +68,8 @@ export class DeviceManager {
     unalteredStream;
     originalConstraints = {};
     modifiedConstraints = {};
-    devices = []
+    devices = [];
+
 
     /** @type {InputDeviceInfo} */
     static defaultVideoCapabilities = {
@@ -147,9 +148,10 @@ export class DeviceManager {
 
     /**
      * @param {object} settings - the settings object from storage
+     * @param {boolean} useFakeDevices - if true, the deviceManager will include fake devices
      * @returns {DeviceManager} - the DeviceManager instance
      */
-    constructor(settings) {
+    constructor(settings, useFakeDevices = false) {
 
         // singleton pattern
         if (DeviceManager.instance) {
@@ -158,6 +160,7 @@ export class DeviceManager {
         }
         DeviceManager.instance = this;
 
+        this.useFakeDevices = useFakeDevices;
         this.fakeVideoDevice = DeviceManager.fakeVideoDevice;
         this.fakeAudioDevice = DeviceManager.fakeAudioDevice;
 
@@ -185,8 +188,7 @@ export class DeviceManager {
                     const capabilities = selectedDevice.getCapabilities();
                     capabilities.deviceId = `vch-${key}`;
                     capabilities.groupId = "video-call-helper";
-                    return { ...defaultCapabilities, ...capabilities }; // Using the spread operator instead of Object.assign
-                }
+                    return { ...defaultCapabilities, ...capabilities };                 }
 
                 return defaultCapabilities;
             };
@@ -393,9 +395,10 @@ export class DeviceManager {
 
 
     /**
-     * Adds vch-audio|video to the list of devices returned by navigator.mediaDevices.enumerateDevices()
-     * @param devices
-     * @returns {*}
+     * Filters devices to exclude and adds vch-audio|video to the list of devices
+     *  returned by navigator.mediaDevices.enumerateDevices()
+     * @param {MediaDeviceInfo[]} devices - the devices returned by navigator.mediaDevices.enumerateDevices()
+     * @returns {MediaDeviceInfo[]} - the modified list of devices
      */
     modifyDevices(devices) {
 
@@ -407,33 +410,36 @@ export class DeviceManager {
             return !excludedDeviceLabels.includes(device.label)
         });
 
-        //  Insert the result of function addFakeDevice(audio|video) after all other 'audioinput|videoinput' entries
-        let audioInsertIndex = -1;
-        let videoInsertIndex = -1;
-        let insertFakeAudio = true;
-        let insertFakeVideo = true;
+        //  If including fake devices, insert the result of function addFakeDevice(audio|video)
+        //  after all other 'audioinput|videoinput' entries
+        if(this.useFakeDevices) {
+            let audioInsertIndex = -1;
+            let videoInsertIndex = -1;
+            let insertFakeAudio = true;
+            let insertFakeVideo = true;
 
-        for (let i = 0; i < devices.length; i++) {
-            if (devices[i].kind === "audioinput") {
-                if (audioInsertIndex === -1 && devices[i].deviceId === "") {
-                    insertFakeAudio = false;
+            for (let i = 0; i < devices.length; i++) {
+                if (devices[i].kind === "audioinput") {
+                    if (audioInsertIndex === -1 && devices[i].deviceId === "") {
+                        insertFakeAudio = false;
+                    }
+                    audioInsertIndex = i;
+                } else if (devices[i].kind === "videoinput") {
+                    if (videoInsertIndex === -1 && devices[i].deviceId === "") {
+                        insertFakeVideo = false;
+                    }
+                    videoInsertIndex = i;
                 }
-                audioInsertIndex = i;
-            } else if (devices[i].kind === "videoinput") {
-                if (videoInsertIndex === -1 && devices[i].deviceId === "") {
-                    insertFakeVideo = false;
-                }
-                videoInsertIndex = i;
             }
-        }
 
-        if (audioInsertIndex !== -1 && insertFakeAudio) {
-            filteredDevices.splice(audioInsertIndex + 1, 0, this.fakeAudioDevice);
-        }
+            if (audioInsertIndex !== -1 && insertFakeAudio) {
+                filteredDevices.splice(audioInsertIndex + 1, 0, this.fakeAudioDevice);
+            }
 
-        if (videoInsertIndex !== -1 && insertFakeVideo) {
-            // +2 if fakeAudioDevice has been added, else +1
-            filteredDevices.splice(videoInsertIndex + (insertFakeAudio ? 2 : 1), 0, this.fakeVideoDevice);
+            if (videoInsertIndex !== -1 && insertFakeVideo) {
+                // +2 if fakeAudioDevice has been added, else +1
+                filteredDevices.splice(videoInsertIndex + (insertFakeAudio ? 2 : 1), 0, this.fakeVideoDevice);
+            }
         }
 
         return filteredDevices;

@@ -205,6 +205,16 @@ h5 {
   width: 100%;
 }
 
+.form-check:hover{
+  font-size: 1.1em;
+  margin-top: 0;
+}
+
+.form-check .bi:hover {
+  color: $white;
+}
+
+
 .missing-device-checkmark {
   margin-right: 5px; // Adjust spacing as needed
   transition: color 0.3s ease; // Smooth transition for color change
