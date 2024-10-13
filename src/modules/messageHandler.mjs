@@ -339,8 +339,17 @@ export class MessageHandler {
      * @returns {void}
      */
     addListener = (message = "", callback = null, tabId) => {
-        this.#listeners.push({message, callback, tabId});
-        if (VERBOSE) this.debug(`added listener "${message}" ` + `${tabId ? " for " + tabId : ""}`);
+        // Check if the listener already exists
+        const exists = this.#listeners.some(listener =>
+            listener.message === message && listener.callback === callback && listener.tabId === tabId
+        );
+
+        if (!exists) {
+            this.#listeners.push({message, callback, tabId});
+            if (VERBOSE) this.debug(`added listener "${message}" ` + `${tabId ? " for " + tabId : ""}`);
+        } else {
+            if (VERBOSE) this.debug(`listener "${message}" already exists`);
+        }
     }
 
     // ToDo: untested - all copilot

@@ -14,9 +14,10 @@ const TRACK_CHECK_INTERVAL = 2000;  // how often to check tracks in ms
  * @returns {Promise<void>}
  */
 async function monitorTrack(track, streamId, altered = false) {
+    // TODO: this is still triggering sometimes
     if(!window.vch.tabId){
         debug(`WARNING: tabId missing. Waiting tabId from background script before monitoring ${track.kind} track ${track.id}`);
-        mh.removeListener(m.TAB_ID);
+        // mh.removeListener(m.TAB_ID);
         mh.addListener(m.TAB_ID, async (message) => {
             const {tabId} = message;
             if(tabId) {
