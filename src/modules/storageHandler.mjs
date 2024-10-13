@@ -254,6 +254,17 @@ export class StorageHandler {
         return StorageHandler.contents;
     }
 
+    /**
+     * Prevent direct setting of contents
+     * @param value
+     * @private
+     * @throws Error
+     * @returns {void}
+     */
+    set contents(value) {
+        throw new Error(`Can't set contents directly. Use set or update instead. ${value}`);
+    }
+
     // ToDo: test removeListener
     /**
      * Remove a storage listener
