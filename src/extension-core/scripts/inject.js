@@ -184,7 +184,7 @@ async function shimGetUserMedia(constraints) {
      */
 
     // ToDo: make a single switch for this;
-    //  right now videoPlayer settings now coming through, but these two are tied together in dash so it doesn't matter
+    //  right now videoPlayer settings not coming through, but these two are tied together in dash so it doesn't matter
     if (vch?.settings['badConnection']?.enabled || vch?.settings['videoPlayer']?.enabled) {
         const stream = await origGetUserMedia(constraints);         // get the original stream
 

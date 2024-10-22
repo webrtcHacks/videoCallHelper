@@ -53,7 +53,7 @@ export class ImpairmentProcessor {
         }
         // Using webcodecs here because it is relatively lightweight and can be used in a worker easily (unlike webaudio)
         else if (kind === 'audio') {
-            // See impairmentWorker.mjs in experiment for failed attempt at webcodecs
+            // See impairmentWorker.mjs in scratch for failed attempt at webcodecs
         }
 
     }
