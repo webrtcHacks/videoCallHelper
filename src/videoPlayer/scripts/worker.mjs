@@ -35,7 +35,8 @@ wmh.addListener(m.PLAYER_START, async (data) => {
         return playerFrame
     }
 
-    transformManager.add(playerName, playerTransform);
+    // Force this to be the first transform with position 0
+    transformManager.add(playerName, playerTransform, 0);
 
 });
 

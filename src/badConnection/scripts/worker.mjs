@@ -313,6 +313,8 @@ wmh.addListener(m.IMPAIRMENT_SETUP, async (data) => {
 
     self.impairment = new ImpairmentProcessor(kind, impairmentConfig);
 
+    // ToDo: need a way to force this to be the last transform.
+    //  Currently need to set videoPlayer to `0` to force it to be the first or two transforms
     transformManager.add(`${kind}-impairment`, self.impairment.process);
     if(enabled && level !== "passthrough"){
         self.impairment.start();
