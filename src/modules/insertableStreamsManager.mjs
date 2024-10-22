@@ -1,8 +1,8 @@
 import worker from "!!raw-loader!../../temp/worker-bundle.js";
 import {InjectToWorkerMessageHandler, MESSAGE as m, CONTEXT as c} from "./messageHandler.mjs";
 import {AlteredMediaStreamTrackGenerator} from "./AlteredMediaStreamTrackGenerator.mjs";
-import {setupPlayer} from "../videoPlayer/scripts/inject.mjs";
-import {setupImpairment} from "../badConnection/scripts/inject.mjs";
+import {setupPlayer} from "../applets/videoPlayer/scripts/inject.mjs";
+import {setupImpairment} from "../applets/badConnection/scripts/inject.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉️📥`);
 const wmh = new InjectToWorkerMessageHandler();

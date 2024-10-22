@@ -90,12 +90,12 @@ addScript('/scripts/inject.js');
 /************ END inject script injection ************/
 
 // Applets
-import "../../trackData/scripts/content.mjs";
-import "../../trackData/scripts/content.mjs";
-import  "../../selfView/scripts/content.mjs";
-import "../../deviceManager/scripts/content.mjs";
-import "../../badConnection/scripts/content.mjs";
-import "../../videoPlayer/scripts/content.mjs";
+import "../../applets/trackData/scripts/content.mjs";
+import "../../applets/trackData/scripts/content.mjs";
+import  "../../applets/selfView/scripts/content.mjs";
+import "../../applets/deviceManager/scripts/content.mjs";
+import "../../applets/badConnection/scripts/content.mjs";
+import "../../applets/videoPlayer/scripts/content.mjs";
 
 // ToDo: this is slow and blocking
 // import {grabFrames} from "../../imageCapture/scripts/content.mjs";

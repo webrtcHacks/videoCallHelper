@@ -14,12 +14,12 @@ self.mh = mh;
 
 
 // Applets
-import "../../trackData/scripts/background.mjs";
-import "../../presence/scripts/background.mjs";
-import "../../imageCapture/scripts/background.mjs";
-import "../../deviceManager/scripts/background.mjs";
-import "../../selfView/scripts/background.mjs";
-import "../../badConnection/scripts/background.mjs";
+import "../../applets/trackData/scripts/background.mjs";
+import "../../applets/presence/scripts/background.mjs";
+import "../../applets/imageCapture/scripts/background.mjs";
+import "../../applets/deviceManager/scripts/background.mjs";
+import "../../applets/selfView/scripts/background.mjs";
+import "../../applets/badConnection/scripts/background.mjs";
 // import "../../videoPlayer/scripts/background.mjs";
 
 debug(`Environment: ${process.env.NODE_ENV}`);
