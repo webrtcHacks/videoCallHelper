@@ -9,8 +9,8 @@
     "default_title": "Video Call Helper"
   },
   "manifest_version": 3,
-  "version": "0.4.1",
-  "version_name": "β 0.4.1",
+  "version": "0.4.2",
+  "version_name": "β 0.4.2",
   "icons": {
     "16": "media/v_16.png",
     "48": "media/v_48.png",

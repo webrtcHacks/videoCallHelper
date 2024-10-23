@@ -155,6 +155,12 @@ const extensionConfig = {
             ],
         }),
     ],
+    output: {
+        filename: '[name].js',
+        path: path.resolve(__dirname, 'dist/extension/scripts'),
+        clean: true,
+    },
+    dependencies: ['worker'],
     // stats: 'verbose',
 };
 

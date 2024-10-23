@@ -9,20 +9,17 @@ const fs = require('fs');
  * Custom Webpack plugin to increment the patch version in the source manifest.json file.
  */
 class IncrementVersionPlugin {
-    /**
-     * @param {Object} options - Plugin options.
-     * @param {string} options.manifestPath - Path to the manifest.json file.
-     */
     constructor(options) {
         this.manifestPath = options.manifestPath;
+        this.versionIncremented = false; // Add a flag to track if the version has been incremented
     }
 
-    /**
-     * Apply the plugin.
-     * @param {import('webpack').Compiler} compiler - The Webpack compiler instance.
-     */
     apply(compiler) {
         compiler.hooks.emit.tapAsync('IncrementVersionPlugin', (compilation, callback) => {
+            if (this.versionIncremented) {
+                return callback(); // Skip if the version has already been incremented
+            }
+
             let manifestContent = fs.readFileSync(this.manifestPath, 'utf8');
 
             // Remove BOM if present
@@ -39,6 +36,7 @@ class IncrementVersionPlugin {
                 manifest.version_name = `β ${manifest.version}`;
                 fs.writeFileSync(this.manifestPath, JSON.stringify(manifest, null, 2));
                 console.log(`Version updated to ${manifest.version_name}`);
+                this.versionIncremented = true; // Set the flag to true after incrementing
             } else {
                 console.error('Invalid version format in manifest.json');
             }
@@ -77,6 +75,6 @@ workerConfig.mode = 'production';
 
 // Only merge the devConfig with the extensionConfig
 module.exports = [
-    workerConfig, // keep the workerConfig as is
+    merge(workerConfig, prodConfig), // Build the worker first
     merge(extensionConfig, prodConfig) // apply the devConfig only to the extensionConfig
 ];
