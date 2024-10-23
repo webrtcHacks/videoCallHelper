@@ -2,5 +2,5 @@
 
 /** @typedef {Object} dashSettings */
 export const settings = {
-    lastMenuItem: 'self-view',
+    lastMenuItem: '#self-view',
 }
