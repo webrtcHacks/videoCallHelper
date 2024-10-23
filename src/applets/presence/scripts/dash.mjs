@@ -50,7 +50,7 @@ togglePresenceConfigTabsButton.addEventListener('click', () => {
     // Optionally update the button text or icon
     const isExpanded = !presenceConfigTabsContainer.classList.contains('d-none');
     // togglePresenceConfigTabsButton.setAttribute('aria-expanded', `${isExpanded}`);
-    debug(`Presence Config Tabs ${isExpanded ? 'opened' : 'closed'}`);
+    // debug(`Presence Config Tabs ${isExpanded ? 'opened' : 'closed'}`);
 });
 /************ END presenceControl ************/
 

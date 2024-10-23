@@ -260,16 +260,9 @@
 
     <!-- START: PRESENCE CONTROL-->
     <div class="content" id="presence">
-        <div class="d-flex flex-row flex-nowrap h-100">
-            <button class="btn icon-button btn-outline-secondary" id="presence-enable" data-bs-toggle="tooltip"
-                    data-bs-placement="top" title="Automatically update presence status">
-                <i class="bi bi-arrow-repeat"></i>
-                <span>Auto-update <br>ON</span>
-            </button>
-        </div>
 
         <!-- Presence Status -->
-        <div class="d-flex flex-row flex-nowrap vertical-divider h-100">
+        <div class="d-flex flex-row flex-nowrap h-100">
             <div class="btn icon-button btn-outline-secondary presence-status-button disabled text-secondary-emphasis" id="camera-in-use"
                  data-bs-toggle="tooltip" data-bs-placement="top" title="Camera in use">
                 <div class="badge bg-secondary w-75" id="camera-stream-count">0</div>
@@ -291,23 +284,23 @@
         <!-- Presence Config -->
         <div class="d-flex flex-row flex-nowrap vertical-divider align-items-start h-100 w-100">
             <div class="flex-column">
-                <h5 class="">Manual override</h5>
+                <h5 class="">Webhook configuration</h5>
                 <div class="btn-group dropend d-flex flex-row" role="group" aria-label="Webhook Controls">
                     <button class="btn group-icon-btn btn-outline-secondary" id="manual-override-on"
                             data-bs-toggle="tooltip"
                             data-bs-placement="top" title="Manually trigger on webhook on">
                         <i class="bi bi-check-circle-fill"></i>
-                        <span>Webhook <br>ON</span>
+                        <span>Manual <br>ON</span>
                     </button>
                     <button class="btn  group-icon-btn btn-outline-secondary" id="manual-override-off"
                             data-bs-toggle="tooltip"
                             data-bs-placement="top" title="Manually trigger on webhook off">
                         <i class="bi bi-x-circle-fill"></i>
-                        <span>Webhook<br>OFF</span>
+                        <span>Manual<br>OFF</span>
                     </button>
                     <button class="btn  group-icon-btn btn-outline-secondary disabled text-secondary-emphasis me-0 ">
                             <i class="bi bi-gear d-block"></i>
-                            <span class="d-block">Webhook<br>Settings</span>
+                            <span class="d-block">Settings</span>
                     </button>
                     <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
                             data-bs-toggle="toggle-presence-config-tabs-container" aria-expanded="false"
@@ -315,7 +308,13 @@
                     </button>
                 </div>
             </div>
-            <div class="tab-group collapse ms-3 " id="presence-config-tabs-container">
+            <div class="tab-group collapse h-100 " id="presence-config-tabs-container">
+                <button class="btn icon-button btn-outline-secondary ms-2" id="presence-enable" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Automatically update presence status">
+                    <i class="bi bi-arrow-repeat"></i>
+                    <span>Auto-update <br>ON</span>
+                </button>
+
                 <ul class="nav nav-tabs d-flex flex-column" id="presenceConfigTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <a class="nav-link active" id="on-settings-tab" data-bs-toggle="tab" href="#on-settings"
