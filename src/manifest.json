@@ -1,15 +1,16 @@
-﻿{
-  "name": "Video Call Helper",
+{
+  "name": "Video Call Helper (β)",
   "action": {
     "default_icon": {
       "16": "media/v_16.png",
       "48": "media/v_48.png",
       "128": "media/v_128.png"
-        },
+    },
     "default_title": "Video Call Helper"
   },
   "manifest_version": 3,
-  "version": "0.3.1",
+  "version": "0.4.1",
+  "version_name": "β 0.4.1",
   "icons": {
     "16": "media/v_16.png",
     "48": "media/v_48.png",

@@ -53,7 +53,14 @@ const devConfig = {
                         jsonContent = JSON.parse(jsonContent);
                         jsonContent.name = 'Video Call Helper (dev)';
                         jsonContent.action.default_title = 'Video Call Helper (dev)';
-                        console.log(jsonContent.name);
+
+                        const versionParts = jsonContent.version.split('.');
+                        versionParts[3] = (parseInt(versionParts[3] || 0) + 1).toString();
+                        jsonContent.version = versionParts.join('.');
+
+                        jsonContent.version_name = `β ${jsonContent.version}`;
+
+                        console.log(`${jsonContent.name} - ${jsonContent.version_name}`);
                         return JSON.stringify(jsonContent, null, 2);
                     },
                 },

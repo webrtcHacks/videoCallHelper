@@ -2,7 +2,12 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
 
-// build the worker file first since it needs to be referenced by the extension
+
+
+/**
+ * Webpack configuration for the worker script.
+ * @type {import('webpack').Configuration}
+ */
 const workerConfig = {
     name: 'worker',
     mode: 'none',
@@ -22,8 +27,10 @@ const workerConfig = {
     // stats: 'verbose',
 };
 
-
-// This is for all other extension files
+/**
+ * Webpack configuration for the extension scripts.
+ * @type {import('webpack').Configuration}
+ */
 const extensionConfig = {
     name: 'extension',
     mode: 'none',
@@ -37,10 +44,9 @@ const extensionConfig = {
         inject: './src/extension-core/scripts/inject.js',
         popupError: './src/extension-core/scripts/popup-error.js',
         dash: './src/dash/dash.js',
-        images: './src/imageCapture/scripts/imageCaptureDbUiHandler.js',
-        framing: './src/framing/scripts/framingAnalysis.js',
-        presence: './src/presence/scripts/presenceConfig.mjs',
-        recorder: './src/videoPlayer/scripts/recorder.mjs',
+        images: './src/applets/imageCapture/scripts/imageCaptureDbUiHandler.js',
+        presence: './src/applets/presence/scripts/presenceConfig.mjs',
+        recorder: './src/applets/videoPlayer/scripts/recorder.mjs',
         bootstrap: './node_modules/bootstrap/dist/js/bootstrap.bundle.min.js',
         bootstrapIcons: './node_modules/bootstrap-icons/font/bootstrap-icons.scss',
     },
@@ -123,28 +129,21 @@ const extensionConfig = {
         new HtmlWebpackPlugin({
             title: 'Show images page',
             chunks: ['images'],
-            template: "src/imageCapture/pages/imageCapture.html",
+            template: "src/applets/imageCapture/pages/imageCapture.html",
             filename: "../pages/imageCapture.html",
-            inject: "body"
-        }),
-        new HtmlWebpackPlugin({
-            title: 'Framing analysis',
-            chunks: ['framing'],
-            template: "src/framing/pages/framingAnalysis.html",
-            filename: "../pages/framingAnalysis.html",
             inject: "body"
         }),
         new HtmlWebpackPlugin({
             title: 'Presence webhook',
             chunks: ['presence'],
-            template: "src/presence/pages/presence.html",
+            template: "src/applets/presence/pages/presence.html",
             filename: "../pages/presence.html",
             inject: "body"
         }),
         new HtmlWebpackPlugin({
             title: 'Video recorder',
             chunks: ['bootstrap','bootstrapIcons','recorder'],
-            template: "src/videoPlayer/pages/recorder.html",
+            template: "src/applets/videoPlayer/pages/recorder.html",
             filename: "../pages/recorder.html",
             inject: "body",
         }),
