@@ -2,7 +2,7 @@
 
 /** @typedef {Object} deviceManagerSettings */
 export const settings = {
-    enabled: false,
+    enabled: true,
     currentDevices: [],
     selectedDeviceLabels: {
         audio: null,

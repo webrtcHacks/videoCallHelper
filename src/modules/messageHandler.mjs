@@ -474,7 +474,7 @@ export class WorkerMessageHandler {
     listeners = [];
 
     /**
-     * @constructor
+     * @constructor - wrapper for onmessage and postMessage to facilitate communication between a worker and its host script
      * @singleton
      */
     constructor() {
@@ -545,7 +545,7 @@ export class InjectToWorkerMessageHandler { // extends MessageHandler {
     #listeners = [];
 
     /**
-     * @constructor
+     * @constructor - follows the singleton pattern
      * @singleton
      */
     constructor( ) {
@@ -643,6 +643,9 @@ export class InjectToWorkerMessageHandler { // extends MessageHandler {
 
 }
 
+/**
+ * Message typing
+ */
 
 /**
  * @typedef {Object} context

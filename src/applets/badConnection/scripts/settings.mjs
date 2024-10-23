@@ -3,6 +3,6 @@
 /** @typedef {Object} presenceSettings */
 export const settings = {
     active: false,
-    enabled: false,
+    enabled: true,
     level: "passthrough",
 }
