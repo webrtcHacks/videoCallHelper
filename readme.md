@@ -1,15 +1,16 @@
 # Video Call Helper (β)
 
-A Chrome Extension to help with video calls. 
+A Chrome Extension that provides a suite of tools to help your video calling experience. 
+
 
 ## Overview
-⚠️WARNING: This extension is in beta and will have bugs.
 
 Video Call Helper is a tool box for video calls. 
 It provides a set of tools that interact with the underlying media capture and 
 real time communications related APIs to provide statistics and modify media. 
 Control the extension via a drop-down dashboard accessible from the extension icon.
 
+### Features
 Tools include:
 - **😈 Bad Connection** - simulate a bad network connection if you are looking for a reason to get out of a meeting or avoid talking
 - **🌫️ Blur self-view** - obscure your own video self-view to reduce distractions
@@ -24,6 +25,21 @@ For developers: send a webhook request whenever the camera or microphone are act
 Useful for triggering a busy light indicator by your workspace or other workflows
 
 See the [applets](#applets) section for more information on each applet.
+
+### Works on most web-based video calling apps
+
+Because Video Call Helper operates at the browser level, it should work with most web-based video calling apps.
+Tested with popular video calling apps like Google Meet and Jitsi Meet. 
+Make sure to choose the option to run in the browser when using Desktop apps like Microsoft Teams and Zoom. 
+
+ToDo: regular testing against a variety of video calling apps.
+
+### Browser-based with no data sent to external servers
+Video Call Helper runs completely with in the browser. We don't collect any data.
+
+### This is Beta
+⚠️WARNING: This extension is in beta and will have bugs. Help us out by submitting an issue if you find one.
+
 
 ## Installing into Chrome, Edge, and other Chromium-based browsers
 
@@ -43,19 +59,23 @@ Installation from the Chrome Web Store is coming soon.
 5. Click "Load unpacked" and select the unzipped extension directory
 6. The extension should now be installed
 
-## Usage
- 
-TO WRITE
 
 ---
 ## 🧑‍💻 Developers
 
-Video Call Helper utilizes the following:
-* Vanilla ES6 JavaScript with some type definitions via [JSDoc](https://jsdoc.app/)
-* [npm](https://www.npmjs.com/) for package management
-* [WebPack](https://webpack.js.org/)
-* [Bootstrap 5](https://getbootstrap.com/docs/5.0/getting-started/introduction/)
+Video Call Helper attempts to simplify of development of new applets and features for the extension.
+It provides a framework for:
+1. Coordination across multiple contexts (background, content, inject, worker)
+2. Use of Insertable Streams inside a worker with multiple transforms for media manipulation
+3. Storage of settings
+4. Exposure of MediaStreamTracks 
 
+### Technologies
+Video Call Helper utilizes the following:
+* Vanilla ES6 JavaScript with some inline type definitions via [JSDoc](https://jsdoc.app/)
+* [npm](https://www.npmjs.com/) for package management
+* [WebPack](https://webpack.js.org/) for bundling
+* [Bootstrap 5](https://getbootstrap.com/docs/5.0/getting-started/introduction/) - to build a simple UI using lightweight components
 
 
 ### Building from source
@@ -84,7 +104,7 @@ Video Call Helper operates in the following contexts:
 
 #### Overloading functionality
 
-[extension-core/inject.js](./src/extension-core/scripts/inject.js) currently overloads the following APIs:
+[extension-core/inject.js](./src/extension-core/scripts/inject.js) currently overloads the following browser APIs:
 - `navigator.mediaDevices.getUserMedia`
 - ~~`navigator.mediaDevices.getDisplayMedia`~~ (commented out)
 - `navigator.mediaDevices.enumerateDevices`
@@ -171,10 +191,11 @@ required some complex abstractions.
 
 The `InsertableStreamsManager` class in [modules/insertableStreamsManager.mjs](./src/modules/insertableStreamsManager.mjs)
 accepts a `MediaStreamTrack` as an argument and returns a `MediaStreamTrackGenerator`. Since `MediaStreamTrackGenerator` 
-has different properties than a `MediaStreamTrack`, the `MediaStreamTrackGenerator` is extended with the `AlteredMediaStreamTrack` 
-class in [modules/AlteredMediaStreamTrackGenerator.mjs](./src/modules/AlteredMediaStreamTrackGenerator.mjs).
+has different properties than a `MediaStreamTrack`, the `MediaStreamTrackGenerator` is extended with the 
+`AlteredMediaStreamTrack` class in [modules/AlteredMediaStreamTrackGenerator.mjs](./src/modules/AlteredMediaStreamTrackGenerator.mjs) to have all the same properties 
+and methods as a `MediaStreamTrack`.
 A helper `ProcessedMediaStream` class in [modules/insertableStreamsManager.mjs](./src/modules/insertableStreamsManager.mjs) 
-is used process all tracks in a stream.
+is used process all tracks in a `MediaStream` (vs. managing those stream's tracks individually).
 
 Example:
 ```javascript
@@ -182,7 +203,7 @@ const alteredStream = await new ProcessedMediaStream(stream);   // modify the st
 ```
 
 `InsertableStreamsManager` creates a new worker for each track. That worker then applies one or more functions
-to the frame using the `transformManager` function in [extension-core/scripts/worker.js](./src/extension-core/scripts/worker.js).  
+to the stream of frames using the `transformManager` function in [extension-core/scripts/worker.js](./src/extension-core/scripts/worker.js).  
 These worker functions are stored as `worker.mjs` in each applet and need to be added to `worker.js`. The 
 `WorkerMessageHandler` is used to communicate with a corresponding `inject.mjs` for each applet. 
 
@@ -266,36 +287,72 @@ This is a TODO item.
 
 ### 😈 badConnection
 Simulate a bad network connection if you are looking for a reason to get out of a meeting or avoid talking.
-This uses the InsertableStreamsManager to lower the resolution, decrease framerate, and add freezing of video 
+This uses the `InsertableStreamsManager` to lower the resolution, decrease framerate, and add freezing of video 
 and add clipping to audio, like what happens during a bad network connection.
 
+Source folder: [badConnection](src/applets/badConnection)
+
+Implementation details: [badConnection.md](src/applets/badConnection/badConnection.md)
+
+
 ### 🎛️ deviceManager
-Remove speaker, audio, and video devices from device enumeration (`navigator.MediaDevices.enumerateDevices`).
+Remove speaker, audio, and video devices from device enumeration.
 This apple overrides the `navigator.MediaDevices.enumerateDevices` function to remove devices from the list of available devices.
 
+Source folder: [deviceManager](src/applets/deviceManager)
+
+
+Implementation details: [deviceManager.md](src/applets/deviceManager/deviceManager.md)
+
 ### 📸 imageCapture
-Grab images from the local `getUserMedia` stream for ML training.
+Grab images from the local `getUserMedia` stream. 
+Originally intended to assist with ML training. 
+Saved in IndexedDB with dedicated page for viewing and exporting the images with associated metadata.
 
 Work-in-progress - not currently implemented in the control dashboard.
+
+Source folder: [imageCapture](src/applets/imageCapture)
+
 
 ### 🟢 presence
 Background script that monitors when your camera and/or microphone are used to indicate a presence state.
 Optionally trigger a webhook whenever presence changes state to trigger external actions, such as changing the 
 display on a busy light indicator or triggering a workflow in a service like [IFTTT](https://ifttt.com/).
 
-Dependencies: trackData
+Dependencies: trackData - used to count the number of active tracks by device type.
+
+Source folder: [presence](src/applets/presence)
+
 Implementation details: [presence.md](src/applets/presence/presence.md)
 
 ### 🙈 selfView
 
-Dependencies: trackData
+Modifies the user's self-view without impacting what is transmitted. 
+Options include:
+- Blur self-view - blur the self-view to reduce distractions
+- Add a grid overlay to help with camera framing - look your best by making sure you are properly framed in the camera
+
+Dependencies: trackData - selfView only activates when there is a video track.
+
+Source folder: [selfView](src/applets/selfView)
+
 Implementation details: [selfView.md](src/applets/selfView/selfView.md)
 
 ### 🛤 trackData
 
+Keeps track of the number of active `getUserMedia` tracks by device type.
+
+Source folder: [trackData](src/applets/trackData)
+
 Implementation details: [trackData.md](src/applets/trackData/trackData.md)
 
 ### 🎥 videoPlayer
+
+Replaces the getUserMedia stream with a video file.
+The user can make a recording or upload a video file to inject.
+Note: video files cannot be larger than 250MB due to Chrome extension limitations on local storage.
+
+Source folder: [videoPlayer](src/applets/videoPlayer)
 
 Implementation details: [videoPlayer.md](src/applets/videoPlayer/videoPlayer.md)
 
