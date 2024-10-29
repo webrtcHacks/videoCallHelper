@@ -69,6 +69,12 @@ import {StorageHandler} from "../modules/storageHandler.mjs";
 import '../imageCapture/scripts/dash.mjs';
 */
 
+/** Close dash button */
+document.getElementById('close-dash').addEventListener('click', () => {
+    mh.sendMessage(c.CONTENT, m.TOGGLE_DASH);
+});
+
+
 
 /** Home tab */
 
@@ -185,9 +191,7 @@ streamModificationButtons.forEach(button => button.addEventListener('click', asy
 
 }));
 
-reloadButton.addEventListener('click', function () {
-    //location.reload();
-});
+
 
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => {
     new Tooltip(element);
