@@ -2,6 +2,7 @@
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {DeviceManager} from "../../applets/deviceManager/scripts/inject.mjs";
 import {ProcessedMediaStream} from "../../modules/insertableStreamsManager.mjs";
+import {monitorPeerConnection} from "../../applets/pcStats/scripts/inject.mjs";
 
 // Todo: make this an anonymous function for prod
 
@@ -271,6 +272,18 @@ MediaStreamTrack.prototype.clone = function () {
 
 // peerConnection shims
 
+// shim the RTCPeerConnection with a proxy to monitor the connection
+RTCPeerConnection = new Proxy(RTCPeerConnection, {
+    construct(target, args) {
+        const pc = new target(...args);
+        debug(`RTCPeerConnection shimmed`, pc, args[0]);
+        vch.pcs.push(pc);
+        monitorPeerConnection(pc);
+        return pc;
+    }
+});
+
+
 const origAddTrack = RTCPeerConnection.prototype.addTrack;
 RTCPeerConnection.prototype.addTrack = function (track, stream) {
     let streams = [...arguments].slice(1);
@@ -319,7 +332,7 @@ RTCPeerConnection.prototype.addStream = function (stream) {
 const origSenderReplaceTrack = RTCRtpSender.prototype.replaceTrack;
 RTCRtpSender.prototype.replaceTrack = function (track) {
     debug(`replaceTrack shimmed on RTCRtpSender`, this, track);
-    debug("RTC sender track settings", track.getSettings());
+    debug("RTC sender track, settings", track, track?.getSettings());
 
     vch.pcTracks.push(track);
 
