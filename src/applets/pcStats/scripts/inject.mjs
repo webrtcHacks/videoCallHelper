@@ -28,7 +28,7 @@ class TrackImageCapturer {
 
     /**
      * return a single image from the video track
-     * @returns {Promise<Blob>}
+     * @returns {Promise<Blob>} - promise that resolves to a blob of the image
      */
     async getImage() {
         const { value: frame } = await this.reader.read();
@@ -53,6 +53,11 @@ class VideoTrackImageCapturer {
             this.trackCapturers = new Map();
         }
 
+    /**
+     * Get the track capturer for a specific track
+     * @param track - the track to capture images from
+     * @returns {Promise<Blob>} - promise that resolves to a blob of the image
+     */
     getTrackCapturer(track) {
         if (!this.trackCapturers.has(track.id)) {
             const { width, height } = track.getSettings();
@@ -64,6 +69,10 @@ class VideoTrackImageCapturer {
         return this.trackCapturers.get(track.id);
     }
 
+    /**
+     * Capture a single image from all video tracks in the peer connection
+     * @returns {Promise<{senderImages: (Awaited<unknown>[]|undefined), receiverImages: (Awaited<unknown>[]|undefined)}>}
+     */
     async captureImages() {
         const senders = this.peerConnection.getSenders()
             .filter(sender => sender.track && sender.track.kind === 'video');
@@ -97,7 +106,7 @@ export function monitorPeerConnection(peerConnection) {
 
     monitor.on("stats-collected", async () => {
         if(peerConnection.connectionState === 'closed'){
-            debug(`Connection ${id} is not connected, closing monitor`);
+            debug(`Connection ${id} is ${peerConnection.connectionState}, closing monitor`);
             monitor.close();
             return;
         }

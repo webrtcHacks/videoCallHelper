@@ -273,7 +273,8 @@ MediaStreamTrack.prototype.clone = function () {
 // peerConnection shims
 
 // shim the RTCPeerConnection with a proxy to monitor the connection
-RTCPeerConnection = new Proxy(RTCPeerConnection, {
+const originalRTCPeerConnection = RTCPeerConnection;
+RTCPeerConnection = new Proxy(originalRTCPeerConnection, {
     construct(target, args) {
         const pc = new target(...args);
         debug(`RTCPeerConnection shimmed`, pc, args[0]);
