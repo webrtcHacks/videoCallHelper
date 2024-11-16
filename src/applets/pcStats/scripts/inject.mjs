@@ -7,13 +7,17 @@ const debug = Function.prototype.bind.call(console.debug, console, `vch 💉🧮
 const monitor = createClientMonitor();
 
 class TrackImageCapturer {
+
+    /**@type {Array.<MediaStreamTrack>}
+    tracksImages = []
+
     /**
      * Capture a images from a video track
-     * @param {MediaStreamTrack} track - the video track to capture
+     * @param {Array.<MediaStreamTrack>} tracks - the video track to capture
      * @param {Number} width - the width of the image; default to 200px (4:3 aspect ratio)
      * @param {Number} height - the height of the image; default to 150px
      */
-    constructor(track, width = 150 * 4/3, height = 150) {
+    constructor(tracks, width = 150 * 4/3, height = 150) {
         if (track.kind !== 'video') {
             throw new Error('Track must be a video track');
         }
@@ -91,34 +95,72 @@ class VideoTrackImageCapturer {
     }
 }
 
+// temp for testing
+function printTrackStats(trackStats) {
+    if (!trackStats) return;
+
+    const rtpEntries = trackStats.direction === 'inbound' ? [...trackStats.inboundRtps()] : [...trackStats.outboundRtps()];
+    const codec = rtpEntries[0]?.getCodec()?.stats.mimeType;
+
+    debug(`Track ${trackStats.trackId} stats:`, {
+        codec,
+        'RTT / loss': `${trackStats.roundTripTimeInS} / ${trackStats.fractionLoss}%`,
+        bitrate: `${trackStats.bitrate / 1000} kbps`,
+    });
+    // debug('track stats', trackStats); // trackStats.trackId
+}
+
 
 /**
  * Monitor the peer connection
  * @param {RTCPeerConnection} peerConnection - the peer connection to monitor
  */
 export function monitorPeerConnection(peerConnection) {
-    const id = Math.random().toString().substring(10);
-    monitor.collectors.addRTCPeerConnection(peerConnection, id);
-    const imageCapturer = new VideoTrackImageCapturer(peerConnection);
-    debug(`Monitoring peer connection ${id}:`, peerConnection);
-    window.vch.monitor = monitor;
+
+    const videoTracks = peerConnection.getTransceivers().map(transceiver => transceiver.sender?.track || transceiver.receiver?.track)
+        .filter(track => track && track.kind === 'video');
+    // list for new and removed tracks and update videoTracks
+    peerConnection.addEventListener('track', (event) => {
+        if (event.track.kind === 'video') {
+            videoTracks.push(event.track);
+        }
+    });
 
 
-    monitor.on("stats-collected", async () => {
+
+    const collector = monitor.collectors.addRTCPeerConnection(peerConnection);
+    debug(`Monitoring peer connection ${collector.id}:`, peerConnection);
+
+
+
+    async function listener() {
         if(peerConnection.connectionState === 'closed'){
-            debug(`Connection ${id} is ${peerConnection.connectionState}, closing monitor`);
-            monitor.close();
+            collector.close();
             return;
         }
+        const pcStats = monitor.getPeerConnectionStats(collector.id);
+        // debug(`stats data for peerConnection ${collector.id}:`, pcStats)
+        // const images = await imageCapturer.captureImages();
+        // debug("stats data:", {images, id: collector.id, stats: pcStats})
 
-        // debug(`pc stats on${'id'}:`,monitor.storage);
+        for (const trackStats of monitor.tracks) {
+            // get the image for each track
+            // const image = await imageCapturer.getTrackCapturer(trackStats.track).getImage();
+            // input: trackStats.trackId -> output: image
+            printTrackStats(trackStats);
+        }
+    }
 
-        const images = await imageCapturer.captureImages();
-        debug("stats data:", {images, id, stats: monitor.storage})
-
-        // debug(`Images:`, images);
-        // const data = {images, stats: JSON.stringify(monitor.storage)};
-        // mh.sendMessage(c.DASH, 'stats', ...data);
-
+    monitor.once('close', () => {
+        monitor.off('stats-collected', listener);
     });
+    monitor.on('stats-collected', listener);
+
+
+
 }
+
+// Add monitor for debugging
+document.addEventListener('DOMContentLoaded', async () => {
+    window.vch.monitor = monitor;
+});
