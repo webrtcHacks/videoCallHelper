@@ -2,7 +2,7 @@
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../modules/messageHandler.mjs";
 import {DeviceManager} from "../../applets/deviceManager/scripts/inject.mjs";
 import {ProcessedMediaStream} from "../../modules/insertableStreamsManager.mjs";
-import {monitorPeerConnection} from "../../applets/pcStats/scripts/inject.mjs";
+import {monitorPeerConnection} from "../../applets/rtcStats/scripts/inject.mjs";
 
 // Todo: make this an anonymous function for prod
 
