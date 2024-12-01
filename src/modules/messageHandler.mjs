@@ -152,11 +152,12 @@ export class MessageHandler {
                     if (to === CONTEXT.BACKGROUND || to === CONTEXT.DASH) {
                         try {
                             chrome.runtime.sendMessage(messageToSend, {}, response => {
-                                if (chrome.runtime.lastError)
+                                // ToDo: can we detect when dash.js is loaded?
+                                if (chrome.runtime.lastError && to === CONTEXT.BACKGROUND)
                                     this.debug("Disconnected from background script:", chrome.runtime.lastError.message);
                             });
                         } catch (err) {
-                            this.debug("Error sending message to background: ", err.message);
+                            this.debug(`Error sending message to ${to}: `, err.message);
                             if (err.message.match(/context invalidated/i)) {
                                 this.#handleDisconnect();
                             }
@@ -205,6 +206,7 @@ export class MessageHandler {
             case 'background→inject':
             case 'inject→background':
             case 'dash→inject':
+            case 'inject→dash':
                 if (VERBOSE)
                     this.debug(`relayHandler for "${from}→${to}" via ${this.context} for ${message} with data ${JSON.stringify(data)}`);
                 this.sendMessage(to, message, data, from);
@@ -331,7 +333,7 @@ export class MessageHandler {
     }
 
     /**
-     * Adds a listener for messages from worker to content
+     * Adds a listener for messages
      *
      * @param {string} message - the message to listen for
      * @param {function} callback - the function to call when the message is received
@@ -752,6 +754,10 @@ export const MESSAGE = {
     PLAYER_RESUME: 'player_resume',     // used in the worker to skip reading
     PLAYER_END: 'player_end',               // used in the worker to end the transform
     FRAME_STREAM: 'frame_stream',
+
+    // rtc stats
+    RTC_STATS_UPDATE: 'rtc_stats_update',
+
 
     // Inject->Worker
     WORKER_SETUP: 'setup',

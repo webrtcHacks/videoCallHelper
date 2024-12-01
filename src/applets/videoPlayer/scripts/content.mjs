@@ -1,4 +1,4 @@
-import {base64ToBuffer} from "./base64.mjs";
+import {base64ToBuffer} from "../../../modules/base64.mjs";
 import {StorageHandler} from "../../../modules/storageHandler.mjs";
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../../modules/messageHandler.mjs";
 

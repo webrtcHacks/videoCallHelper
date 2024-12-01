@@ -45,3 +45,41 @@ export function arrayBufferToBase64(buffer) {
         }
     });
 }
+
+
+/**
+ * Helper to convert Blob to base64
+ * @param {Blob} blob
+ * @returns {Promise<string>}
+ */
+export function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+            const dataUrl = reader.result;
+            // Extract base64 part of Data URL
+            const base64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+            if(base64.length === 0)
+                reject(`Error converting Blob to base64 - blob is 0 length: ${dataUrl}`);
+            else
+                resolve(base64);
+        };
+
+        reader.onerror = (error) => {
+            reject(`Error reading Blob as Data URL: ${error}`);
+        };
+
+        reader.readAsDataURL(blob);
+    });
+}
+
+/**
+ * Helper to convert base64 to blob
+ * @param {string} string - base64 string
+ * @returns {blob}
+ */
+export function base64ToBlob(string) {
+    return fetch(`data:text/plain;base64,${string}`)
+        .then(response => response.blob());
+}

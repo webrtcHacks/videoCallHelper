@@ -13,10 +13,11 @@
         <div class="tab" data-target="#modify-stream">Modify Stream</div>
         <!--div class="tab" data-target="#record">Record</div-->
         <div class="tab" data-target="#presence">Presence</div>
-            <div class="col text-end">
-                <button id="close-dash" class="btn h-100 pt-0 lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Close Dash">
-                    <i class="bi bi-x-square fs-6 text-secondary-emphasis"></i>
-                </button>
+        <div class="tab" data-target="#rtc-stats">RTC Stats</div>
+        <div class="col text-end">
+            <button id="close-dash" class="btn h-100 pt-0 lh-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Close Dash">
+                <i class="bi bi-x-square fs-6 text-secondary-emphasis"></i>
+            </button>
         </div>
     </div>
     <div class="content" id="home">
@@ -414,6 +415,33 @@
 
   </div>
     <!-- END: PRESENCE CONTROL-->
+
+    <!-- START: RTC STATS -->
+    <div class="content" id="rtc-stats">
+        <div class="d-flex flex-row flex-nowrap h-100">
+            <button class="btn icon-button btn-outline-secondary" id="rtc-stats-enable" data-bs-toggle="tooltip"
+                    data-bs-placement="top" title="Show RTC Statistics">
+                <i class="bi bi-bar-chart-line"></i>
+                <span>Enable RTC Stats</span>
+            </button>
+        </div>
+        <div class="d-flex flex-row flex-nowrap h-100">
+            <textarea rows="10" cols="50"></textarea>
+
+        </div>
+        <!--div class="d-flex align-items-center justify-content-center h-100 m-3 p-2">
+            <p class="text-center text-secondary">
+                Use the <strong>Enable RTC Stats</strong> button to start collecting RTC stats. <br>
+                The <strong>Switch RTC Stats</strong> button allows you to switch between different RTC stats.
+            </p>
+        </div-->
+
+        <div id="rtc-stats-images" class="d-flex flex-wrap"></div>
+
+
+
+
+    </div>
 
     <!-- START: WARNING TOAST-->
     <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-2 pe-5">

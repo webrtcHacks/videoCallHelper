@@ -1,5 +1,6 @@
 import {createClientMonitor} from "@observertc/client-monitor-js";
-import {CONTEXT as c, MessageHandler} from "../../../modules/messageHandler.mjs";
+import {CONTEXT as c, MESSAGE as m, MessageHandler} from "../../../modules/messageHandler.mjs";
+import {blobToBase64} from "../../../modules/base64.mjs";
 
 const mh = new MessageHandler(c.INJECT);
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉🤓 `);
@@ -16,17 +17,16 @@ class TrackImageCapturer {
 
     /**
      * @param {RTCPeerConnection} peerConnection - The peer connection to capture images from
-     * @param {Number} [width=200] - The width of the image; default to 200px (4:3 aspect ratio)
-     * @param {Number} [height=150] - The height of the image; default to 150px
+     * @param {Number} [outputHeight=70] - The height of the image; default to 70px
      */
-    constructor(peerConnection, width = 200, height = 150) {
+    constructor(peerConnection, outputHeight = 70) {
         this.peerConnection = peerConnection;
-        this.width = width;
-        this.height = height;
+        this.height = outputHeight;
         this.processors = new Map();
         this.readers = new Map();
         this.canvases = new Map();
         this.ctxs = new Map();
+        this.aspectRatios = new Map();
     }
 
     /**
@@ -43,11 +43,23 @@ class TrackImageCapturer {
             return null;
         }
 
+        // set the width to the track source aspect ratio
+        let width;
+        if(!this.aspectRatios.has(trackId)){
+            const {aspectRatio} = track.getSettings();
+            this.aspectRatios.set(trackId, aspectRatio);
+            width =  aspectRatio * this.height;
+        } else{
+            width = this.aspectRatios.get(trackId) * this.height;
+        }
+
+        // debug(`trackId ${trackId}`, track);
+
         if (!this.processors.has(trackId)) {
             const processor = new MediaStreamTrackProcessor({ track });
             this.processors.set(trackId, processor);
             this.readers.set(trackId, processor.readable.getReader());
-            const canvas = new OffscreenCanvas(this.width, this.height);
+            const canvas = new OffscreenCanvas(width, this.height);
             this.canvases.set(trackId, canvas);
             this.ctxs.set(trackId, canvas.getContext('bitmaprenderer'));
         }
@@ -60,25 +72,50 @@ class TrackImageCapturer {
         }
 
         const ctx = this.ctxs.get(trackId);
-        ctx.drawImage(frame, 0, 0, this.width, this.height);
+        const imageBitmap = await createImageBitmap(frame, {
+            resizeWidth: width || this.height * 16/9,
+            resizeHeight: this.height,
+            resizeQuality: 'low'
+        });
+        // debug(`track ${trackId} image`, imageBitmap);
+        ctx.transferFromImageBitmap(imageBitmap);
         frame.close();
-        return this.canvases.get(trackId).convertToBlob({ type: 'image/jpeg' });
+        const image = await this.canvases.get(trackId).convertToBlob({ type: 'image/jpeg' });
+        // debug(`track ${trackId} image`, image);
+        return image
     }
 }
 
 // temp for testing
-function printTrackStats(trackStats) {
-    if (!trackStats) return;
+function getTrackStatsSummary(trackStats) {
+    if (!trackStats) return null;
 
     const rtpEntries = trackStats.direction === 'inbound' ? [...trackStats.inboundRtps()] : [...trackStats.outboundRtps()];
     const codec = rtpEntries[0]?.getCodec()?.stats.mimeType;
 
+    /*
     debug(`Track ${trackStats.trackId} stats:`, {
         codec,
         'RTT / loss': `${trackStats.roundTripTimeInS} / ${trackStats.fractionLoss}%`,
         bitrate: `${trackStats.bitrate / 1000} kbps`,
     });
-    // debug('track stats', trackStats); // trackStats.trackId
+     */
+    // debug(`${trackStats.kind} track ${trackStats.trackId} stats`, statsSummary); // trackStats.trackId
+    return {
+        trackId: trackStats.trackId,
+        kind: trackStats.kind,
+        codec: codec,
+        jitter: trackStats.jitter,
+        bitrateKbps: trackStats.bitrate / 1000,
+        direction: trackStats.direction,
+        fractionLoss: trackStats.fractionLoss,
+        layers: trackStats.layers,
+        remoteLostPackets: trackStats.remoteLostPackets,
+        remoteReceivedPackets: trackStats.remoteReceivedPackets,
+        roundTripTimeInS: trackStats.roundTripTimeInS,
+        sendingBitrate: trackStats.sendingBitrate,
+        sentPackets: trackStats.sentPackets
+    }
 }
 
 
@@ -99,17 +136,28 @@ export function monitorPeerConnection(peerConnection) {
         }
         const pcStats = monitor.getPeerConnectionStats(collector.id);
 
+        const trackStatsArray = [];
         for (const trackStats of monitor.tracks) {
 
-            if(trackStats.kind === 'video'){
-                const image = await imageCapturer.getImage(trackStats.trackId);
-                debug(`track stats on ${trackStats.trackId}:`, trackStats, image);
+            let trackStatsSummary = getTrackStatsSummary(trackStats);
+            if(trackStats.kind ==='video'){
+                const imageBlob =  await imageCapturer.getImage(trackStats.trackId);
+
+                if(trackStats.direction === 'inbound')
+                    debug(`inbound track image ${trackStats.trackId} image`, imageBlob);
+                if(imageBlob)
+                    trackStatsSummary['image'] = await blobToBase64(imageBlob);
             }
-            else
-                // handle audio
-                debug(`track stats on ${trackStats.trackId}:`, trackStats);
-            // printTrackStats(trackStats);
+            trackStatsArray.push(trackStatsSummary);
+
         }
+
+        const aggStatsSummary = monitor.storage;
+
+        // debug(trackStatsArray);
+        await mh.sendMessage(c.DASH, m.RTC_STATS_UPDATE, {aggStats: aggStatsSummary, trackStats: trackStatsArray});
+
+
     }
 
     monitor.once('close', () => {

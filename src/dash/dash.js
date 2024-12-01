@@ -57,12 +57,12 @@ activateStoredTab();
  * Applet script imports
  */
 
-// ToDo: add these back one-by-one
 import '../applets/deviceManager/scripts/dash.mjs';
 import '../applets/selfView/scripts/dash.mjs';
 import '../applets/badConnection/scripts/dash.mjs';
 import '../applets/videoPlayer/scripts/dash.mjs';
 import '../applets/presence/scripts/dash.mjs';
+import '../applets/rtcStats/scripts/dash.mjs';
 import {StorageHandler} from "../modules/storageHandler.mjs";
 
 /*

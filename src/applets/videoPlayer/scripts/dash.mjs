@@ -1,5 +1,5 @@
 import {debug, storage, mh, m, c} from "../../../dash/dashCommon.mjs";
-import {arrayBufferToBase64, base64ToBuffer} from "./base64.mjs";
+import {arrayBufferToBase64, base64ToBuffer} from "../../../modules/base64.mjs";
 import {IndexedDBHandler} from "./indexedDB.mjs";
 
 // Use IndexedDB to store the video buffer
