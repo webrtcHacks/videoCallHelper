@@ -5,6 +5,7 @@ import {blobToBase64} from "../../../modules/base64.mjs";
 const mh = new MessageHandler(c.INJECT);
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉🤓 `);
 
+const pcs = new Map();          // Map of peer connections
 const monitor = createClientMonitor();
 
 class TrackImageCapturer {
@@ -16,12 +17,12 @@ class TrackImageCapturer {
      */
 
     /**
-     * @param {RTCPeerConnection} peerConnection - The peer connection to capture images from
      * @param {Number} [outputHeight=70] - The height of the image; default to 70px
+     * @param {Number} [outputWidth=124] - The width of the image; default to 124px
      */
-    constructor(peerConnection, outputHeight = 70) {
-        this.peerConnection = peerConnection;
+    constructor(outputHeight = 70, outputWidth = 124) {
         this.height = outputHeight;
+        this.width = outputWidth;
         this.processors = new Map();
         this.readers = new Map();
         this.canvases = new Map();
@@ -30,68 +31,89 @@ class TrackImageCapturer {
     }
 
     /**
-     * Return a single image the video track with the specified ID
+     * Return a single image from the video track with the specified ID
      * @param {string} trackId - The ID of the video track to capture
+     * @param {Array<MediaStreamTrack>} tracks - The array of tracks to capture images from
      * @returns {Promise<Blob|null>} - Promise that resolves to a blob of the image or null if no track found
      */
-    async getImage(trackId) {
-        let track = this.peerConnection.getTransceivers()
-            .map(transceiver => transceiver.sender?.track || transceiver.receiver?.track)
-            .find(track => track && track.id === trackId);
+    async getImage(trackId, tracks) {
+        const track = tracks.find(track => track && track.id === trackId);
 
-        if (!track || track.kind !== 'video') {
+        if (!track) {
+            console.debug(`No track found for trackId ${trackId}`, tracks);
             return null;
         }
 
         // set the width to the track source aspect ratio
-        let width;
-        if(!this.aspectRatios.has(trackId)){
-            const {aspectRatio} = track.getSettings();
-            this.aspectRatios.set(trackId, aspectRatio);
-            width =  aspectRatio * this.height;
-        } else{
-            width = this.aspectRatios.get(trackId) * this.height;
-        }
-
-        // debug(`trackId ${trackId}`, track);
+        const aspectRatio = this.aspectRatios.get(trackId) || track.getSettings().aspectRatio || 16/9;
+        this.aspectRatios.set(trackId, aspectRatio);
+        const width = Math.max((aspectRatio * this.height).toFixed(0), this.width);
 
         if (!this.processors.has(trackId)) {
             const processor = new MediaStreamTrackProcessor({ track });
             this.processors.set(trackId, processor);
-            this.readers.set(trackId, processor.readable.getReader());
-            const canvas = new OffscreenCanvas(width, this.height);
+            const r = await processor.readable.getReader();
+            this.readers.set(trackId,  r);
+            const canvas = new OffscreenCanvas(1, 1);
             this.canvases.set(trackId, canvas);
             this.ctxs.set(trackId, canvas.getContext('bitmaprenderer'));
         }
 
         const reader = this.readers.get(trackId);
-        const { value: frame } = await reader.read();
+        /*
+        if(!reader || reader.read) {
+            // debug(`Failed to get reader on track ${trackId}`);
+            // this.readers.delete(trackId);
+            return null;
+        }
+         */
+        const { value: frame, done } = await reader.read();
 
+        if(done) {
+            debug(`Reader is done on track ${trackId}`, tracks);
+            return null;
+        }
         if (!frame) {
+            debug(`Failed to read frame on track ${trackId}`, tracks);
             return null;
         }
 
+        const canvas = this.canvases.get(trackId);
+        canvas.width = width;
+        canvas.height = this.height;
         const ctx = this.ctxs.get(trackId);
         const imageBitmap = await createImageBitmap(frame, {
-            resizeWidth: width || this.height * 16/9,
+            resizeWidth: width || 124, // ToDo: find why width isn't set here
             resizeHeight: this.height,
             resizeQuality: 'low'
         });
-        // debug(`track ${trackId} image`, imageBitmap);
         ctx.transferFromImageBitmap(imageBitmap);
         frame.close();
-        const image = await this.canvases.get(trackId).convertToBlob({ type: 'image/jpeg' });
-        // debug(`track ${trackId} image`, image);
-        return image
+        const image =  await canvas.convertToBlob({type: 'image/jpeg'});
+        if(!image)  debug(`Failed to create image on track ${trackId}`, tracks);
+        return image;
     }
 }
 
-// temp for testing
+const imageCapturer = new TrackImageCapturer();
+
 function getTrackStatsSummary(trackStats) {
     if (!trackStats) return null;
 
     const rtpEntries = trackStats.direction === 'inbound' ? [...trackStats.inboundRtps()] : [...trackStats.outboundRtps()];
     const codec = rtpEntries[0]?.getCodec()?.stats.mimeType;
+
+    let layerInfo = false;
+    if(trackStats?.layers?.length > 0)
+        layerInfo = rtpEntries.map((entry, index    ) => {
+        return {
+            layerId: entry.stats?.rid || `L${index+1}`,
+            height: entry.stats.frameHeight || "",
+            width: entry.stats.frameWidth || "",
+            fps: entry.stats.framesPerSecond || "",
+            bitrateKbps: (entry?.sendingBitrate / 1000).toFixed(0) || "",
+        }
+    })
 
     /*
     debug(`Track ${trackStats.trackId} stats:`, {
@@ -106,18 +128,59 @@ function getTrackStatsSummary(trackStats) {
         kind: trackStats.kind,
         codec: codec,
         jitter: trackStats.jitter,
-        bitrateKbps: trackStats.bitrate / 1000,
+        bitrateKbps: (trackStats.bitrate / 1000).toFixed(0),
         direction: trackStats.direction,
         fractionLoss: trackStats.fractionLoss,
-        layers: trackStats.layers,
+        // layers: trackStats.layers,
         remoteLostPackets: trackStats.remoteLostPackets,
         remoteReceivedPackets: trackStats.remoteReceivedPackets,
         roundTripTimeInS: trackStats.roundTripTimeInS,
         sendingBitrate: trackStats.sendingBitrate,
-        sentPackets: trackStats.sentPackets
+        sentPackets: trackStats.sentPackets,
+        layerInfo: layerInfo
     }
 }
 
+async function listener(collectedStats) {
+
+    // ToDo: only start listening once there is a peerConnection
+    if(collectedStats?.length === 0){
+        debug("No stats collected");
+        return;
+    }
+
+    const pcStats = collectedStats.map(entry => monitor.getPeerConnectionStats(entry.peerConnectionId));
+    const trackStats = monitor.tracks.map(trackStats => getTrackStatsSummary(trackStats));
+
+    const videoTracks = [];
+    pcs.forEach((value) => {
+        const peerConnection = value;
+        // debug(`peerConnectionId ${key}`, peerConnection);
+        peerConnection.getReceivers().forEach(receiver => {
+            if(receiver?.track?.kind === 'video')
+                videoTracks.push(receiver.track)
+        });
+        peerConnection.getSenders().forEach(sender => {
+            if(sender?.track?.kind === 'video')
+                videoTracks.push(sender.track)
+        });
+    });
+
+    // debug(videoTracks);
+    // const images = await Promise.all(videoTracks.map(track => imageCapturer.getImage(track.id, videoTracks)));
+    const images= [];
+    for(const stats of trackStats) {
+        if(stats.kind !== 'video') continue;
+        if(stats.trackId==='probator') continue;    // ToDo: mediasoup debugging - probabor video track is messing up getImage
+        // debug("stats", stats);
+        const image = await imageCapturer.getImage(stats.trackId, videoTracks);
+        if(image)
+            images.push({trackId: stats.trackId, image: await blobToBase64(image)});
+    }
+    // debug("images:", images, "tracks", videoTracks);
+    await mh.sendMessage(c.DASH, m.RTC_STATS_UPDATE, {aggStats: monitor.storage, trackStats, pcStats, images});
+
+}
 
 /**
  * Monitor the peer connection
@@ -127,48 +190,19 @@ export function monitorPeerConnection(peerConnection) {
 
     const collector = monitor.collectors.addRTCPeerConnection(peerConnection);
     debug(`Monitoring peer connection ${collector.id}:`, peerConnection);
-    const imageCapturer = new TrackImageCapturer(peerConnection);
+    pcs.set(collector.id, peerConnection);
 
-    async function listener() {
-        if(peerConnection.connectionState === 'closed'){
-            collector.close();
-            return;
-        }
-        const pcStats = monitor.getPeerConnectionStats(collector.id);
-
-        const trackStatsArray = [];
-        for (const trackStats of monitor.tracks) {
-
-            let trackStatsSummary = getTrackStatsSummary(trackStats);
-            if(trackStats.kind ==='video'){
-                const imageBlob =  await imageCapturer.getImage(trackStats.trackId);
-
-                if(trackStats.direction === 'inbound')
-                    debug(`inbound track image ${trackStats.trackId} image`, imageBlob);
-                if(imageBlob)
-                    trackStatsSummary['image'] = await blobToBase64(imageBlob);
-            }
-            trackStatsArray.push(trackStatsSummary);
-
-        }
-
-        const aggStatsSummary = monitor.storage;
-
-        // debug(trackStatsArray);
-        await mh.sendMessage(c.DASH, m.RTC_STATS_UPDATE, {aggStats: aggStatsSummary, trackStats: trackStatsArray});
-
-
-    }
-
-    monitor.once('close', () => {
-        monitor.off('stats-collected', listener);
-    });
-    monitor.on('stats-collected', listener);
-
+    // restarting this does not have any negative impacts?
+    monitor.on('stats-collected', (data)=> listener(data.collectedStats));
 
 }
+
+monitor.once('close', () => {
+    monitor.off('stats-collected', (data)=> listener(data.collectedStats));
+});
 
 // Add monitor for debugging
 document.addEventListener('DOMContentLoaded', async () => {
     window.vch.monitor = monitor;
+    debug("monitor added to window", monitor);
 });

@@ -14,26 +14,32 @@ mh.addListener(m.RTC_STATS_UPDATE, async data => {
             rtcStatsImagesDiv.appendChild(container);
         }
 
+        let layerOutput = "";
+        if(trackStats?.layerInfo)
+            trackStats.layerInfo?.forEach(layer => {
+                layerOutput += `<span>${layer.layerId}: ${layer.width}x${layer.height}p${layer.fps}@${layer.bitrateKbps}</span><br>`;
+            });
+
         // <img src="data:image/jpeg;base64,${trackStats?.image}" class="img-thumbnail h-100 position-absolute" alt="">
         container.innerHTML = `
 <div class="track-stats-info position-relative z-1 bg-dark text-white" style="background-color: rgba(10,10, 10, 0.8);">
                 <span>${trackStats.direction}: ${trackStats.trackId.substring(0, 8)}</span><br>
-                <span>${trackStats.codec}</span><br>
-                <span>RTT / loss: ${(trackStats.roundTripTimeInS / 1000).toFixed(0)} / ${(trackStats.fractionLoss * 100).toFixed(0)}%</span><br>
-                <span>Bitrate: ${trackStats.bitrateKbps.toFixed(0)} kbps</span>
+                <span>${trackStats?.codec}</span>@${trackStats.bitrateKbps} kbps<br>
+                ${layerOutput}
+                <span>RTT / loss: ${(trackStats.roundTripTimeInS / 1000)?.toFixed(0)} / ${(trackStats.fractionLoss * 100).toFixed(0)}%</span><br>
             </div>
         `;
 
-        if (trackStats.image) {
-            // ToDo: debug from here
-            debug("trackStats.image", trackStats);
+        const trackImageObj = data.images.find(item => item.trackId === trackStats.trackId);
+
+        if (trackImageObj) {
             let img = container.querySelector('img');
             if (!img) {
                 img = document.createElement('img');
                 img.classList.add('img-thumbnail', 'position-absolute', 'z-0', 'h-100');
                 container.prepend(img);
             }
-            img.src = `data:image/jpeg;base64,${trackStats.image}`;
+            img.src = `data:image/jpeg;base64,${trackImageObj.image}`;
         }
 
     });
