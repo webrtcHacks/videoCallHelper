@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require("copy-webpack-plugin");
+const fs = require('fs');
 
 
 
@@ -26,6 +27,29 @@ const workerConfig = {
     },
     // stats: 'verbose',
 };
+
+/**
+ * Webpack configuration for deleting the worker-bundle.js file.
+ * @type {import('webpack').Configuration}
+ */
+const deleteWorkerConfig = {
+    name: 'delete-worker',
+    mode: 'none',
+    plugins: [
+        {
+            apply: (compiler) => {
+                compiler.hooks.afterEmit.tap('DeleteWorkerBundlePlugin', (compilation) => {
+                    const filePath = path.resolve(__dirname, 'temp/worker-bundle.js');
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                        console.log('Deleted:', filePath);
+                    }
+                });
+            }
+        }
+    ]
+};
+
 
 /**
  * Webpack configuration for the extension scripts.
@@ -164,4 +188,8 @@ const extensionConfig = {
     // stats: 'verbose',
 };
 
-module.exports = [workerConfig, extensionConfig];
+module.exports = [
+    workerConfig,               // build a temp worker-js file first
+    extensionConfig,          // include the extension scripts
+    deleteWorkerConfig    // delete the worker-js file now that we don't need it
+];
