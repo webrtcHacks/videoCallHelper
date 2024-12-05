@@ -72,9 +72,11 @@ const devConfig = {
 const [workerConfig, extensionConfig] = commonConfigs;
 
 workerConfig.mode = 'development';
+workerConfig.devtool = 'inline-source-map';
 
 // Only merge the devConfig with the extensionConfig
 module.exports = [
-    merge(workerConfig, devConfig),
+    workerConfig,
     merge(extensionConfig, devConfig) // apply the devConfig only to the extensionConfig
 ];
+

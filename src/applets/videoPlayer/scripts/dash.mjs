@@ -16,6 +16,8 @@ const stopButton = document.querySelector("#inject-stop-button");
 
 /* ================== Constants and State Variables ================== */
 const loadingVideo = chrome.runtime.getURL('media/loading_spinner.mp4');
+const rickrollURL = "https://rickroll.it/rickroll.mp4";
+
 let arrayBuffer = null;
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -64,6 +66,7 @@ async function processVideoBlob(blob, mimeType, isRecording = false) {
 
         // Save buffer to IndexedDB and temporary storage
         await db.set('buffer', buffer);
+        // ToDo: try using session storage so local storage doesn't hang on large files
         await storage.set('temp', {buffer});
         debug("Saved video to db", buffer.length);
 
@@ -100,7 +103,6 @@ async function processVideoBlob(blob, mimeType, isRecording = false) {
 /**
  * Load the video buffer from storage.
  * - Sets the preview video source.
- * - Enables the inject button if there is a buffer.
  * - Puts the buffer in the temp storage for content to use.
  * @param {string} [buffer] - Optional base64 encoded video buffer. If not provided, it will be fetched from IndexedDB.
  * @returns {Promise<void>}
@@ -109,6 +111,7 @@ async function handleBuffer(buffer = "") {
     if (!buffer) buffer = await db.get('buffer');
     if (buffer && buffer.length > 0) {
         playerPreview.src = loadingVideo;
+        await playerPreview.play();
 
         arrayBuffer = base64ToBuffer(buffer);
 
@@ -116,16 +119,28 @@ async function handleBuffer(buffer = "") {
         const blob = new Blob([arrayBuffer], {type: mimeType});
         previewBlobUrl = URL.createObjectURL(blob);
 
-        // Update player data to trigger player load
-        const data = storage.contents['player'];
-        data.currentTime = Date.now();
-
-        await storage.update('temp', {buffer});
+        await storage.update('temp', {buffer, currentTime: Date.now()});
         debug("Loaded video ArrayBuffer:", arrayBuffer.byteLength);
     } else {
-        debug("No media content in DB to load");
-        injectButton.classList.add('disabled');
+        // Load Rickroll video by default here
+        playerPreview.src = loadingVideo;
+        await playerPreview.play();
+
+        const response = await fetch(playerPreview.src);
+        if(!response.ok) {
+            debug(`Failed to fetch rickroll video from ${rickrollURL}`);
+            return;
+        }
+        debug("No media content in DB; defaulting to rickroll");
+
+        const buffer = await response.arrayBuffer();
+        const base64 = await arrayBufferToBase64(buffer);
+        await db.set('buffer', base64);
+
+        await storage.update('temp', {buffer: base64, currentTime: Date.now()});
+        previewBlobUrl = loadingVideo;
     }
+
 }
 
 
@@ -174,6 +189,7 @@ async function getMediaConstraints() {
  */
 addMediaButton.addEventListener('click', async () => {
     playerPreview.src = loadingVideo;
+    await playerPreview.play();
 
     try {
         const fileInput = document.createElement('input');
@@ -212,6 +228,7 @@ async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     mediaRecorder = new MediaRecorder(stream);
     playerPreview.srcObject = stream;
+    await playerPreview.play();
 
     // Recording setup
     let maxDurationTimer;
@@ -260,6 +277,7 @@ recordButton.addEventListener('click', async () => {
  * Handle injection of media.
  */
 injectButton.onclick = async () => {
+    // this shouldn't happen
     if (playerPreview.src === loadingVideo) {
         debug("Video not ready to inject", playerPreview.src);
         return;
@@ -331,8 +349,13 @@ storage.addListener('player', async (newValue, changedValue) => {
         if (newValue.enabled) {
             debug("Player now enabled");
             await handleBuffer();
-            [injectButton, recordButton, addMediaButton, previewButton]
+            [recordButton, addMediaButton, previewButton]
                 .forEach(button => button.classList.remove('disabled'));
+            // only enabled the inject button if there are active tracks
+            if (storage.contents.trackData.some(track => track.readyState === 'live')) {
+                injectButton.classList.remove('disabled');
+            }
+            playerPreview.currentTime = 1;
         } else {
             debug("Player now disabled");
             playerPreview.src = "";
@@ -341,13 +364,13 @@ storage.addListener('player', async (newValue, changedValue) => {
 
         }
     }
-
+/*
     if (changedValue.enabled && newValue.enabled) {
         debug("Player now enabled");
         await handleBuffer();
         [injectButton, recordButton, addMediaButton, previewButton]
             .forEach(button => button.classList.remove('disabled'));
-    }
+    }*/
     else if ('enabled' in changedValue && newValue.enabled === false) {
         debug("Player now disabled");
         playerPreview.src = "";
@@ -360,6 +383,7 @@ storage.addListener('player', async (newValue, changedValue) => {
  * Remove the disabled class from the inject button when the player can play.
  */
 mh.addListener(m.PLAYER_CANPLAY, async () => {
+    debug("Inject player can play");
     readyToPlay = true;
 
     // Show the preview
@@ -393,7 +417,8 @@ storage.addListener('trackData', async () => {
 // Set initial UI state
 if (storage.contents['player']?.enabled) {
     playerPreview.src = loadingVideo;
-    [injectButton, recordButton, addMediaButton, previewButton]
+    await playerPreview.play();
+    [recordButton, addMediaButton, previewButton]
         .forEach(button => button.classList.remove('disabled'));
 }
 else {

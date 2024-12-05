@@ -75,6 +75,6 @@ workerConfig.mode = 'production';
 
 // Only merge the devConfig with the extensionConfig
 module.exports = [
-    merge(workerConfig, prodConfig), // Build the worker first
+    workerConfig, // Build the worker first
     merge(extensionConfig, prodConfig) // apply the devConfig only to the extensionConfig
 ];
