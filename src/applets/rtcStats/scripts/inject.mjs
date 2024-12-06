@@ -6,7 +6,8 @@ const mh = new MessageHandler(c.INJECT);
 const debug = Function.prototype.bind.call(console.debug, console, `vch 💉🤓 `);
 
 const pcs = new Map();          // Map of peer connections
-const monitor = createClientMonitor();
+let monitor;
+let monitoring = false;
 
 class TrackImageCapturer {
 
@@ -43,6 +44,10 @@ class TrackImageCapturer {
             console.debug(`No track found for trackId ${trackId}`, tracks);
             return null;
         }
+        else if(!track.enabled)
+            debug(`Track ${trackId} is not enabled`, track);
+        else if(track.readyState === "ended")
+            debug(`Track ${trackId} is ended`, track);
 
         // set the width to the track source aspect ratio
         const aspectRatio = this.aspectRatios.get(trackId) || track.getSettings().aspectRatio || 16/9;
@@ -50,23 +55,29 @@ class TrackImageCapturer {
         const width = Math.max((aspectRatio * this.height).toFixed(0), this.width);
 
         if (!this.processors.has(trackId)) {
-            const processor = new MediaStreamTrackProcessor({ track });
-            this.processors.set(trackId, processor);
-            const r = await processor.readable.getReader();
-            this.readers.set(trackId,  r);
-            const canvas = new OffscreenCanvas(1, 1);
-            this.canvases.set(trackId, canvas);
-            this.ctxs.set(trackId, canvas.getContext('bitmaprenderer'));
+            try{
+                const processor = new MediaStreamTrackProcessor({track});
+                this.processors.set(trackId, processor);
+                const r = await processor.readable.getReader();
+                this.readers.set(trackId, r);
+                const canvas = new OffscreenCanvas(1, 1);
+                this.canvases.set(trackId, canvas);
+                this.ctxs.set(trackId, canvas.getContext('bitmaprenderer'));
+            } catch (e) {
+                    debug(`Failed to create processor on track ${trackId}`, tracks);
+                    return null;
+                }
+
         }
 
         const reader = this.readers.get(trackId);
-        /*
+
         if(!reader || reader.read) {
             // debug(`Failed to get reader on track ${trackId}`);
-            // this.readers.delete(trackId);
+            this.readers.delete(trackId);
             return null;
         }
-         */
+
         const { value: frame, done } = await reader.read();
 
         if(done) {
@@ -141,6 +152,11 @@ function getTrackStatsSummary(trackStats) {
     }
 }
 
+/**
+ * Handler for the stats-collected event
+ * @param collectedStats
+ * @returns {Promise<void>}
+ */
 async function listener(collectedStats) {
 
     // ToDo: only start listening once there is a peerConnection
@@ -153,6 +169,9 @@ async function listener(collectedStats) {
     const trackStats = monitor.tracks.map(trackStats => getTrackStatsSummary(trackStats));
 
     const videoTracks = [];
+
+    // ToDo: come back to this - getImage is not working
+    /*
     pcs.forEach((value) => {
         const peerConnection = value;
         // debug(`peerConnectionId ${key}`, peerConnection);
@@ -166,8 +185,6 @@ async function listener(collectedStats) {
         });
     });
 
-    // debug(videoTracks);
-    // const images = await Promise.all(videoTracks.map(track => imageCapturer.getImage(track.id, videoTracks)));
     const images= [];
     for(const stats of trackStats) {
         if(stats.kind !== 'video') continue;
@@ -177,6 +194,9 @@ async function listener(collectedStats) {
         if(image)
             images.push({trackId: stats.trackId, image: await blobToBase64(image)});
     }
+     */
+    const images= [];
+
     // debug("images:", images, "tracks", videoTracks);
     await mh.sendMessage(c.DASH, m.RTC_STATS_UPDATE, {aggStats: monitor.storage, trackStats, pcStats, images});
 
@@ -185,21 +205,29 @@ async function listener(collectedStats) {
 /**
  * Monitor the peer connection
  * @param {RTCPeerConnection} peerConnection - the peer connection to monitor
+ * @returns {void}
  */
 export function monitorPeerConnection(peerConnection) {
 
-    const collector = monitor.collectors.addRTCPeerConnection(peerConnection);
-    debug(`Monitoring peer connection ${collector.id}:`, peerConnection);
-    pcs.set(collector.id, peerConnection);
+    // start monitoring if not already
+    if (!monitoring){
+        monitoring = true;
+        monitor = createClientMonitor();
 
-    // restarting this does not have any negative impacts?
-    monitor.on('stats-collected', (data)=> listener(data.collectedStats));
+        monitor.on('stats-collected', (data) => listener(data.collectedStats));
+        monitor.once('close', () => {
+            monitor.off('stats-collected', (data) => listener(data.collectedStats));
+        });
+    }
+    else {
+        const collector = monitor.collectors.addRTCPeerConnection(peerConnection);
+        debug(`Monitoring peer connection ${collector.id}:`, peerConnection);
+        pcs.set(collector.id, peerConnection);
 
+    }
 }
 
-monitor.once('close', () => {
-    monitor.off('stats-collected', (data)=> listener(data.collectedStats));
-});
+
 
 // Add monitor for debugging
 document.addEventListener('DOMContentLoaded', async () => {

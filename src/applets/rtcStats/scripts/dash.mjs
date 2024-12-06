@@ -1,8 +1,21 @@
-import {debug, storage, mh, m, c} from "../../../dash/dashCommon.mjs";
+import {debug, mh, m} from "../../../dash/dashCommon.mjs";
+
+const tabId = await new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs.length > 0) {
+            resolve(tabs[0].id);
+        }
+        else
+            reject("ERROR: No active tab found");
+    });
+});
 
 mh.addListener(m.RTC_STATS_UPDATE, async data => {
     debug("rtcStats", data);
+    // Ignore stats from other tabs
+    if(data.tabId !== tabId) return;
 
+    // Only show stats for the currently displayed page
     const trackStatsArray = data.trackStats;
     const rtcStatsImagesDiv = document.getElementById('rtc-stats-images');
 
@@ -17,7 +30,7 @@ mh.addListener(m.RTC_STATS_UPDATE, async data => {
         let layerOutput = "";
         if(trackStats?.layerInfo)
             trackStats.layerInfo?.forEach(layer => {
-                layerOutput += `<span>${layer.layerId}: ${layer.width}x${layer.height}p${layer.fps}@${layer.bitrateKbps}</span><br>`;
+                layerOutput += `<span class="small">${layer.layerId}: ${layer.width}x${layer.height}p${layer.fps}@${layer.bitrateKbps}</span><br>`;
             });
 
         // <img src="data:image/jpeg;base64,${trackStats?.image}" class="img-thumbnail h-100 position-absolute" alt="">
@@ -26,7 +39,8 @@ mh.addListener(m.RTC_STATS_UPDATE, async data => {
                 <span>${trackStats.direction}: ${trackStats.trackId.substring(0, 8)}</span><br>
                 <span>${trackStats?.codec}</span>@${trackStats.bitrateKbps} kbps<br>
                 ${layerOutput}
-                <span>RTT / loss: ${(trackStats.roundTripTimeInS / 1000)?.toFixed(0)} / ${(trackStats.fractionLoss * 100).toFixed(0)}%</span><br>
+                <span>RTT: ${(trackStats.roundTripTimeInS / 1000)?.toFixed(0)}, 
+                Loss: ${(trackStats.fractionLoss * 100).toFixed(0)}%</span><br>
             </div>
         `;
 
