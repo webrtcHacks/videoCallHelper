@@ -25,6 +25,7 @@ let previewBlobUrl = null;
 let readyToPlay = false;
 const MAX_FILE_SIZE_MB = 250; // 250MB
 const MAX_RECORDING_TIME_SEC = 120; // 120 seconds
+const DEFAULT_PREVIEW_TIME = 0.5    ; // this determines the thumbnail of the video on  initial load
 
 
 /* ===================== Helper Functions ===================== */
@@ -66,9 +67,6 @@ async function processVideoBlob(blob, mimeType, isRecording = false) {
 
         // Save buffer to IndexedDB and temporary storage
         await db.set('buffer', buffer);
-        // ToDo: try using session storage so local storage doesn't hang on large files
-        await storage.set('temp', {buffer});
-        debug("Saved video to db", buffer.length);
 
         // Prepare data for storage
         const data = {
@@ -81,18 +79,18 @@ async function processVideoBlob(blob, mimeType, isRecording = false) {
             data.videoTimeOffsetMs = 0;
         }
 
-        // Update player data in storage
-        await storage.update('player', data);
-        debug("Saved video size:", arrayBuffer.byteLength);
-
         // Update the player preview
-        previewBlobUrl = URL.createObjectURL(blob);
-        playerPreview.src = previewBlobUrl;
-        if (!isRecording && playerPreview.duration > 1) {
-            playerPreview.currentTime = 1;
+        playerPreview.src = URL.createObjectURL(blob);
+        if (!isRecording && playerPreview.duration > DEFAULT_PREVIEW_TIME) {
+            playerPreview.currentTime = DEFAULT_PREVIEW_TIME;
         }
         playerPreview.load();
         playerPreview.pause();
+
+        await mh.dataTransfer(c.CONTENT, arrayBuffer);
+        // Update player data in storage
+        await storage.update('player', data);
+        debug("Saved video size:", arrayBuffer.byteLength);
 
         readyToPlay = true;
     } catch (err) {
@@ -107,24 +105,31 @@ async function processVideoBlob(blob, mimeType, isRecording = false) {
  * @param {string} [buffer] - Optional base64 encoded video buffer. If not provided, it will be fetched from IndexedDB.
  * @returns {Promise<void>}
  */
-async function handleBuffer(buffer = "") {
+async function loadVideoFromStorage(buffer = "") {
     if (!buffer) buffer = await db.get('buffer');
     if (buffer && buffer.length > 0) {
-        playerPreview.src = loadingVideo;
-        await playerPreview.play();
+        // show the loading video while the video is being loaded
+        // playerPreview.src = loadingVideo;
+        // await playerPreview.play().catch(err => debug("Error playing video:", err));
 
         arrayBuffer = base64ToBuffer(buffer);
 
         const mimeType = storage.contents['player'].mimeType;
         const blob = new Blob([arrayBuffer], {type: mimeType});
         previewBlobUrl = URL.createObjectURL(blob);
+        playerPreview.src = previewBlobUrl;
+        playerPreview.load();
 
-        await storage.update('temp', {buffer, currentTime: Date.now()});
+        // await storage.update('temp', {buffer, currentTime: Date.now()});
+        // ToDo: this is freezing the UI
+        await mh.dataTransfer(c.CONTENT, arrayBuffer);
+
         debug("Loaded video ArrayBuffer:", arrayBuffer.byteLength);
     } else {
         // Load Rickroll video by default here
-        playerPreview.src = loadingVideo;
-        await playerPreview.play();
+        playerPreview.src = rickrollURL;
+        playerPreview.load();
+        // await playerPreview.play().catch(err => debug("Error playing video:", err));
 
         const response = await fetch(playerPreview.src);
         if(!response.ok) {
@@ -137,9 +142,12 @@ async function handleBuffer(buffer = "") {
         const base64 = await arrayBufferToBase64(buffer);
         await db.set('buffer', base64);
 
-        await storage.update('temp', {buffer: base64, currentTime: Date.now()});
-        previewBlobUrl = loadingVideo;
+        // await storage.update('temp', {buffer: base64, currentTime: Date.now()});
+
+        // ToDo: what does this do?
+        // previewBlobUrl = loadingVideo;
     }
+    playerPreview.currentTime = 1;
 
 }
 
@@ -189,7 +197,7 @@ async function getMediaConstraints() {
  */
 addMediaButton.addEventListener('click', async () => {
     playerPreview.src = loadingVideo;
-    await playerPreview.play();
+    await playerPreview.play().catch(err => debug("Error playing video:", err));
 
     try {
         const fileInput = document.createElement('input');
@@ -228,7 +236,7 @@ async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     mediaRecorder = new MediaRecorder(stream);
     playerPreview.srcObject = stream;
-    await playerPreview.play();
+    await playerPreview.play().catch(err => debug("Error playing video:", err));
 
     // Recording setup
     let maxDurationTimer;
@@ -302,7 +310,7 @@ stopButton.onclick = async () => {
     debug("Stopping injection playback");
     mh.sendMessage(c.INJECT, m.PLAYER_PAUSE, {});
     playerPreview.pause();
-    playerPreview.currentTime = 1;
+    playerPreview.currentTime = DEFAULT_PREVIEW_TIME;
 
     // Update UI buttons
     stopButton.classList.add('d-none');
@@ -313,19 +321,21 @@ stopButton.onclick = async () => {
  * Play video on hover over the preview button.
  */
 previewButton.addEventListener('mouseover', async () => {
-    if (playerPreview.src) {
+    if (playerPreview.src && playerPreview.paused)  {
         playerPreview.currentTime = 0;
-        await playerPreview.play().catch(err => debug("Error playing video:", err));
-    }
-});
 
-/**
- * Pause video when not hovering over the preview button.
- */
-previewButton.addEventListener('mouseout', () => {
-    if (playerPreview.src) {
-        playerPreview.pause();
-        playerPreview.currentTime = 1;
+        await new Promise(async resolve => {
+            playerPreview.addEventListener("playing", () => {
+                resolve();
+            }, { once: true });
+
+            await playerPreview.play().catch(err => debug("Error playing video:", err));
+        });
+
+        // Pause video when not hovering over the preview button.
+        previewButton.addEventListener('mouseleave', () => {
+            playerPreview.pause();
+        }, { once: true });
     }
 });
 
@@ -335,7 +345,7 @@ previewButton.addEventListener('mouseout', () => {
  */
 db.onOpened().then(async () => {
     if (storage.contents['player']?.enabled) {
-        await handleBuffer();
+        await loadVideoFromStorage();
     }
 });
 
@@ -348,14 +358,14 @@ storage.addListener('player', async (newValue, changedValue) => {
     if('enabled' in changedValue) {
         if (newValue.enabled) {
             debug("Player now enabled");
-            await handleBuffer();
+            await loadVideoFromStorage();
             [recordButton, addMediaButton, previewButton]
                 .forEach(button => button.classList.remove('disabled'));
             // only enabled the inject button if there are active tracks
             if (storage.contents.trackData.some(track => track.readyState === 'live')) {
                 injectButton.classList.remove('disabled');
             }
-            playerPreview.currentTime = 1;
+            playerPreview.currentTime = DEFAULT_PREVIEW_TIME;
         } else {
             debug("Player now disabled");
             playerPreview.src = "";
@@ -363,15 +373,7 @@ storage.addListener('player', async (newValue, changedValue) => {
                 .forEach(button => button.classList.add('disabled'));
 
         }
-    }
-/*
-    if (changedValue.enabled && newValue.enabled) {
-        debug("Player now enabled");
-        await handleBuffer();
-        [injectButton, recordButton, addMediaButton, previewButton]
-            .forEach(button => button.classList.remove('disabled'));
-    }*/
-    else if ('enabled' in changedValue && newValue.enabled === false) {
+    } else if ('enabled' in changedValue && newValue.enabled === false) {
         debug("Player now disabled");
         playerPreview.src = "";
         [injectButton, recordButton, addMediaButton, previewButton]
@@ -385,12 +387,6 @@ storage.addListener('player', async (newValue, changedValue) => {
 mh.addListener(m.PLAYER_CANPLAY, async () => {
     debug("Inject player can play");
     readyToPlay = true;
-
-    // Show the preview
-    playerPreview.src = previewBlobUrl;
-    playerPreview.currentTime = 1;
-    playerPreview.load();
-    playerPreview.pause();
 
     // Enable the inject button if there are active tracks
     if (storage.contents.trackData.some(track => track.readyState === 'live')) {
@@ -407,7 +403,7 @@ storage.addListener('trackData', async () => {
     } else {
         readyToPlay = false;
         playerPreview.pause();
-        playerPreview.currentTime = 1;
+        playerPreview.currentTime = DEFAULT_PREVIEW_TIME;
         stopButton.classList.add('d-none');
         injectButton.classList.remove('d-none');
         injectButton.classList.add('disabled');
@@ -416,8 +412,7 @@ storage.addListener('trackData', async () => {
 
 // Set initial UI state
 if (storage.contents['player']?.enabled) {
-    playerPreview.src = loadingVideo;
-    await playerPreview.play();
+    playerPreview.currentTime = DEFAULT_PREVIEW_TIME;
     [recordButton, addMediaButton, previewButton]
         .forEach(button => button.classList.remove('disabled'));
 }

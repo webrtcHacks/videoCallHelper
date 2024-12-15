@@ -1,9 +1,6 @@
-import {base64ToBuffer} from "./base64.mjs";
-import {StorageHandler} from "../../../modules/storageHandler.mjs";
 import {MESSAGE as m, CONTEXT as c, MessageHandler} from "../../../modules/messageHandler.mjs";
 
 const debug = Function.prototype.bind.call(console.debug, console, `vch 🎥‍ `)
-const storage = await new StorageHandler();
 const mh = new MessageHandler(c.CONTENT);
 
 // Use a shadow root to isolate the video player from the page
@@ -24,6 +21,8 @@ videoPlayerElement.muted = true;
 // Append the video player element to the shadow root
 shadowRoot.appendChild(videoPlayerElement);
 
+// ToDo: current insertable streams manager requires the video player to be loaded before the track is set
+//  So the videoPlayer element is loaded to the DOM of every pag
 // Append the shadow container to the body so inject can access it
 document.addEventListener('DOMContentLoaded', async () => {
     document.body.appendChild(shadowContainer);
@@ -31,28 +30,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 
-/**
- *  Look for storage changes and update media if a new media file is loaded
- *   - used to preload media for faster playback
- */
-storage.addListener('player', async (newValue) => {
-    // debug("player storage changed", newValue);
+// Listen for data transfer events to load new media
+mh.onDataTransfer(async (blob) => {
 
-    if (newValue?.currentTime) {
-        // storage can be slow with large objects, so do await with get
-        const temp = await storage.get('temp');
-        const buffer = temp?.buffer;
-        // In the future also check for changes to other video params
-        if (buffer?.length) {
-            const arrayBuffer = base64ToBuffer(buffer);
-            // const mimeType = storage.contents['player']?.mimeType;
-            const blob = new Blob([arrayBuffer]); //, {type: mimeType}); // Ensure the MIME type matches the video format
-            videoPlayerElement.src = URL.createObjectURL(blob);
-            storage.delete('temp').catch(err => debug(err));
-            debug("loaded player media", buffer.length);
+    debug("received data transfer", blob);
+    if (blob) {
+        videoPlayerElement.src = URL.createObjectURL(blob);
+        videoPlayerElement.addEventListener('canplay', () => {
             mh.sendMessage(c.DASH, m.PLAYER_CANPLAY);
-        }
-        else
-            debug("failed load player media - invalid buffer", buffer);
+        });
     }
+    else
+        debug("failed load player media - invalid blob", blob);
 });

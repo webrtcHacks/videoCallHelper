@@ -25,6 +25,7 @@ let sourceNode = null;
  *  - passes a readable stream to the worker
  * @param {MediaStreamTrack} sourceTrack - the track to play
  * @param {string} workerName - the name of the worker to send messages to
+ * @returns {void}
  */
 export function setupPlayer(sourceTrack, workerName) {
     const shadowContainer = document.querySelector('div#vch-player-container').shadowRoot;
