@@ -41,11 +41,12 @@ Shows a preview of the media that will be injected from Record or Upload on mous
 Large files caused slow interactions with `storage`, so indexedDB is used for long-term media storage.
 
 On load it first checked indexDB to see if there is a buffer in storage. This is then loaded into the media preview.
-The same IndexedDB is not available in other contexts, so the video file buffer is converted to base64 
-and stored in storage under temp for transfer to the content context.
+The same IndexedDB is not available in other contexts, so the video file is transferred to the content context. 
+The dataTransfer method of MessageHandler is used to stream this data (other approaches caused issues).
 
-Then the player storage object is updated with the `mimeType` and `currentTime`.
-A change in `currentTime` signals the video file has changed. 
+When a video is uploaded or recorded, the video is loaded into the preview.
+
+Then the player storage object is updated with the `mimeType` and `currentTime` - these are not currently used.
 
 Button listeners:
 * Inject -starts the preview and sends a `PLAYER_START` to inject
@@ -61,9 +62,7 @@ Maximum file size is 250MB under `MAX_FILE_SIZE_MB`.
 ### Content 
 
 A `<video>` element shared between content and inject is used to transfer media to the inject context.
-Content uses a storage listener to check for `player` storage object changes and gets the video from `temp`
-before deleting it and sending `PLAYER_CANPLAY` to dash. 
-Media files are too large to handle any other way.
+Content uses `onDataTransfer` from `MessageHandler` for updates on new media and sends `PLAYER_CANPLAY` to dash when it is loaded. 
 
 
 ###  Inject 

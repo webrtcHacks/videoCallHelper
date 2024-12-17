@@ -228,8 +228,8 @@ export class MessageHandler {
                 let data = typeof request?.data === 'string' ? JSON.parse(request.data) : request?.data || {};
 
                 // ignore prerender and cached tabs since we cannot respond to them(?)
-                if(sender.documentLifecycle === 'prerender' || sender.documentLifecycle === 'cached'){
-                    if(VERBOSE)
+                if (sender.documentLifecycle === 'prerender' || sender.documentLifecycle === 'cached') {
+                    if (VERBOSE)
                         this.debug(`ignoring ${sender.documentLifecycle} tab message "${message}" on tab ${sender.tab?.id}. Request: `, request);
                     return;
                 }
@@ -456,6 +456,135 @@ export class MessageHandler {
         this.disconnectedCallbackMap.delete(name);
     }
 
+
+    /**
+     * Streaming logic
+     * - only from dash to content for now
+     */
+
+    /**
+     * Streams data using chrome.tabs.connect
+     * Currently only for use in the dash context
+     * @param {context} to - the context to send the message to. Currently only supports CONTEXT.CONTENT
+     * @param {ArrayBuffer} buffer - the data to send with the message. Must be an ArrayBuffer
+     * @param {number} chunkSize - the size of the chunks to send in bytes. Default is 512KB
+     * @returns {Promise<void>} - returns when the entire buffer has been sent
+     */
+    async dataTransfer(to, buffer, chunkSize =   1024/2 * 1024) {
+        return new Promise(async (resolve, reject) => {
+            if (this.context !== CONTEXT.DASH || to !== CONTEXT.CONTENT) {
+                const reason = `stream not supported from ${this.context} to ${to}`;
+                this.debug(reason);
+                reject(new Error(reason));
+                return;
+            }
+
+            // Get the current tab
+            async function getActiveTabId() {
+                let tabs = await chrome.tabs.query({active: true, currentWindow: true});
+                return tabs[0].id;
+            }
+
+            const activeTabId = await getActiveTabId();
+            // this.debug(`activeTabId: ${activeTabId}`);
+
+            // try {
+            const port = chrome.tabs.connect(activeTabId, {name: "dash-stream"});
+            if (!port) {
+                this.debug(`Error connecting to stream: `, err.message);
+                reject(err);
+                return;
+            }
+
+            if (chrome.runtime.lastError) {
+                this.debug(`Error connecting to stream: `, chrome.runtime.lastError.message);
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+            }
+
+            port.onDisconnect.addListener(() => {
+                if (chrome.runtime.lastError) {
+                    this.debug(`Port disconnected with error: `, chrome.runtime.lastError.message);
+                    reject(new Error(chrome.runtime.lastError.message));
+                } else {
+                    this.debug(`Port disconnected`);
+                    resolve();
+                }
+            });
+
+            port.onMessage.addListener(msg => {
+                if (msg.type === MESSAGE.STREAM_COMPLETE) {
+                    this.debug(`Stream transfer complete`);
+                    resolve();
+                }
+            });
+
+            // Send chunks
+            for (let i = 0; i < buffer.byteLength; i += chunkSize) {
+                const chunk = new Uint8Array(buffer.slice(i, i + chunkSize));
+                const chunkArray = Array.from(chunk); // Convert to a normal array
+                port.postMessage({type: MESSAGE.STREAM_CHUNK, chunk: chunkArray});
+                if (VERBOSE)
+                    this.debug(`sending data: ${i} / ${buffer.byteLength}`);
+            }
+
+            this.debug(`sending stream complete. ${buffer.byteLength} bytes sent`);
+            try {
+                port.postMessage({type: MESSAGE.STREAM_COMPLETE});
+            } catch (err) {
+                this.debug(`Error sending stream complete: `, err.message, port);
+                reject(err);
+            }
+
+        });
+    }
+
+    /**
+     * Listens for data from dataTransfer
+     * Only for use on the content context for now
+     * uses runtime.onConnect
+     * @param {function(Blob):void} callback - the function to call when all data is received
+     * @returns {void}
+     */
+    onDataTransfer(callback) {
+        if (this.context !== CONTEXT.CONTENT) {
+            this.debug(`stream not supported in ${this.context}`);
+            return;
+        }
+
+        chrome.runtime.onConnect.addListener(port => {
+            if (chrome.runtime.lastError) {
+                this.debug(`Error connecting to stream: `, chrome.runtime.lastError.message);
+            }
+
+            if (port.name === 'dash-stream') {
+                let receivedParts = [];
+                let totalLength = 0;
+
+                port.onMessage.addListener(msg => {
+                    if (msg.type === MESSAGE.STREAM_CHUNK) {
+                        // msg.chunk comes in as  a normal Array of numbers
+                        const chunk = new Uint8Array(msg.chunk);
+                        receivedParts.push(chunk);
+                        totalLength += chunk.length;
+                    } else if (msg.type === MESSAGE.STREAM_COMPLETE) {
+                        const combined = new Uint8Array(totalLength);
+                        let offset = 0;
+                        for (const part of receivedParts) {
+                            combined.set(part, offset);
+                            offset += part.length;
+                        }
+
+                        // this.debug("combined", combined);
+                        // Convert to blob
+                        const blob = new Blob([combined]);
+                        callback(blob);
+                    }
+                });
+            }
+        });
+    }
+
 }
 
 // ToDo: update this class
@@ -492,12 +621,12 @@ export class WorkerMessageHandler {
             const command = event?.data?.command || null;
 
             // ToDo: this is getting messages for other workers
-            if(!command){
+            if (!command) {
                 // this.debug(`Error - Worker onmessage missing command`, event);
                 return;
             }
 
-            if(VERBOSE) this.debug(`onmessage command ${command}`, event.data);
+            if (VERBOSE) this.debug(`onmessage command ${command}`, event.data);
 
             this.listeners.forEach(listener => {
                 if (command === listener.command) {
@@ -550,7 +679,7 @@ export class InjectToWorkerMessageHandler { // extends MessageHandler {
      * @constructor - follows the singleton pattern
      * @singleton
      */
-    constructor( ) {
+    constructor() {
         // Singleton pattern
         if (InjectToWorkerMessageHandler.instance) {
             return InjectToWorkerMessageHandler.instance;
@@ -563,7 +692,7 @@ export class InjectToWorkerMessageHandler { // extends MessageHandler {
         this.debug(`created new WorkerToInjectMessageHandler`);
 
         // No logging for production
-        if (process.env.NODE_ENV==='production')
+        if (process.env.NODE_ENV === 'production')
             this.debug = () => {
             };
 
@@ -578,7 +707,7 @@ export class InjectToWorkerMessageHandler { // extends MessageHandler {
             const command = event?.data?.command || null;
 
             // ToDo: this is getting messages for other workers
-            if(!command){
+            if (!command) {
                 // this.debug(`Error - InjectToWorker onmessage missing command`, event);
                 return;
             }
@@ -677,6 +806,8 @@ export const MESSAGE = {
     PONG: 'pong',   // content -> background
     REQUEST_TAB_ID: 'request_tab_id', // content -> background for getting tab
     TAB_ID: 'tab_id', // background -> content for sending tab
+    STREAM_CHUNK: 'stream_chunk',  // background | dash -> content
+    STREAM_COMPLETE: 'stream_complete',  // background | dash -> content
 
     // used in inject.js
     GET_ALL_SETTINGS: 'get_all_settings',
