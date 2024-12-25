@@ -157,14 +157,19 @@ async function loadVideoFromStorage(buffer = "") {
  * @returns {Promise<MediaStreamConstraints>} The media constraints.
  */
 async function getMediaConstraints() {
-    const trackData = storage.contents.trackData || [];
+    const trackData =await storage.get('trackData');
 
+    // Use the most recent tracks if they exist
     const latestAudioTrack = trackData
         .filter(track => track.kind === 'audio')
-        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest, {});
+        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest, trackData.find(track => track.kind === 'audio') || {});
     const latestVideoTrack = trackData
         .filter(track => track.kind === 'video')
-        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest, {});
+        .reduce((latest, current) => new Date(current.time) > new Date(latest.time) ? current : latest, trackData.find(track => track.kind === 'video') || {});
+
+    // Debugging
+    debug("Latest audio track device:", latestAudioTrack);
+    debug("Latest video track:", latestVideoTrack);
 
     const devices = await navigator.mediaDevices.enumerateDevices();
 
@@ -231,6 +236,7 @@ addMediaButton.addEventListener('click', async () => {
 async function startRecording() {
     // Get media based on the last used devices
     const constraints = await getMediaConstraints();
+    debug("Recording with constraints:", constraints);
 
     // Get user media with updated constraints
     const stream = await navigator.mediaDevices.getUserMedia(constraints);

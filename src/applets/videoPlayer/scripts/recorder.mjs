@@ -1,3 +1,8 @@
+/**
+ * @module recorder
+ * @description This module is responsible for recording video and audio from the user's camera and microphone.
+ * Only used in recorder.html, which is not currently exposed to the user.
+ */
 import '../styles/style.scss';
 import {arrayBufferToBase64} from './base64.mjs';
 
@@ -19,10 +24,6 @@ const fileButton = document.getElementById('fileButton');
 
 let audioEnabled = true;
 let videoEnabled = true;
-
-// get data from URL params
-const params = new URLSearchParams(window.location.search);
-const previewAspectRatio = params.get('aspectRatio') || 16 / 9;
 
 let arrayBuffer = null;
 let mediaRecorder;
@@ -168,24 +169,32 @@ navigator.mediaDevices.ondevicechange = async () => {
     await populateDeviceList();
 };
 
-const constraints = {
-    audio: true,
-    video: {
-        aspectRatio: previewAspectRatio,
-        width: {max: 1280},
-        height: {max: 720}
-    }
-};
-
+/**
+ * Get media devices based on the current settings
+ * @returns {Promise<void>}
+ */
 async function getMedia() {
+// ToDo: store constraints with trackData and reuse those
+// get the trackInfo.settings.deviceId with trackInfo.kind === 'video' and the highest resolution based on trackInfo.settings.height
+
+    const videoSettings = storage.contents['trackData']
+        .filter(trackInfo => trackInfo.kind === 'video' && trackInfo.readyState === 'live')
+        .sort((a, b) => b.settings.height - a.settings.height)[0].settings || null;
+
+    const audioSettings = storage.contents['trackData']
+        .filter(trackInfo => trackInfo.kind === 'audio' && trackInfo.readyState === 'live')
+        .pop()?.settings || null;
+
     const constraints = {
-        audio: audioEnabled,
+        audio: audioSettings ? audioSettings.deviceId : audioEnabled,
         video: videoEnabled ? {
-            aspectRatio: previewAspectRatio,
-            width: {max: 1280},
-            height: {max: 720}
+            aspectRatio: videoSettings?.aspectRatio ||  16 / 9,
+            height: {max: videoSettings?.height || 720},
+            deviceId: videoSettings.deviceId
         } : false
     };
+
+    debug('recorder media constraints:', constraints);
 
     try {
         videoElement.srcObject = await navigator.mediaDevices.getUserMedia(constraints);

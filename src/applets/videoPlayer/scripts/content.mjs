@@ -29,16 +29,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     debug("added video player element", videoPlayerElement);
 });
 
+// ToDo: this was firing multiple times - test this
+
+// Define the handleCanPlay function
+const handleCanPlay = ()=> {
+    mh.sendMessage(c.DASH, m.PLAYER_CANPLAY);
+}
 
 // Listen for data transfer events to load new media
 mh.onDataTransfer(async (blob) => {
 
+    // remove previous event listener
+    videoPlayerElement.removeEventListener('canplay', handleCanPlay);
+
     debug("received data transfer", blob);
     if (blob) {
         videoPlayerElement.src = URL.createObjectURL(blob);
-        videoPlayerElement.addEventListener('canplay', () => {
-            mh.sendMessage(c.DASH, m.PLAYER_CANPLAY);
-        });
+        videoPlayerElement.addEventListener('canplay', handleCanPlay);
     }
     else
         debug("failed load player media - invalid blob", blob);
