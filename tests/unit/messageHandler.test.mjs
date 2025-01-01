@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { jest } from '@jest/globals';
 import { MessageHandler, CONTEXT, MESSAGE } from '../../src/modules/messageHandler.mjs';
 

@@ -18,7 +18,7 @@ global.chrome = {
 };
 
 // Mock document.addEventListener
-document.addEventListener = jest.fn();
+// document.addEventListener = jest.fn();
 
 // Add any other global setup or configuration here
 global.CustomEvent = class CustomEvent {
