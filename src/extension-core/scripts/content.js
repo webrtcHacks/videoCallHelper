@@ -239,7 +239,8 @@ async function syncTrackInfo() {
     debug("syncTrackInfo:: updated trackInfos", trackInfos);
 
     trackInfos.push(settings);
-    await mh.sendMessage(c.BACKGROUND, 'tab', 'track_info');
+    // await mh.sendMessage(c.BACKGROUND, 'tab', 'track_info');
+
     // Keep for debugging
     /*
     streams.forEach( stream => {

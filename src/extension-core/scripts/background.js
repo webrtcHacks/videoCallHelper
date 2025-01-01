@@ -44,13 +44,13 @@ async function checkAllTabs() {
 
 /**
  * Checks if the content script can communicate with the background script
- * @param {number}tab - the tab to check
- * @returns {Promise<boolean>}
+ * @param {chrome.tabs.Tab} tab - the tab to check
+ * @returns {Promise<boolean>} - true if the content script is loaded, false otherwise
  */
 async function checkTabCommunication(tab) {
     if (!tab.url.match(/^http/i)) {
         await chrome.action.disable(tab.id);
-        return;
+        return false;
     }
 
     try {
