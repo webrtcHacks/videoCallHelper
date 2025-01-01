@@ -281,7 +281,7 @@ The `applet/scripts` folder contains a module script (`.mjs`) for each context t
 
 This is a TODO item.
 
-[/test/gum.html](./test/gum.html) for quick, manual `getUserMedia` and `enumerateDevices` related tests.
+[/test/gum.html](tests/gum.html) for quick, manual `getUserMedia` and `enumerateDevices` related tests.
 
 ## Applets
 
