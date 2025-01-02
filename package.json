@@ -2,8 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "webpack --config webpack.prod.js",
-    "watch": "webpack --config webpack.dev.js --watch",
+    "build": "NODE_ENV=production webpack --config webpack.prod.js && NODE_ENV=production npm run test",
+    "watch": "NODE_ENV=development webpack --config webpack.dev.js --watch",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {

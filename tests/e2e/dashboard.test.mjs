@@ -11,22 +11,23 @@ import {CONTEXT as c, MESSAGE as m} from '../../src/modules/messageHandler.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const EXTENSION_PATH = path.resolve(__dirname, '../../dist/extension/');
-const TEST_PAGE = 'https://localhost:8443/gum.html';
-const GUM_HTML_PATH = path.resolve(__dirname, '../gum.html');
+const PORT = 8443;
+const TEST_PAGE = "gum.html";
+const pathToTest = process.env.NODE_ENV === 'production' ?  'extension' : 'dev';
+const EXTENSION_PATH = path.resolve(__dirname, `../../dist/${pathToTest}`);
+const TEST_URL = `https://localhost:${PORT}/${TEST_PAGE}`;
+const PAGE_PATH = path.resolve(__dirname, `../${TEST_PAGE}`);
 
-// console.log('Resolved EXTENSION_PATH:', path.resolve(EXTENSION_PATH));
-// console.log('Resolved TEST_PAGE:', TEST_PAGE);
-// console.log('Resolved GUM_HTML_PATH:', GUM_HTML_PATH);
+console.log("Environment: ", process.env.NODE_ENV);
 
 describe('Chrome Extension Dashboard Test', () => {
     let browser, page;
     let server;
 
-    jest.setTimeout(30000); // 30 seconds for this suite
+    jest.setTimeout(20000);     // 20 seconds for this suite
 
     beforeAll(async () => {
-        // Generate a self-signed certificate with a larger key size
+        // Generate a self-signed certificate
         const pems = selfsigned.generate(null, { days: 1, keySize: 2048 });
 
         // Start the HTTPS server
@@ -35,11 +36,11 @@ describe('Chrome Extension Dashboard Test', () => {
             cert: pems.cert
         }, (req, res) => {
             // Serve the test page
-            if (req.url === '/gum.html') {
-                fs.readFile(GUM_HTML_PATH, (err, data) => {
+            if (req.url === `/${TEST_PAGE}`) {
+                fs.readFile(PAGE_PATH, (err, data) => {
                     if (err) {
                         res.writeHead(500);
-                        res.end('Error loading gum.html');
+                        res.end(`Error loading ${TEST_PAGE}`);
                     } else {
                         res.writeHead(200, { 'Content-Type': 'text/html' });
                         res.end(data);
@@ -55,7 +56,7 @@ describe('Chrome Extension Dashboard Test', () => {
 
         // Launch Puppeteer with the extension loaded
         browser = await puppeteer.launch({
-            headless: false, // Extensions require a non-headless browser
+            headless: process.env.NODE_ENV === 'production',
             args: [
                 `--disable-extensions-except=${EXTENSION_PATH}`,
                 `--load-extension=${EXTENSION_PATH}`,
@@ -63,6 +64,12 @@ describe('Chrome Extension Dashboard Test', () => {
             ],
             // dumpio: true, // Log browser communication
         });
+
+        // Open a new page
+        const pages = await browser.pages();
+        page = pages[0];
+        await page.goto(TEST_URL);
+        await page.setViewport({ width: 1920, height: 1080 });  // Default to 1080p resolution
 
     });
 
@@ -75,11 +82,6 @@ describe('Chrome Extension Dashboard Test', () => {
     });
 
     test('check for the dashboard container', async () => {
-        // Open a new page and navigate to gum.html
-        const pages = await browser.pages();
-        page = pages[0];
-        await page.goto(TEST_PAGE);
-
         await page.waitForSelector('#vch-dash-container');
 
         const dashboardExists = await page.evaluate(() => {
