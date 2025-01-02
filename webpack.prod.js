@@ -1,9 +1,15 @@
-const { merge } = require('webpack-merge');
-const webpack = require('webpack');
-const path = require("path");
-const commonConfigs = require("./webpack.common");
-const CopyPlugin = require("copy-webpack-plugin");
-const fs = require('fs');
+import { merge } from 'webpack-merge';
+import webpack from 'webpack';
+import path from 'path';
+import commonConfigs from './webpack.common.js';
+import CopyPlugin from 'copy-webpack-plugin';
+import fs from 'fs';
+
+import { dirname } from 'path';
+import {fileURLToPath} from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Custom Webpack plugin to increment the patch version in the source manifest.json file.
@@ -74,7 +80,7 @@ const [workerConfig, extensionConfig] = commonConfigs;
 workerConfig.mode = 'production';
 
 // Only merge the devConfig with the extensionConfig
-module.exports = [
+export default [
     workerConfig, // Build the worker first
     merge(extensionConfig, prodConfig) // apply the devConfig only to the extensionConfig
 ];

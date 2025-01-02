@@ -1,9 +1,12 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require("copy-webpack-plugin");
-const fs = require('fs');
+import path from 'path';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
+import fs from 'fs';
+import { dirname } from 'path';
+import {fileURLToPath} from "url";
 
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Webpack configuration for the worker script.
@@ -188,7 +191,7 @@ const extensionConfig = {
     // stats: 'verbose',
 };
 
-module.exports = [
+export default [
     workerConfig,               // build a temp worker-js file first
     extensionConfig,          // include the extension scripts
     deleteWorkerConfig    // delete the worker-js file now that we don't need it
