@@ -272,6 +272,16 @@ src/
 ├── modules - shared modules (message and storage handling)
 ├── static - static content (icons)
 └── manifest.json - V3 Chrome Extension manifest
+tests/
+├── e2e/ - end-to-end tests
+├── unit/ - unit tests
+└── gum.html - manual getUserMedia and enumerateDevices testing page
+jest.config.js - Jest testing configuration
+package.json - npm package file
+README.md - this file
+webpack.common.js - common webpack configuration
+webpack.dev.js - development webpack configuration
+webpack.prod.js - production webpack configuration
 ```
 
 The `applet/scripts` folder contains a module script (`.mjs`) for each context that is needed.
@@ -279,9 +289,9 @@ The `applet/scripts` folder contains a module script (`.mjs`) for each context t
 
 ### Testing
 
-This is a TODO item.
+This is a Work In Progress. See the `/tests` folder for some basic unit and end-to-end tests using Puppeteer.
 
-[/test/gum.html](tests/gum.html) for quick, manual `getUserMedia` and `enumerateDevices` related tests.
+Use [/tests/gum.html](tests/gum.html) for manual `getUserMedia` and `enumerateDevices` related tests.
 
 ## Applets
 
