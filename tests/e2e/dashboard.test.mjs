@@ -81,6 +81,11 @@ describe('Chrome Extension Dashboard Test', () => {
         server.close();
     });
 
+    // ToDo: debug  failing tests
+    test("dummy", ()=>{
+        expect(true).toBe(true)
+    });
+
     test('check for the dashboard container', async () => {
         await page.waitForSelector('#vch-dash-container');
 
@@ -93,8 +98,10 @@ describe('Chrome Extension Dashboard Test', () => {
 
 
     test('check that the dashboard opens', async () => {
+        import { MessageHandler, MESSAGE as m, CONTEXT as c } from "../../src/modules/messageHandler.mjs" ;
+        const mh = new MessageHandler(c.BACKGROUND);
         await page.evaluate((context, message) => {
-            window.vch.mh.sendMessage(context, message, {});
+            mh.sendMessage(context, message, {});
         }, c.CONTENT, m.TOGGLE_DASH);
 
         // wait for document.querySelector("#vch-dash-container").shadowRoot.querySelector("#vch_dash")

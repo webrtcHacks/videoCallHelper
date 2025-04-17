@@ -1,9 +1,12 @@
-const { merge } = require('webpack-merge');
-const commonConfigs = require('./webpack.common.js');
-const path = require("path");
-const webpack = require('webpack');
-const CopyPlugin = require("copy-webpack-plugin");
+import { merge } from 'webpack-merge';
+import commonConfigs from './webpack.common.js';
+import path from 'path';
+import webpack from 'webpack';
+import CopyPlugin from 'copy-webpack-plugin';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class BuildTimePlugin {
     apply(compiler) {
@@ -75,8 +78,7 @@ workerConfig.mode = 'development';
 workerConfig.devtool = 'inline-source-map';
 
 // Only merge the devConfig with the extensionConfig
-module.exports = [
+export default [
     workerConfig,
     merge(extensionConfig, devConfig) // apply the devConfig only to the extensionConfig
 ];
-

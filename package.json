@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "build": "NODE_ENV=production webpack --config webpack.prod.js && NODE_ENV=production npm run test",
-    "watch": "NODE_ENV=development webpack --config webpack.dev.js --watch",
+    "watch": "NODE_ENV=development webpack --config webpack.dev.mjs --watch",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
